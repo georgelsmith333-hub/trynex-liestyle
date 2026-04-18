@@ -17,14 +17,19 @@ export default function AdminLogin() {
     setErrorMsg("");
     try {
       const res = await login({ data: { username: "admin", password } });
-      if (res.success && res.token) {
+      if (res.token) {
         localStorage.setItem('trynex_admin_token', res.token);
         setLocation("/admin");
       } else {
-        setErrorMsg("Incorrect password. Please try again.");
+        setErrorMsg("Incorrect password. Default password is: Admins@Trynex");
       }
-    } catch {
-      setErrorMsg("Incorrect password. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.toLowerCase().includes("network") || message.toLowerCase().includes("failed to fetch")) {
+        setErrorMsg("Cannot reach the server. Check your internet connection.");
+      } else {
+        setErrorMsg("Incorrect password. Default password is: Admins@Trynex");
+      }
     }
   };
 

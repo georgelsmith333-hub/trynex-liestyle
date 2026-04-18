@@ -230,28 +230,38 @@
   .status-cancelled { background: rgba(239,68,68,0.08); color: #b91c1c; border: 1px solid rgba(239,68,68,0.2); border-radius: 0.75rem; }
   .status-ongoing { background: rgba(6,182,212,0.1); color: #0e7490; border: 1px solid rgba(6,182,212,0.25); border-radius: 0.75rem; }
 
-  /* Marquee animation */
+  /* Marquee animation — GPU-accelerated for low-end devices */
   @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-50%, 0, 0); }
   }
   .animate-marquee {
-    animation: marquee 28s linear infinite;
+    animation: marquee 40s linear infinite;
     display: flex;
     width: max-content;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    -webkit-font-smoothing: subpixel-antialiased;
   }
   .animate-marquee:hover { animation-play-state: paused; }
 
-  /* Announcement bar ticker */
+  /* Announcement bar ticker — buttery-smooth on every device */
   @keyframes ticker {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-50%, 0, 0); }
   }
   .animate-ticker {
-    animation: ticker 22s linear infinite;
+    animation: ticker 45s linear infinite;
     display: flex;
     width: max-content;
     gap: 0;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    -webkit-font-smoothing: subpixel-antialiased;
   }
 
   /* Perspective card */

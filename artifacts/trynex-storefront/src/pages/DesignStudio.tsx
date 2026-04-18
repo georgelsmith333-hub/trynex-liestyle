@@ -347,13 +347,12 @@ export default function DesignStudio() {
   }, [clientToSVG, design.x, design.y]);
 
   const handleSVGPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    if (!dragRef.current) return;
+    const drag = dragRef.current;
+    if (!drag) return;
     const svgPt = clientToSVG(e.clientX, e.clientY);
-    setDesign(prev => ({
-      ...prev,
-      x: dragRef.current!.dx + (svgPt.x - dragRef.current!.startX),
-      y: dragRef.current!.dy + (svgPt.y - dragRef.current!.startY),
-    }));
+    const nextX = drag.dx + (svgPt.x - drag.startX);
+    const nextY = drag.dy + (svgPt.y - drag.startY);
+    setDesign(prev => ({ ...prev, x: nextX, y: nextY }));
   }, [clientToSVG]);
 
   const handleSVGPointerUp = useCallback(() => {
@@ -376,17 +375,16 @@ export default function DesignStudio() {
   }, [design.scale, design.rotation]);
 
   const handleSVGTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchRef.current) {
+    const pinch = pinchRef.current;
+    if (e.touches.length === 2 && pinch) {
       e.preventDefault();
       const dx = e.touches[1].clientX - e.touches[0].clientX;
       const dy = e.touches[1].clientY - e.touches[0].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      setDesign(prev => ({
-        ...prev,
-        scale: Math.max(0.1, Math.min(5, pinchRef.current!.scale * (dist / pinchRef.current!.dist))),
-        rotation: pinchRef.current!.rot + (angle - pinchRef.current!.angle),
-      }));
+      const nextScale = Math.max(0.1, Math.min(5, pinch.scale * (dist / pinch.dist)));
+      const nextRot = pinch.rot + (angle - pinch.angle);
+      setDesign(prev => ({ ...prev, scale: nextScale, rotation: nextRot }));
     }
   }, []);
 
@@ -405,10 +403,8 @@ export default function DesignStudio() {
       const pt = clientToSVG(me.clientX, me.clientY);
       const startDist = Math.sqrt((startPt.x - cx) ** 2 + (startPt.y - cy) ** 2);
       const newDist = Math.sqrt((pt.x - cx) ** 2 + (pt.y - cy) ** 2);
-      setDesign(prev => ({
-        ...prev,
-        scale: Math.max(0.1, Math.min(5, startScale * (newDist / Math.max(startDist, 1)))),
-      }));
+      const nextScale = Math.max(0.1, Math.min(5, startScale * (newDist / Math.max(startDist, 1))));
+      setDesign(prev => ({ ...prev, scale: nextScale }));
     };
     const onUp = () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
     window.addEventListener("pointermove", onMove);
