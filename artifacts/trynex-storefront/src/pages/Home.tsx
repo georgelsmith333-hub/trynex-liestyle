@@ -680,8 +680,8 @@ export default function Home() {
   const howItWorksRef = useRef<HTMLDivElement>(null);
   const howItWorksInView = useInView(howItWorksRef, { once: true, margin: "-80px" });
   const { scrollY } = useScrollProgress();
-  const heroY = useTransform(scrollY, [0, 400], [0, 60]);
-  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+  const heroY = useTransform(scrollY, [0, 500], [0, 50]);
+  const heroOpacity = useTransform(scrollY, [200, 600], [1, 0.15]);
   const settings = useSiteSettings();
 
   const testimonials = dynamicTestimonials.length > 0

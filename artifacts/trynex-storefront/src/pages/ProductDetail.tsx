@@ -318,6 +318,20 @@ export default function ProductDetail() {
   }, []);
 
   useEffect(() => {
+    if (!product || product.stock < 1) return;
+    const setOffset = () => {
+      const isMobile = window.innerWidth < 768;
+      document.documentElement.style.setProperty('--mobile-sticky-offset', isMobile ? '76px' : '0px');
+    };
+    setOffset();
+    window.addEventListener('resize', setOffset, { passive: true });
+    return () => {
+      window.removeEventListener('resize', setOffset);
+      document.documentElement.style.setProperty('--mobile-sticky-offset', '0px');
+    };
+  }, [product?.id, product?.stock]);
+
+  useEffect(() => {
     setActiveImage("");
     setQuantity(1);
     setSelectedSize("");
@@ -573,6 +587,29 @@ export default function ProductDetail() {
                     <ZoomIn className="w-3.5 h-3.5" /> Hover to zoom
                   </div>
                 )}
+                {(() => {
+                  const rawImages = [product.imageUrl, ...(product.images || [])].filter(Boolean) as string[];
+                  const allImages = [...new Set(rawImages)];
+                  if (allImages.length <= 1 || zoomActive) return null;
+                  const activeIdx = Math.max(0, activeImage ? allImages.indexOf(activeImage) : 0);
+                  const goPrev = (e: React.MouseEvent) => { e.stopPropagation(); setActiveImage(allImages[(activeIdx - 1 + allImages.length) % allImages.length]); };
+                  const goNext = (e: React.MouseEvent) => { e.stopPropagation(); setActiveImage(allImages[(activeIdx + 1) % allImages.length]); };
+                  return (
+                    <>
+                      <button onClick={goPrev} aria-label="Previous image"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center bg-white/90 hover:bg-white border border-gray-200 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-105 active:scale-95">
+                        <ArrowLeft className="w-4 h-4 text-gray-700" />
+                      </button>
+                      <button onClick={goNext} aria-label="Next image"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center bg-white/90 hover:bg-white border border-gray-200 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-105 active:scale-95">
+                        <ArrowRight className="w-4 h-4 text-gray-700" />
+                      </button>
+                      <span className="absolute bottom-4 left-4 z-10 px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/55 text-white backdrop-blur-sm pointer-events-none">
+                        {activeIdx + 1} / {allImages.length}
+                      </span>
+                    </>
+                  );
+                })()}
               </motion.div>
 
               <motion.div
@@ -610,18 +647,18 @@ export default function ProductDetail() {
               {(() => {
                 const rawImages = [product.imageUrl, ...(product.images || [])].filter(Boolean) as string[];
                 const allImages = [...new Set(rawImages)];
-                const activeIdx = activeImage ? allImages.indexOf(activeImage) : 0;
-                return allImages.length > 1 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                if (allImages.length <= 1) return null;
+                const activeIdx = Math.max(0, activeImage ? allImages.indexOf(activeImage) : 0);
+                return (
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scroll-snap-x">
                     {allImages.map((img, idx) => (
                       <button
                         key={idx}
                         onClick={() => setActiveImage(img)}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 transition-all"
+                        aria-label={`View image ${idx + 1}`}
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 transition-all scroll-snap-item"
                         style={{
-                          border: idx === activeIdx
-                            ? '3px solid #E85D04'
-                            : '2px solid #e5e7eb',
+                          border: idx === activeIdx ? '3px solid #E85D04' : '2px solid #e5e7eb',
                           opacity: idx === activeIdx ? 1 : 0.6,
                           transform: idx === activeIdx ? 'scale(1.05)' : 'scale(1)',
                         }}
@@ -630,7 +667,7 @@ export default function ProductDetail() {
                       </button>
                     ))}
                   </div>
-                ) : null;
+                );
               })()}
             </div>
 
@@ -1039,16 +1076,33 @@ export default function ProductDetail() {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
           }}
         >
-          <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                aria-label="Decrease quantity"
+                className="w-9 h-11 flex items-center justify-center text-gray-500 active:bg-gray-100"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className="w-7 text-center text-sm font-black text-gray-900 tabular-nums">{quantity}</span>
+              <button
+                onClick={() => setQuantity(Math.min(quantity + 1, product.stock))}
+                aria-label="Increase quantity"
+                className="w-9 h-11 flex items-center justify-center text-gray-500 active:bg-gray-100"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 truncate">{product.name}</p>
-              <p className="text-lg font-black text-orange-600">
-                {formatPrice(product.discountPrice || product.price)}
+              <p className="text-[11px] text-gray-500 truncate leading-tight">{product.name}</p>
+              <p className="text-base font-black text-orange-600 leading-tight">
+                {formatPrice((product.discountPrice || product.price) * quantity)}
               </p>
             </div>
             <button
               onClick={handleAddToCart}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm shrink-0 active:scale-95 transition-transform"
+              className="flex items-center gap-1.5 px-4 h-11 rounded-xl font-bold text-white text-sm shrink-0 active:scale-95 transition-transform"
               style={{
                 background: addedToBag ? '#16a34a' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                 boxShadow: '0 4px 16px rgba(232,93,4,0.3)',
@@ -1056,9 +1110,9 @@ export default function ProductDetail() {
               aria-label="Add to cart"
             >
               {addedToBag ? (
-                <><Check className="w-4 h-4" /> Added!</>
+                <><Check className="w-4 h-4" /> Added</>
               ) : (
-                <><ShoppingBag className="w-4 h-4" /> Add to Bag</>
+                <><ShoppingBag className="w-4 h-4" /> Add</>
               )}
             </button>
           </div>

@@ -51,7 +51,8 @@ export function SocialProofToast() {
           animate={{ opacity: 1, x: 0, y: 0 }}
           exit={{ opacity: 0, x: -100 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="fixed bottom-6 left-5 z-50 max-w-[280px] sm:max-w-xs"
+          className="fixed left-5 z-50 max-w-[280px] sm:max-w-xs"
+          style={{ bottom: 'calc(5.5rem + var(--mobile-sticky-offset, 0px))' }}
         >
           <div
             className="flex items-start gap-3 p-3.5 rounded-2xl backdrop-blur-xl"
