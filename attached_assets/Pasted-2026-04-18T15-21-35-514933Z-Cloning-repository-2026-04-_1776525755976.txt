@@ -1,0 +1,101 @@
+2026-04-18T15:21:35.514933Z	Cloning repository...
+2026-04-18T15:21:36.669509Z	From https://github.com/georgelsmith333-hub/trynex-liestyle
+2026-04-18T15:21:36.669947Z	 * branch            598ad951c91b9e3d0a3ebece96919d95afc1cbd0 -> FETCH_HEAD
+2026-04-18T15:21:36.670014Z	
+2026-04-18T15:21:36.858414Z	HEAD is now at 598ad95 fix: remove [build] section from wrangler.toml
+2026-04-18T15:21:36.858837Z	
+2026-04-18T15:21:36.900538Z	
+2026-04-18T15:21:36.900962Z	Using v2 root directory strategy
+2026-04-18T15:21:36.914477Z	Success: Finished cloning repository files
+2026-04-18T15:21:39.236765Z	Checking for configuration in a Wrangler configuration file (BETA)
+2026-04-18T15:21:39.23726Z	
+2026-04-18T15:21:39.237359Z	Found wrangler.toml file. Reading build configuration...
+2026-04-18T15:21:39.241844Z	pages_build_output_dir: artifacts/trynex-storefront/dist
+2026-04-18T15:21:39.241985Z	Build environment variables: (none found)
+2026-04-18T15:21:40.332835Z	Successfully read the Wrangler configuration file.
+2026-04-18T15:21:40.522564Z	Detected the following tools from environment: nodejs@20.20.0, pnpm@10.11.1
+2026-04-18T15:21:40.523077Z	Installing nodejs 20.20.0
+2026-04-18T15:21:41.089317Z	Trying to update node-build... ok
+2026-04-18T15:21:41.146973Z	To follow progress, use 'tail -f /tmp/node-build.20260418152141.799.log' or pass --verbose
+2026-04-18T15:21:41.189672Z	Downloading node-v20.20.0-linux-x64.tar.gz...
+2026-04-18T15:21:41.30318Z	-> https://nodejs.org/dist/v20.20.0/node-v20.20.0-linux-x64.tar.gz
+2026-04-18T15:21:43.565627Z	
+2026-04-18T15:21:43.565896Z	WARNING: node-v20.20.0-linux-x64 is in LTS Maintenance mode and nearing its end of life.
+2026-04-18T15:21:43.565952Z	It only receives *critical* security updates, *critical* bug fixes and documentation updates.
+2026-04-18T15:21:43.566003Z	
+2026-04-18T15:21:43.566839Z	Installing node-v20.20.0-linux-x64...
+2026-04-18T15:21:44.095055Z	Installed node-v20.20.0-linux-x64 to /opt/buildhome/.asdf/installs/nodejs/20.20.0
+2026-04-18T15:21:44.095507Z	
+2026-04-18T15:21:45.43201Z	
+2026-04-18T15:21:45.432415Z	changed 1 package in 564ms
+2026-04-18T15:21:45.440287Z	Reshimming asdf nodejs...
+2026-04-18T15:21:47.421757Z	Preparing pnpm@10.11.1 for immediate activation...
+2026-04-18T15:21:48.227945Z	Installing project dependencies: pnpm install
+2026-04-18T15:21:48.750075Z	Scope: all 9 workspace projects
+2026-04-18T15:21:48.827477Z	Lockfile is up to date, resolution step is skipped
+2026-04-18T15:21:48.915552Z	Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-04-18T15:21:49.022248Z	Packages: +822
+2026-04-18T15:21:49.026383Z	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-04-18T15:21:49.916184Z	Progress: resolved 822, reused 0, downloaded 92, added 0
+2026-04-18T15:21:50.917142Z	Progress: resolved 822, reused 0, downloaded 134, added 15
+2026-04-18T15:21:51.918164Z	Progress: resolved 822, reused 0, downloaded 166, added 31
+2026-04-18T15:21:52.919407Z	Progress: resolved 822, reused 0, downloaded 328, added 242
+2026-04-18T15:21:53.921284Z	Progress: resolved 822, reused 0, downloaded 339, added 246
+2026-04-18T15:21:54.932665Z	Progress: resolved 822, reused 0, downloaded 622, added 612
+2026-04-18T15:21:55.933394Z	Progress: resolved 822, reused 0, downloaded 821, added 820
+2026-04-18T15:21:56.66604Z	Progress: resolved 822, reused 0, downloaded 822, added 822, done
+2026-04-18T15:21:56.950329Z	.../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+2026-04-18T15:21:56.951197Z	.../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+2026-04-18T15:21:56.96977Z	.../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-04-18T15:21:57.058185Z	.../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+2026-04-18T15:21:57.071774Z	.../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+2026-04-18T15:21:57.076752Z	.../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-04-18T15:21:57.460836Z	
+2026-04-18T15:21:57.461279Z	devDependencies:
+2026-04-18T15:21:57.461652Z	+ prettier 3.8.1
+2026-04-18T15:21:57.46211Z	+ typescript 5.9.3
+2026-04-18T15:21:57.462364Z	
+2026-04-18T15:21:57.664668Z	Done in 9.2s using pnpm v10.11.1
+2026-04-18T15:21:57.715591Z	Executing user command: corepack enable && pnpm install && pnpm --filter @workspace/trynex-storefront run build
+2026-04-18T15:21:58.439423Z	Scope: all 9 workspace projects
+2026-04-18T15:21:58.570336Z	Lockfile is up to date, resolution step is skipped
+2026-04-18T15:21:58.680846Z	Already up to date
+2026-04-18T15:21:59.742088Z	
+2026-04-18T15:21:59.894467Z	Done in 1.8s using pnpm v10.11.1
+2026-04-18T15:22:00.539665Z	
+2026-04-18T15:22:00.539953Z	> @workspace/trynex-storefront@0.0.0 build /opt/buildhome/repo/artifacts/trynex-storefront
+2026-04-18T15:22:00.54003Z	> vite build --config vite.config.ts
+2026-04-18T15:22:00.540115Z	
+2026-04-18T15:22:01.10323Z	[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+2026-04-18T15:22:01.292946Z	transforming...
+2026-04-18T15:22:02.413921Z	[33msrc/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+2026-04-18T15:22:06.184491Z	[32m✓[39m 2932 modules transformed.
+2026-04-18T15:22:06.189653Z	[31m✗[39m Build failed in 5.02s
+2026-04-18T15:22:06.18995Z	[31merror during build:
+2026-04-18T15:22:06.19005Z	[31m[vite-plugin-pwa:build] There was an error during the build:
+2026-04-18T15:22:06.19012Z	  src/pages/admin/AdminProducts.tsx (4:19): "useCreateProduct" is not exported by "../../lib/api-client-react/src/index.ts", imported by "src/pages/admin/AdminProducts.tsx".
+2026-04-18T15:22:06.190192Z	Additionally, handling the error in the 'buildEnd' hook caused the following error:
+2026-04-18T15:22:06.19027Z	  src/pages/admin/AdminProducts.tsx (4:19): "useCreateProduct" is not exported by "../../lib/api-client-react/src/index.ts", imported by "src/pages/admin/AdminProducts.tsx".[31m
+2026-04-18T15:22:06.190371Z	file: [36m/opt/buildhome/repo/artifacts/trynex-storefront/src/pages/admin/AdminProducts.tsx:4:19[31m
+2026-04-18T15:22:06.190441Z	[33m
+2026-04-18T15:22:06.190505Z	2: import { AdminLayout } from "@/components/layout/AdminLayout";
+2026-04-18T15:22:06.190582Z	3: import {
+2026-04-18T15:22:06.190661Z	4:   useListProducts, useCreateProduct, useDeleteProduct, useUpdateProduct, useListCategories,
+2026-04-18T15:22:06.190744Z	                      ^
+2026-04-18T15:22:06.190838Z	5:   getListProductsQueryKey,
+2026-04-18T15:22:06.190881Z	6:   type Category, type Product, type CreateProductRequest, type UpdateProductRequest
+2026-04-18T15:22:06.190933Z	[31m
+2026-04-18T15:22:06.190968Z	    at getRollupError (file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+2026-04-18T15:22:06.190999Z	    at file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:23467:39
+2026-04-18T15:22:06.191036Z	    at async catchUnfinishedHookActions (file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:22925:16)
+2026-04-18T15:22:06.19107Z	    at async rollupInternal (file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:23450:5)
+2026-04-18T15:22:06.191105Z	    at async buildEnvironment (file:///opt/buildhome/repo/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33541:12)
+2026-04-18T15:22:06.191219Z	    at async Object.build (file:///opt/buildhome/repo/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33900:19)
+2026-04-18T15:22:06.191285Z	    at async Object.buildApp (file:///opt/buildhome/repo/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33897:153)
+2026-04-18T15:22:06.19132Z	    at async CAC.<anonymous> (file:///opt/buildhome/repo/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_terser@5.46.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/cli.js:629:3)[39m
+2026-04-18T15:22:06.257059Z	/opt/buildhome/repo/artifacts/trynex-storefront:
+2026-04-18T15:22:06.257533Z	 ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/trynex-storefront@0.0.0 build: `vite build --config vite.config.ts`
+2026-04-18T15:22:06.257646Z	Exit status 1
+2026-04-18T15:22:06.296257Z	Failed: Error while executing user command. Exited with error code: 1
+2026-04-18T15:22:06.30499Z	Failed: build command exited with code: 1
+2026-04-18T15:22:06.985675Z	Failed: error occurred while running build command

@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
+
+// ─── Shared option type used by hooks that pass auth headers ────────────────
+interface ReqOpts {
+  request?: { headers?: Record<string, string> };
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface Product {
   id: number;
@@ -135,6 +143,160 @@ export interface CreateOrderRequest {
   promoDiscount?: string;
 }
 
+export interface CreateProductRequest {
+  name: string;
+  slug: string;
+  description?: string;
+  price: number | string;
+  discountPrice?: number | string;
+  categoryId?: number;
+  imageUrl?: string;
+  images?: string[];
+  sizes?: string[];
+  colors?: string[];
+  stock: number;
+  featured?: boolean;
+  customizable?: boolean;
+  tags?: string[];
+}
+
+export interface UpdateProductRequest {
+  name?: string;
+  slug?: string;
+  description?: string;
+  price?: number | string;
+  discountPrice?: number | string | null;
+  categoryId?: number | null;
+  imageUrl?: string;
+  images?: string[];
+  sizes?: string[];
+  colors?: string[];
+  stock?: number;
+  featured?: boolean;
+  customizable?: boolean;
+  tags?: string[];
+}
+
+export interface Review {
+  id: number;
+  productId: number;
+  customerName: string;
+  customerEmail: string;
+  rating: number;
+  text?: string | null;
+  verified: boolean;
+  approved: boolean;
+  createdAt: string;
+}
+
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  author: string;
+  authorBio?: string | null;
+  authorAvatarUrl?: string | null;
+  category: string;
+  tags: string[];
+  published: boolean;
+  featured: boolean;
+  readingTime?: number | null;
+  readingTimeOverride?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogPostInput {
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  author?: string;
+  authorBio?: string | null;
+  authorAvatarUrl?: string | null;
+  category?: string;
+  tags?: string[];
+  published?: boolean;
+  featured?: boolean;
+  readingTimeOverride?: number | null;
+}
+
+export interface DesignerSettings {
+  primaryColor?: string;
+  announcementColor?: string;
+  heroImageUrl?: string;
+  heroGradient?: string;
+  heroCTAText?: string;
+  heroCTALink?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  announcementBar?: string;
+  promoBannerTitle?: string;
+  promoBannerSubtitle?: string;
+  promoBannerDiscount?: string;
+  promoBannerCTA?: string;
+  trustBadge1Title?: string;
+  trustBadge1Desc?: string;
+  trustBadge1Icon?: string;
+  trustBadge2Title?: string;
+  trustBadge2Desc?: string;
+  trustBadge2Icon?: string;
+  trustBadge3Title?: string;
+  trustBadge3Desc?: string;
+  trustBadge3Icon?: string;
+  trustBadge4Title?: string;
+  trustBadge4Desc?: string;
+  trustBadge4Icon?: string;
+  sectionFeaturedEnabled?: boolean | string;
+  sectionCategoriesEnabled?: boolean | string;
+  sectionFlashSaleEnabled?: boolean | string;
+  sectionTestimonialsEnabled?: boolean | string;
+  sectionStatsEnabled?: boolean | string;
+  categoryTshirtsEnabled?: boolean | string;
+  categoryHoodiesEnabled?: boolean | string;
+  categoryCapsEnabled?: boolean | string;
+  categoryMugsEnabled?: boolean | string;
+  categoryCustomEnabled?: boolean | string;
+  announcementEnabled?: boolean | string;
+  [key: string]: unknown;
+}
+
+export interface FacebookPost {
+  id: string;
+  message: string;
+  images: string[];
+  hasImages: boolean;
+  createdTime?: string;
+  permalink?: string;
+  suggestedName?: string;
+  suggestedPrice?: number;
+  suggestedDiscountPrice?: number;
+  suggestedCategory?: string;
+  suggestedSizes?: string[];
+  suggestedColors?: string[];
+}
+
+export interface FetchSocialUrl200Post {
+  id: string;
+  message: string;
+  images: string[];
+  hasImages?: boolean;
+  createdTime?: string;
+  permalink?: string;
+  suggestedName?: string;
+  suggestedPrice?: number;
+  suggestedDiscountPrice?: number;
+  suggestedCategory?: string;
+  suggestedSizes?: string[];
+  suggestedColors?: string[];
+}
+
+// ─── Settings Hooks ──────────────────────────────────────────────────────────
+
 export const useGetSettings = () => {
   return useQuery({
     queryKey: ["/api/settings"],
@@ -156,13 +318,21 @@ export const useUpdateSettings = () => {
   });
 };
 
-export const useListProducts = (params?: {
-  category?: string;
-  featured?: boolean;
-  limit?: number;
-  search?: string;
-  page?: number;
-}) => {
+// ─── Product Hooks ───────────────────────────────────────────────────────────
+
+export const getListProductsQueryKey = (params?: Record<string, unknown>) =>
+  ["/api/products", params] as const;
+
+export const useListProducts = (
+  params?: {
+    category?: string;
+    featured?: boolean;
+    limit?: number;
+    search?: string;
+    page?: number;
+  },
+  opts?: { query?: Partial<UseQueryOptions> } | ReqOpts,
+) => {
   const searchParams = new URLSearchParams();
   if (params?.category) searchParams.set("category", params.category);
   if (params?.featured !== undefined) searchParams.set("featured", String(params.featured));
@@ -171,8 +341,9 @@ export const useListProducts = (params?: {
   if (params?.page) searchParams.set("page", String(params.page));
   const qs = searchParams.toString();
   const url = `/api/products${qs ? `?${qs}` : ""}`;
+  const customKey = (opts as { query?: { queryKey?: unknown } })?.query?.queryKey;
   return useQuery({
-    queryKey: ["/api/products", params],
+    queryKey: customKey ? (customKey as unknown[]) : ["/api/products", params],
     queryFn: () => customFetch<{ products: Product[]; total?: number }>(url),
     staleTime: 60 * 1000,
   });
@@ -187,13 +358,60 @@ export const useGetProduct = (slug: string) => {
   });
 };
 
-export const useListCategories = () => {
+export const useCreateProduct = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: CreateProductRequest }) =>
+      customFetch<{ product: Product }>("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useUpdateProduct = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateProductRequest }) =>
+      customFetch<Product>(`/api/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useDeleteProduct = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) =>
+      customFetch<void>(`/api/products/${id}`, {
+        method: "DELETE",
+        headers: { ...(opts?.request?.headers ?? {}) },
+      }),
+  });
+};
+
+export const useToggleProductFeatured = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { featured: boolean } }) =>
+      customFetch<Product>(`/api/admin/products/${id}/featured`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+// ─── Category Hooks ──────────────────────────────────────────────────────────
+
+export const useListCategories = (_opts?: ReqOpts) => {
   return useQuery({
     queryKey: ["/api/categories"],
     queryFn: () => customFetch<{ categories: Category[] }>("/api/categories"),
     staleTime: 5 * 60 * 1000,
   });
 };
+
+// ─── Testimonial Hooks ───────────────────────────────────────────────────────
 
 export const useGetTestimonials = () => {
   return useQuery({
@@ -202,6 +420,50 @@ export const useGetTestimonials = () => {
     staleTime: 5 * 60 * 1000,
   });
 };
+
+export const useAdminListTestimonials = (opts?: ReqOpts) => {
+  return useQuery({
+    queryKey: ["/api/admin/testimonials"],
+    queryFn: () =>
+      customFetch<{ testimonials: Testimonial[] }>("/api/admin/testimonials", {
+        headers: opts?.request?.headers,
+      }),
+  });
+};
+
+export const useCreateTestimonial = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: Partial<Testimonial> }) =>
+      customFetch<Testimonial>("/api/admin/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useUpdateTestimonial = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Testimonial> }) =>
+      customFetch<Testimonial>(`/api/admin/testimonials/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useDeleteTestimonial = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) =>
+      customFetch<{ success: boolean }>(`/api/admin/testimonials/${id}`, {
+        method: "DELETE",
+        headers: { ...(opts?.request?.headers ?? {}) },
+      }),
+  });
+};
+
+// ─── Order Hooks ─────────────────────────────────────────────────────────────
 
 export const useCreateOrder = () => {
   return useMutation({
@@ -283,6 +545,8 @@ export const useUpdatePaymentStatus = () => {
   });
 };
 
+// ─── Admin Auth Hooks ─────────────────────────────────────────────────────────
+
 export const useAdminLogin = () => {
   return useMutation({
     mutationFn: ({
@@ -323,6 +587,8 @@ export const useAdminMe = () => {
   });
 };
 
+// ─── Admin Stats Hooks ────────────────────────────────────────────────────────
+
 export const useGetAdminStats = () => {
   return useQuery({
     queryKey: ["/api/admin/stats"],
@@ -347,6 +613,8 @@ export const useListAdminCustomers = () => {
   });
 };
 
+// ─── Backup Hooks ─────────────────────────────────────────────────────────────
+
 export const getExportBackupUrl = () => `/api/backup/export`;
 export const getExportOrdersCsvUrl = () => `/api/backup/orders-csv`;
 
@@ -363,5 +631,148 @@ export const useImportBackup = () => {
       qc.invalidateQueries({ queryKey: ["/api/orders"] });
       qc.invalidateQueries({ queryKey: ["/api/categories"] });
     },
+  });
+};
+
+// ─── Designer Settings Hooks ──────────────────────────────────────────────────
+
+export const useGetDesignerSettings = (opts?: ReqOpts) => {
+  return useQuery({
+    queryKey: ["/api/admin/designer-settings"],
+    queryFn: () =>
+      customFetch<DesignerSettings>("/api/admin/designer-settings", {
+        headers: opts?.request?.headers,
+      }),
+    staleTime: 60 * 1000,
+  });
+};
+
+export const usePatchDesignerSettings = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: DesignerSettings }) =>
+      customFetch<{ success: boolean }>("/api/admin/designer-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+// ─── Review Hooks ─────────────────────────────────────────────────────────────
+
+export const useListAdminReviews = (opts?: ReqOpts) => {
+  return useQuery({
+    queryKey: ["/api/admin/reviews"],
+    queryFn: () =>
+      customFetch<{ reviews: Review[] }>("/api/admin/reviews", {
+        headers: opts?.request?.headers,
+      }),
+  });
+};
+
+export const useApproveReview = (_opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request?: { headers?: Record<string, string> } }) =>
+      customFetch<Review>(`/api/admin/reviews/${id}/approve`, {
+        method: "PUT",
+        headers: { ...(request?.headers ?? {}) },
+      }),
+  });
+};
+
+export const useDeleteReview = (_opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request?: { headers?: Record<string, string> } }) =>
+      customFetch<{ success: boolean }>(`/api/admin/reviews/${id}`, {
+        method: "DELETE",
+        headers: { ...(request?.headers ?? {}) },
+      }),
+  });
+};
+
+// ─── Blog Hooks ───────────────────────────────────────────────────────────────
+
+export const useListBlogPosts = (
+  params?: { limit?: string | number; page?: string | number; published?: boolean; category?: string },
+  _opts?: ReqOpts,
+) => {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.published !== undefined) searchParams.set("published", String(params.published));
+  if (params?.category) searchParams.set("category", params.category);
+  const qs = searchParams.toString();
+  const url = `/api/blog${qs ? `?${qs}` : ""}`;
+  return useQuery({
+    queryKey: ["/api/blog", params],
+    queryFn: () => customFetch<{ posts: BlogPost[]; total: number; page: number; limit: number }>(url),
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useCreateBlogPost = (_opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data, request }: { data: BlogPostInput; request?: { headers?: Record<string, string> } }) =>
+      customFetch<BlogPost>("/api/blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useUpdateBlogPost = (_opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, data, request }: { id: number; data: Partial<BlogPostInput>; request?: { headers?: Record<string, string> } }) =>
+      customFetch<BlogPost>(`/api/blog/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useDeleteBlogPost = (_opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request?: { headers?: Record<string, string> } }) =>
+      customFetch<void>(`/api/blog/${id}`, {
+        method: "DELETE",
+        headers: { ...(request?.headers ?? {}) },
+      }),
+  });
+};
+
+// ─── Facebook / Social Import Hooks ──────────────────────────────────────────
+
+export const useFetchFacebookPosts = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: { pageId: string; accessToken: string } }) =>
+      customFetch<{ posts: FacebookPost[]; total: number }>("/api/admin/facebook/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useFetchSocialUrl = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: { url: string; accessToken?: string } }) =>
+      customFetch<{ post: FetchSocialUrl200Post; source: string }>("/api/admin/social/fetch-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+  });
+};
+
+export const useImportFacebookProduct = (opts?: ReqOpts) => {
+  return useMutation({
+    mutationFn: ({ data }: { data: Partial<CreateProductRequest> & { category?: string } }) =>
+      customFetch<{ product: Product }>("/api/admin/facebook/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
   });
 };
