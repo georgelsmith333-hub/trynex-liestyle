@@ -15,7 +15,7 @@ import {
   Scissors, Info, Eye, EyeOff, Loader2,
   Type, Layers as LayersIcon, Sparkles,
   Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
-  Image as ImageIcon, Plus,
+  Image as ImageIcon, Plus, Check, CloudUpload,
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
@@ -127,6 +127,18 @@ const TEMPLATES: Template[] = [
 
 type RightTab = "upload" | "text" | "layers" | "templates";
 
+const DRAFT_STORAGE_KEY = "trynex-design-draft-v1";
+const DRAFT_VERSION = 1;
+type SaveStatus = "idle" | "saving" | "saved";
+interface DraftPayload {
+  version: number;
+  layers: Layer[];
+  productId: string;
+  color: { name: string; hex: string };
+  size: string;
+  savedAt: number;
+}
+
 export default function DesignStudio() {
   const [, navigate] = useLocation();
   const { addToCart } = useCart();
@@ -175,6 +187,98 @@ export default function DesignStudio() {
 
   /* Snap guides */
   const [snapGuides, setSnapGuides] = useState<{ v: boolean; h: boolean }>({ v: false, h: false });
+
+  /* ── Draft persistence (localStorage) ──────────────── */
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [hasDraft, setHasDraft] = useState(false);
+  const draftRestoredRef = useRef(false);
+
+  // Restore draft on mount (runs once)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw) as Partial<DraftPayload>;
+        // Defensive shape validation — malformed/foreign data should be ignored, not crash the page.
+        const isValidLayer = (l: any): l is Layer =>
+          l && typeof l === "object"
+          && typeof l.id === "string"
+          && (l.type === "image" || l.type === "text")
+          && l.transform && typeof l.transform.x === "number" && typeof l.transform.y === "number"
+          && typeof l.transform.scale === "number" && typeof l.transform.rotation === "number"
+          && typeof l.transform.opacity === "number"
+          && (l.type === "text"
+            ? typeof l.text === "string" && typeof l.fontSize === "number"
+            : typeof l.src === "string" && typeof l.naturalW === "number" && typeof l.naturalH === "number");
+        const validLayers = Array.isArray(data?.layers) ? (data!.layers as any[]).filter(isValidLayer) as Layer[] : [];
+        if (data && data.version === DRAFT_VERSION) {
+          if (typeof data.productId === "string") {
+            const p = PRODUCTS.find(x => x.id === data.productId);
+            if (p) setSelectedProduct(p);
+          }
+          if (data.color && typeof (data.color as any).hex === "string" && typeof (data.color as any).name === "string") {
+            setSelectedColor(data.color as { name: string; hex: string });
+          }
+          if (typeof data.size === "string") setSelectedSize(data.size);
+          if (validLayers.length > 0) {
+            setLayers(validLayers);
+            historyRef.current = { stack: [validLayers], index: 0 };
+            forceHistoryTick(t => t + 1);
+            setHasDraft(true);
+            setSaveStatus("saved");
+            toast({ title: "Draft restored", description: "We brought back your last design." });
+          }
+        }
+      }
+    } catch {
+      // Corrupt JSON or storage access failure — ignore and start fresh.
+    }
+    draftRestoredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-save draft when layers / product / color / size change (debounced)
+  useEffect(() => {
+    if (!draftRestoredRef.current) return;
+    if (layers.length === 0) {
+      // Nothing meaningful to save — clear any prior draft so a refresh starts fresh.
+      try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+      setHasDraft(false);
+      setSaveStatus("idle");
+      return;
+    }
+    setSaveStatus("saving");
+    const handle = window.setTimeout(() => {
+      try {
+        const payload: DraftPayload = {
+          version: DRAFT_VERSION,
+          layers,
+          productId: selectedProduct.id,
+          color: selectedColor,
+          size: selectedSize,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+        setHasDraft(true);
+        setSaveStatus("saved");
+      } catch {
+        // Quota exceeded or serialization failure — leave status as-is silently.
+        setSaveStatus("idle");
+      }
+    }, 500);
+    return () => window.clearTimeout(handle);
+  }, [layers, selectedProduct, selectedColor, selectedSize]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+    setLayers([]);
+    setSelectedLayerId(null);
+    historyRef.current = { stack: [[]], index: 0 };
+    forceHistoryTick(t => t + 1);
+    setHasDraft(false);
+    setSaveStatus("idle");
+    toast({ title: "Draft cleared", description: "Your saved design has been removed." });
+  }, [toast]);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -519,6 +623,10 @@ export default function DesignStudio() {
       });
 
       toast({ title: "✓ Added to cart!", description: `Custom ${selectedProduct.name} (${selectedColor.name}) is ready.` });
+      // Draft is now in the cart — clear local draft so a refresh doesn't restore it.
+      try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+      setHasDraft(false);
+      setSaveStatus("idle");
       setTimeout(() => navigate("/cart"), 800);
     } finally {
       setIsAddingToCart(false);
@@ -616,6 +724,27 @@ export default function DesignStudio() {
             <p className="text-xs text-gray-500 mt-0.5">You imagine — we craft it.</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Saved indicator */}
+            {(saveStatus !== "idle" || hasDraft) && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+                style={{ background: saveStatus === "saving" ? "#f3f4f6" : "#ecfdf5", color: saveStatus === "saving" ? "#6b7280" : "#047857" }}
+                data-testid="draft-status">
+                {saveStatus === "saving"
+                  ? <><CloudUpload className="w-3 h-3 animate-pulse" /> Saving…</>
+                  : <><Check className="w-3 h-3" /> Saved</>}
+              </div>
+            )}
+            {hasDraft && (
+              <button
+                onClick={clearDraft}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-gray-500 hover:text-red-600 transition-colors"
+                style={{ background: "#f3f4f6" }}
+                title="Clear saved draft"
+                data-testid="clear-draft"
+              >
+                <Trash2 className="w-3 h-3" /> Clear draft
+              </button>
+            )}
             {/* Undo / Redo */}
             <button onClick={undo} disabled={!canUndo}
               className="p-2 rounded-xl text-gray-600 disabled:opacity-30"
