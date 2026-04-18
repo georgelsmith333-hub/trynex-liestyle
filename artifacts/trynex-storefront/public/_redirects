@@ -1,1 +1,9 @@
-/*    /index.html   200
+# Forward every API call to the Render backend. CF Pages will proxy
+# the request server-side, so the browser sees a normal same-origin
+# response. This MUST come before the SPA catch-all so that POST/PUT/
+# DELETE traffic doesn't get rewritten to /index.html.
+/api/*    https://trynex-api.onrender.com/api/:splat    200
+
+# SPA fallback — every non-API path is served by index.html so client
+# routing works on hard refresh.
+/*        /index.html                                   200

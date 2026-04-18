@@ -25,10 +25,20 @@ export default function AdminLogin() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
-      if (message.toLowerCase().includes("network") || message.toLowerCase().includes("failed to fetch")) {
-        setErrorMsg("Cannot reach the server. Check your internet connection.");
-      } else {
+      const status = (err as { status?: number })?.status;
+      if (status === 401) {
         setErrorMsg("Incorrect password. Please try again.");
+      } else if (status === 405 || status === 404) {
+        // Wrong host — request hit the static site, not the API.
+        setErrorMsg("Server unreachable: API route is misconfigured. Please contact the site admin.");
+      } else if (status && status >= 500) {
+        setErrorMsg("Server error. Please try again in a moment.");
+      } else if (message.toLowerCase().includes("network") || message.toLowerCase().includes("failed to fetch")) {
+        setErrorMsg("Cannot reach the server. Check your internet connection.");
+      } else if (message.toLowerCase().includes("parse")) {
+        setErrorMsg("The server returned an unexpected response. Please refresh and try again.");
+      } else {
+        setErrorMsg(message || "Login failed. Please try again.");
       }
     }
   };
