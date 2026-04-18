@@ -1,0 +1,724 @@
+================================================================================
+TRYNEX LIFESTYLE — COMPLETE WEBSITE BREAKDOWN
+================================================================================
+Date: April 7, 2026
+GitHub: georgelsmith333-hub/trynex-liestyle
+Live: Cloudflare Pages (frontend only)
+================================================================================
+
+
+================================================================================
+SECTION 1: WHAT IS THIS WEBSITE?
+================================================================================
+
+TryNex Lifestyle is a custom apparel e-commerce store for Bangladesh.
+Customers can browse products (t-shirts, hoodies, mugs, caps), place orders,
+track orders, and pay via bKash/Nagad/Rocket/COD.
+
+Admin panel lets you manage products, orders, customers, blog posts, site
+settings, and backups.
+
+
+================================================================================
+SECTION 2: THE TECH STACK (What Everything Is Built With)
+================================================================================
+
+FRONTEND (What customers see):
+  Language:           TypeScript (a safer version of JavaScript)
+  Framework:          React 18 (builds the user interface)
+  Build Tool:         Vite (compiles and bundles the code for browsers)
+  Styling:            Tailwind CSS (utility classes for design)
+  UI Components:      shadcn/ui (pre-built buttons, dialogs, forms, etc.)
+  Animations:         Framer Motion (smooth transitions and effects)
+  Icons:              Lucide (icon library)
+  Routing:            Wouter (handles page navigation like /products, /cart)
+  Data Fetching:      TanStack React Query (loads data from backend API)
+  Forms:              react-hook-form + Zod (form handling + validation)
+  SEO:                react-helmet-async (page titles, meta tags)
+  State Management:   React Context (cart, wishlist, site settings)
+
+BACKEND (Server that handles data):
+  Language:           TypeScript
+  Framework:          Express.js (Node.js web server)
+  Database:           PostgreSQL (stores all products, orders, settings)
+  ORM:                Drizzle (talks to the database using TypeScript)
+  Logging:            Pino (server logs)
+  File Uploads:       Google Cloud Storage via Replit sidecar (Replit-only)
+
+SHARED CODE (Used by both frontend and backend):
+  API Specification:  OpenAPI 3.1 (defines all API endpoints)
+  Code Generation:    Orval (auto-generates API hooks and validation)
+  Validation:         Zod (validates data on both sides)
+
+PROJECT MANAGEMENT:
+  Package Manager:    pnpm (manages all dependencies)
+  Structure:          Monorepo (everything in one repository)
+  Version Control:    Git + GitHub
+
+
+================================================================================
+SECTION 3: FOLDER STRUCTURE (What Each Folder Does)
+================================================================================
+
+trynex-liestyle/
+│
+├── artifacts/
+│   ├── trynex-storefront/     ← THE WEBSITE (frontend + admin panel)
+│   │   ├── src/
+│   │   │   ├── pages/         ← All the pages customers and admin see
+│   │   │   │   ├── Home.tsx              Homepage
+│   │   │   │   ├── Products.tsx          Product listing page
+│   │   │   │   ├── ProductDetail.tsx     Single product page
+│   │   │   │   ├── Cart.tsx              Shopping cart
+│   │   │   │   ├── Checkout.tsx          Order checkout + payment
+│   │   │   │   ├── TrackOrder.tsx        Order tracking
+│   │   │   │   ├── Blog.tsx              Blog listing
+│   │   │   │   ├── BlogPost.tsx          Single blog post
+│   │   │   │   ├── Wishlist.tsx          Saved items
+│   │   │   │   ├── ShippingPolicy.tsx    Static policy page
+│   │   │   │   ├── ReturnPolicy.tsx      Static policy page
+│   │   │   │   ├── PrivacyPolicy.tsx     Static policy page
+│   │   │   │   ├── TermsOfService.tsx    Static policy page
+│   │   │   │   ├── not-found.tsx         404 error page
+│   │   │   │   └── admin/               ← Admin panel pages
+│   │   │   │       ├── Login.tsx             Admin login
+│   │   │   │       ├── Dashboard.tsx         Admin dashboard (stats/charts)
+│   │   │   │       ├── AdminProducts.tsx     Manage products (add/edit/delete)
+│   │   │   │       ├── AdminOrders.tsx       Manage orders (status updates)
+│   │   │   │       ├── AdminBlog.tsx         Manage blog posts
+│   │   │   │       ├── AdminCustomers.tsx    View customer analytics
+│   │   │   │       ├── AdminSettings.tsx     Edit site settings
+│   │   │   │       └── AdminBackup.tsx       Export/import data backups
+│   │   │   ├── components/    ← Reusable UI pieces
+│   │   │   │   ├── layout/
+│   │   │   │   │   ├── Navbar.tsx            Top navigation bar
+│   │   │   │   │   └── Footer.tsx            Bottom footer
+│   │   │   │   ├── AnnouncementBar.tsx       Scrolling promo banner at top
+│   │   │   │   ├── WhatsAppButton.tsx        Floating WhatsApp chat button
+│   │   │   │   ├── ProductCard.tsx           Product card for listings
+│   │   │   │   ├── TrackingPixels.tsx        Google/Facebook analytics
+│   │   │   │   ├── SEOHead.tsx               Page title and meta tags
+│   │   │   │   ├── BackToTop.tsx             Scroll-to-top button
+│   │   │   │   ├── ScrollToTop.tsx           Auto-scroll on page change
+│   │   │   │   └── ui/                       shadcn component library
+│   │   │   ├── context/       ← Shared app state
+│   │   │   │   ├── CartContext.tsx            Cart items (saved in browser)
+│   │   │   │   ├── WishlistContext.tsx        Wishlist items (saved in browser)
+│   │   │   │   └── SiteSettingsContext.tsx    Settings loaded from API
+│   │   │   ├── lib/
+│   │   │   │   ├── utils.ts                  Helper functions (getApiUrl, etc.)
+│   │   │   │   └── tracking.ts               Analytics tracking functions
+│   │   │   ├── App.tsx                       Main app (routes + providers)
+│   │   │   └── main.tsx                      Entry point (starts the app)
+│   │   ├── public/
+│   │   │   ├── _redirects                    Cloudflare SPA routing config
+│   │   │   └── _headers                      Cloudflare cache headers
+│   │   └── vite.config.ts                    Vite build configuration
+│   │
+│   ├── api-server/            ← THE BACKEND SERVER
+│   │   ├── src/
+│   │   │   ├── routes/        ← All API endpoints
+│   │   │   │   ├── index.ts              Combines all routes
+│   │   │   │   ├── health.ts             Health check (/api/healthz)
+│   │   │   │   ├── products.ts           Product CRUD
+│   │   │   │   ├── categories.ts         Category management
+│   │   │   │   ├── orders.ts             Order management + tracking
+│   │   │   │   ├── settings.ts           Site settings read/write
+│   │   │   │   ├── admin.ts              Admin login + stats + customers
+│   │   │   │   ├── blog.ts               Blog CRUD
+│   │   │   │   ├── storage.ts            File upload/download
+│   │   │   │   └── backup.ts             Data export/import
+│   │   │   ├── middlewares/
+│   │   │   │   └── adminAuth.ts          Admin authentication check
+│   │   │   ├── lib/
+│   │   │   │   ├── autoSeed.ts           Creates tables + sample data on first run
+│   │   │   │   ├── objectStorage.ts      File storage (Replit-only)
+│   │   │   │   ├── objectAcl.ts          File permissions
+│   │   │   │   └── logger.ts             Logging setup
+│   │   │   ├── app.ts                    Express app setup (CORS, middleware)
+│   │   │   └── index.ts                  Server entry point (starts listening)
+│   │   └── package.json
+│   │
+│   └── mockup-sandbox/        ← Development-only component previews (not deployed)
+│
+├── lib/                       ← SHARED CODE PACKAGES
+│   ├── api-spec/              ← API definition (OpenAPI YAML)
+│   │   └── openapi.yaml           Defines every API endpoint
+│   ├── api-client-react/      ← Auto-generated React hooks for API calls
+│   │   └── src/
+│   │       ├── generated/api.ts   Generated hooks (useListProducts, etc.)
+│   │       └── custom-fetch.ts    Fetch wrapper (handles base URL, auth)
+│   ├── api-zod/               ← Auto-generated validation schemas
+│   │   └── src/generated/         Zod schemas for request/response validation
+│   └── db/                    ← Database layer
+│       ├── src/
+│       │   ├── schema/            Table definitions
+│       │   │   ├── products.ts        Products table
+│       │   │   ├── orders.ts          Orders table
+│       │   │   ├── categories.ts      Categories table
+│       │   │   ├── blog.ts            Blog posts table
+│       │   │   └── settings.ts        Settings + Admins tables
+│       │   └── index.ts              Database connection (uses DATABASE_URL)
+│       └── drizzle.config.ts         Database migration config
+│
+├── render.yaml                ← Render.com deployment config (for backend)
+├── pnpm-workspace.yaml        ← Workspace config
+└── package.json               ← Root package.json
+
+
+================================================================================
+SECTION 4: ALL WEBSITE PAGES (What Customers See)
+================================================================================
+
+URL                    Page                What It Does
+─────────────────────  ──────────────────  ──────────────────────────────────────
+/                      Home                Hero banner, featured products, features,
+                                           categories, testimonials, stats, CTA
+/products              Products            All products grid with category filter
+/product/:id           Product Detail      Single product view, sizes, colors,
+                                           custom design upload, add to cart
+/cart                  Cart                Shopping cart (stored in browser)
+/checkout              Checkout            Order form, payment method selection,
+                                           bKash/Nagad/Rocket payment flow
+/track                 Track Order         Enter phone + order number to track
+/blog                  Blog                Blog post listing
+/blog/:slug            Blog Post           Single blog article
+/wishlist              Wishlist            Saved products (stored in browser)
+/shipping-policy       Shipping Policy     Static text page
+/return-policy         Return Policy       Static text page
+/privacy-policy        Privacy Policy      Static text page
+/terms-of-service      Terms of Service    Static text page
+
+
+================================================================================
+SECTION 5: ALL ADMIN PAGES (What You See as Admin)
+================================================================================
+
+Access: Go to footer, tap the tiny ✦ symbol 5 times → redirects to /admin/login
+Login: password = "Admins@Trynex" (or whatever ADMIN_PASSWORD env var is set to)
+
+URL                    Page                What It Does
+─────────────────────  ──────────────────  ──────────────────────────────────────
+/admin/login           Admin Login         Password entry
+/admin                 Dashboard           Revenue stats, order charts, recent orders,
+                                           payment distribution, weekly trends
+/admin/products        Products            Add/edit/delete products, set prices,
+                                           images, sizes, colors, stock, categories
+/admin/orders          Orders              View all orders, update order status
+                                           (pending/processing/shipped/delivered),
+                                           update payment status (pending/paid/failed)
+/admin/blog            Blog                Create/edit/delete blog posts, publish/draft
+/admin/customers       Customers           Customer list from orders, total spent,
+                                           order count, top districts chart
+/admin/settings        Settings            Edit site name, tagline, hero text, phone,
+                                           WhatsApp, email, social links, payment
+                                           numbers, analytics IDs, shipping settings
+/admin/backup          Backup              Export orders as CSV, export full backup
+                                           as JSON, import backup from JSON file
+
+
+================================================================================
+SECTION 6: ALL API ENDPOINTS (How Frontend Talks to Backend)
+================================================================================
+
+PUBLIC ENDPOINTS (no login needed):
+
+  GET    /api/healthz                    Server health check
+  GET    /api/products                   List all products
+  GET    /api/products/:id               Get one product
+  GET    /api/categories                 List all categories
+  POST   /api/orders                     Create new order (checkout)
+  POST   /api/orders/track               Track order by phone + order number
+  PUT    /api/orders/:id/payment-info    Submit payment details (last 4 digits)
+  GET    /api/settings                   Get all site settings
+  GET    /api/blog                       List blog posts (published only)
+  GET    /api/blog/:id                   Get one blog post
+  POST   /api/storage/uploads/request-url  Get upload URL for custom designs
+  GET    /api/storage/public-objects/*    Serve public uploaded files
+  GET    /api/storage/objects/*           Serve private uploaded files
+
+ADMIN ENDPOINTS (require login):
+
+  POST   /api/admin/login                Login (returns auth token)
+  POST   /api/admin/logout               Logout
+  GET    /api/admin/me                   Check if logged in
+  GET    /api/admin/stats                Dashboard statistics
+  GET    /api/admin/customers            Customer analytics
+  POST   /api/products                   Create product
+  PUT    /api/products/:id               Update product
+  DELETE /api/products/:id               Delete product
+  GET    /api/orders                     List all orders
+  GET    /api/orders/:id                 Get order details
+  PUT    /api/orders/:id/status          Update order status
+  PUT    /api/orders/:id/payment-status  Update payment status
+  POST   /api/categories                 Create category
+  POST   /api/blog                       Create blog post
+  PUT    /api/blog/:id                   Update blog post
+  DELETE /api/blog/:id                   Delete blog post
+  PUT    /api/settings                   Update site settings
+  GET    /api/admin/export/orders-csv    Export orders as CSV file
+  GET    /api/admin/backup/export        Export full database as JSON
+  POST   /api/admin/backup/import        Import JSON backup
+
+
+================================================================================
+SECTION 7: DATABASE (What Data is Stored)
+================================================================================
+
+Database: PostgreSQL
+Connection: Needs DATABASE_URL environment variable
+
+TABLES:
+
+1. admins
+   - id, username, password_hash, created_at
+   - Stores admin login credentials
+   - Auto-created on first server start
+
+2. products
+   - id, name, slug, description, price, discount_price, category_id
+   - image_url, images (gallery), sizes, colors, stock
+   - featured, rating, review_count, customizable, tags
+   - created_at, updated_at
+   - Stores all products you sell
+
+3. categories
+   - id, name, slug, description, image_url, product_count, created_at
+   - Groups products (T-Shirts, Hoodies, Mugs, Caps, Custom Orders)
+
+4. orders
+   - id, order_number, customer_name, customer_email, customer_phone
+   - shipping_address, shipping_city, shipping_district
+   - payment_method, payment_status, status
+   - items (JSON array of ordered products), subtotal, shipping_cost, total
+   - notes, created_at, updated_at
+   - Every customer order is stored here
+
+5. blog_posts
+   - id, title, slug, excerpt, content, image_url, author
+   - tags, published (true/false), created_at, updated_at
+   - Blog articles
+
+6. settings
+   - id, key (unique name), value (text), updated_at
+   - Key-value store for all site settings
+   - Examples: siteName="TryNex Lifestyle", phone="01903426915"
+
+AUTO-SEED: When the database is empty, the server automatically creates:
+   - 1 admin account (username: admin)
+   - 5 categories
+   - 9 sample products (with Unsplash images)
+   - Default settings (name, tagline, phone, etc.)
+
+
+================================================================================
+SECTION 8: HOW SETTINGS WORK (End to End)
+================================================================================
+
+FLOW:
+  1. You edit settings in Admin → Settings page
+  2. Frontend sends PUT /api/settings with all values
+  3. Backend saves each key/value to the "settings" table in database
+  4. GET /api/settings reads from database and returns all settings
+  5. Frontend SiteSettingsContext loads settings via React Query
+  6. Components SHOULD use useSiteSettings() hook to display values
+
+THE PROBLEM — Many components IGNORE the settings and use hardcoded values:
+
+  SETTING                WHAT ADMIN CAN EDIT     WHAT ACTUALLY SHOWS ON SITE
+  ────────────────────── ──────────────────────── ──────────────────────────────
+  Site Name              Admin → Settings         Navbar: HARDCODED as "TRYNEX Lifestyle"
+                                                  Footer: HARDCODED as "TRYNEX Lifestyle"
+                                                  SEO title: DYNAMIC (works) ✓
+
+  Tagline                Admin → Settings         Home page: HARDCODED "You Imagine, We Craft."
+
+  Hero Title/Subtitle    Admin → Settings         Home page: HARDCODED, does not use settings
+
+  Announcement Bar       Admin → Settings         HARDCODED 6 promotional messages, ignores DB
+
+  WhatsApp Number        Admin → Settings         HARDCODED "8801903426915" in WhatsAppButton.tsx
+
+  Payment Number         Admin → Settings         HARDCODED "01747292277" in Checkout.tsx
+  (bKash/Nagad/Rocket)                            (shows same number for all 3 methods)
+
+  Social Links           Admin → Settings         Footer: HARDCODED URLs
+  (Facebook/Insta/YT)                             facebook.com/trynexlifestyle
+                                                  instagram.com/trynexlifestyle
+                                                  youtube.com/@trynex
+
+  Shipping Cost          Admin → Settings         Checkout: HARDCODED ৳100 under ৳1500
+
+  Free Shipping          Admin → Settings         Checkout: HARDCODED ৳1500 threshold
+  Threshold
+
+  Contact Info           Admin → Settings         Footer: HARDCODED phone, email, address
+  (Phone/Email/Address)
+
+  Analytics IDs          Admin → Settings         TrackingPixels: DYNAMIC (works) ✓
+  (GA4/FB Pixel/Ads)
+
+  RESULT: You can change settings in admin all day, but most of the website
+  won't reflect those changes because the components have hardcoded values.
+
+
+================================================================================
+SECTION 9: HOW FILE UPLOADS WORK
+================================================================================
+
+Custom design upload flow:
+  1. Customer uploads image on product detail page
+  2. Frontend calls POST /api/storage/uploads/request-url
+  3. Backend generates a "signed URL" using Replit's sidecar service
+  4. Frontend uploads file directly to Google Cloud Storage
+  5. File URL stored in order items JSON
+
+THE PROBLEM:
+  The upload system uses Replit's internal sidecar service at http://127.0.0.1:1106
+  This ONLY works when running inside Replit.
+
+  If backend runs on Render, Railway, or anywhere else:
+    - Upload URL generation will FAIL
+    - Error: "Failed to sign object URL... make sure you're running on Replit"
+    - Custom design uploads will NOT work
+
+  Required environment variables (only exist in Replit):
+    DEFAULT_OBJECT_STORAGE_BUCKET_ID
+    PRIVATE_OBJECT_DIR
+    PUBLIC_OBJECT_SEARCH_PATHS
+
+  TO FIX: Need to replace Replit storage with something portable like:
+    - Cloudflare R2 (recommended — stays in Cloudflare ecosystem)
+    - AWS S3
+    - Supabase Storage
+
+
+================================================================================
+SECTION 10: HOW ADMIN LOGIN WORKS
+================================================================================
+
+  1. You enter password on /admin/login
+  2. Backend hashes it with SHA-256 + salt "trynex_salt_2024"
+  3. Compares with ADMIN_PASSWORD env var (default: "Admins@Trynex")
+  4. If match → generates a random token (SHA-256 hash)
+  5. Token stored in server memory (a JavaScript Map) — expires in 7 days
+  6. Token sent back to frontend as JSON + set as httpOnly cookie
+  7. Frontend saves token in localStorage
+  8. Every admin request sends token in Authorization header
+  9. Backend checks if token exists in memory Map
+
+  PROBLEMS:
+    - Tokens are in SERVER MEMORY — if server restarts, ALL admin sessions expire
+    - On Render free tier, server sleeps after 15 minutes — wakes up = you're logged out
+    - Password hashing uses SHA-256 (weak) instead of bcrypt (industry standard)
+
+
+================================================================================
+SECTION 11: HOW DATA FLOWS (Customer Journey)
+================================================================================
+
+BROWSING:
+  Customer visits / → Home.tsx loads → calls GET /api/products → shows featured products
+  Customer clicks product → ProductDetail.tsx → calls GET /api/products/:id → shows details
+
+CART (No server involved):
+  Add to cart → saved in browser localStorage → CartContext.tsx manages state
+  Cart persists across page refreshes but is device-specific
+
+CHECKOUT:
+  1. Customer fills form (name, phone, address, district)
+  2. Selects payment: bKash, Nagad, Rocket, or COD
+  3. For mobile payment: copies number 01747292277, sends payment, enters last 4 digits
+  4. For COD: selects advance payment method + enters last 4 digits
+  5. Frontend calls POST /api/orders with all data
+  6. Backend creates order in database with status "pending", payment "pending"
+  7. Customer gets order number (like "TNX-001234")
+
+ORDER TRACKING:
+  Customer enters phone + order number on /track
+  Frontend calls POST /api/orders/track
+  Backend finds matching order, returns status
+  Shows progress: Pending → Processing → Shipped → Delivered
+
+ADMIN ORDER MANAGEMENT:
+  Admin views orders at /admin/orders
+  Can change order status (pending/processing/shipped/delivered)
+  Can change payment status (pending/paid/failed)
+
+
+================================================================================
+SECTION 12: CURRENT DEPLOYMENT SITUATION
+================================================================================
+
+WHAT IS DEPLOYED:
+  Cloudflare Pages: Frontend only (static HTML/CSS/JS files)
+    - Serves the React SPA
+    - _redirects makes all URLs load the SPA (/* → /index.html)
+    - _headers sets proper caching
+
+WHAT IS NOT DEPLOYED:
+  Backend API: NOWHERE — only runs in Replit development
+  Database: NOWHERE — only exists in Replit's PostgreSQL
+  File Storage: NOWHERE — only works via Replit sidecar
+
+THE RESULT:
+  On Cloudflare, when frontend tries to call /api/anything:
+    1. There's no API server on Cloudflare
+    2. VITE_API_BASE_URL is not set → calls go to same domain
+    3. Cloudflare returns the SPA HTML instead of JSON
+    4. Frontend gets HTML when expecting JSON → crash/error
+
+  THIS IS WHY THESE THINGS FAIL ON CLOUDFLARE:
+    - Product listing (shows nothing — no products from API)
+    - Checkout (cannot create orders)
+    - Order tracking (cannot find orders)
+    - Admin login (cannot authenticate)
+    - Admin everything (no API = nothing works)
+    - Backup export/import (no API)
+    - Blog (no posts load)
+    - Settings (no settings load, falls back to hardcoded defaults)
+
+
+================================================================================
+SECTION 13: ENVIRONMENT VARIABLES NEEDED
+================================================================================
+
+FOR CLOUDFLARE PAGES (build-time):
+  VITE_API_BASE_URL = https://your-api-server.onrender.com
+    (Points frontend to wherever your backend API is hosted)
+
+FOR BACKEND SERVER (Render/Railway/wherever):
+  DATABASE_URL = postgresql://user:pass@host:5432/dbname
+    (PostgreSQL connection string — Render provides this automatically)
+  PORT = 8080
+    (Server port)
+  NODE_ENV = production
+  ADMIN_PASSWORD = Admins@Trynex
+    (Or whatever password you want for admin login)
+
+FOR FILE UPLOADS (if using Replit storage — won't work outside Replit):
+  DEFAULT_OBJECT_STORAGE_BUCKET_ID
+  PRIVATE_OBJECT_DIR
+  PUBLIC_OBJECT_SEARCH_PATHS
+
+
+================================================================================
+SECTION 14: WHAT WORKS vs WHAT'S BROKEN
+================================================================================
+
+DEFINITELY WORKING ON CLOUDFLARE RIGHT NOW:
+  ✓ Page navigation (all URLs load correctly)
+  ✓ Cart (add, remove, change quantity) — browser-only, no server needed
+  ✓ Wishlist — browser-only, no server needed
+  ✓ Shipping Policy page (hardcoded text)
+  ✓ Return Policy page (hardcoded text)
+  ✓ Privacy Policy page (hardcoded text)
+  ✓ Terms of Service page (hardcoded text)
+  ✓ WhatsApp button (opens WhatsApp with hardcoded number)
+  ✓ Announcement bar (shows hardcoded messages)
+  ✓ All animations, transitions, responsive layout
+  ✓ Mobile responsiveness
+
+DEFINITELY BROKEN ON CLOUDFLARE RIGHT NOW:
+  ✗ Product listing — blank, no data from API
+  ✗ Product detail — blank
+  ✗ Checkout — cannot place orders
+  ✗ Order tracking — cannot track anything
+  ✗ Blog — no posts load
+  ✗ Admin login — cannot authenticate
+  ✗ Admin dashboard — no stats
+  ✗ Admin product management — cannot load/add/edit products
+  ✗ Admin order management — cannot view/update orders
+  ✗ Admin blog management — cannot manage posts
+  ✗ Admin customer analytics — no data
+  ✗ Admin backup/export/import — all fail
+  ✗ Admin settings — cannot save (but page loads with fallback defaults)
+  ✗ Custom design image upload — Replit-only feature
+  ✗ Analytics tracking — IDs can't load from API
+
+PARTIALLY WORKING (Wired but has issues):
+  ~ Site settings — Admin CAN save to database, but most settings are IGNORED
+    by frontend components that use hardcoded values instead
+  ~ SEO — Site name is dynamic in page titles, but the rest is hardcoded
+  ~ Analytics — Code is dynamic, but only works when API settings are reachable
+
+
+================================================================================
+SECTION 15: ALL HARDCODED VALUES IN THE CODE
+================================================================================
+
+File: AnnouncementBar.tsx (line 3-28)
+  6 hardcoded promotional messages — ignores database setting completely
+
+File: WhatsAppButton.tsx (line 5)
+  WhatsApp number: "8801903426915"
+
+File: Checkout.tsx (line 44)
+  Payment number: "01747292277" (used for bKash, Nagad, and Rocket)
+
+File: Checkout.tsx (line 45-46)
+  WhatsApp number: "01903426915" / "+8801903426915"
+
+File: Checkout.tsx (line 78)
+  Shipping cost: 100 (taka) if order under 1500
+
+File: Footer.tsx (line 118-123)
+  Brand name: "TRYNEX Lifestyle" (hardcoded in JSX)
+
+File: Footer.tsx (line 143-145)
+  Social links:
+    facebook.com/trynexlifestyle
+    instagram.com/trynexlifestyle
+    youtube.com/@trynex
+
+File: Footer.tsx (line 214)
+  Phone: +880 1903-426915
+
+File: Footer.tsx (line 218)
+  Email: hello@trynex.com.bd
+
+File: Footer.tsx (line 210)
+  Address: Dhaka, Bangladesh
+
+File: Footer.tsx (line 232)
+  Copyright: "TryNex Lifestyle"
+
+File: Home.tsx (line 16-19)
+  Marquee text: "PREMIUM QUALITY", "CUSTOM DESIGNS", etc.
+
+File: Home.tsx (line 78-83)
+  Stats: "5K+ Happy Customers", "98% Satisfaction Rate", etc.
+
+File: Home.tsx (line 86-91)
+  Category cards with starting prices (Starting ৳599, etc.)
+
+File: Home.tsx (line 55-76)
+  4 testimonials with fake names/quotes
+
+File: autoSeed.ts (line 125)
+  Default admin password: "admin123" (overridden by admin.ts to "Admins@Trynex")
+
+File: SiteSettingsContext.tsx (line 42)
+  Default shipping cost: "80" (conflicts with server default of 100)
+
+
+================================================================================
+SECTION 16: REPLIT DEPENDENCIES (Things That Won't Work Outside Replit)
+================================================================================
+
+1. Object Storage (CRITICAL)
+   File: artifacts/api-server/src/lib/objectStorage.ts
+   - Uses http://127.0.0.1:1106 (Replit sidecar) for authentication
+   - Calls REPLIT_SIDECAR_ENDPOINT for signed upload URLs
+   - Error messages say "make sure you're running on Replit"
+   - Custom design uploads WILL NOT WORK outside Replit
+
+2. Database (MANAGEABLE)
+   File: lib/db/src/index.ts
+   - Uses DATABASE_URL environment variable (standard PostgreSQL)
+   - NOT Replit-specific — just needs a PostgreSQL URL from any provider
+   - Render.com provides free PostgreSQL — render.yaml already configured
+
+3. Everything Else: NO Replit DEPENDENCY
+   - Frontend code is standard React/Vite — works anywhere
+   - Backend Express server is standard Node.js — works anywhere
+   - CORS is set to accept all origins — works cross-domain
+
+
+================================================================================
+SECTION 17: WHAT NEEDS TO BE DONE TO MAKE EVERYTHING WORK
+================================================================================
+
+STEP 1 — Deploy Backend to Render.com (FREE):
+  - render.yaml is already in the repo
+  - Go to render.com → New → Blueprint → connect GitHub repo
+  - Render creates PostgreSQL database + runs API server
+  - You get a URL like https://trynex-api.onrender.com
+  - Database auto-creates tables + seeds sample data on first run
+
+STEP 2 — Connect Cloudflare to Render API:
+  - Cloudflare Pages dashboard → your project → Settings → Environment Variables
+  - Add: VITE_API_BASE_URL = https://trynex-api.onrender.com
+  - Trigger a new deployment (push a commit or retry)
+  - Now ALL API calls from Cloudflare → Render backend
+
+STEP 3 — Fix Hardcoded Settings in Frontend:
+  These components need to use useSiteSettings() instead of hardcoded values:
+  - Navbar.tsx → site name
+  - Footer.tsx → site name, social links, phone, email, address
+  - WhatsAppButton.tsx → WhatsApp number
+  - Checkout.tsx → payment number, shipping cost/threshold
+  - AnnouncementBar.tsx → announcement text
+  - Home.tsx → hero title, subtitle, tagline
+
+STEP 4 — Replace Replit Object Storage:
+  - Rewrite objectStorage.ts to use Cloudflare R2 or AWS S3
+  - Remove Replit sidecar dependency
+  - This makes custom design uploads work everywhere
+
+STEP 5 — Fix Admin Auth for Production:
+  - Replace in-memory token storage with database-stored sessions or JWT
+  - This prevents logout on server restart
+  - Upgrade password hashing from SHA-256 to bcrypt
+
+
+================================================================================
+SECTION 18: SCALE READINESS
+================================================================================
+
+Can this handle 50-100+ products and paid ad traffic?
+
+FRONTEND:
+  - React with caching (30s stale time) — good for moderate traffic
+  - Products load ALL at once — needs pagination at 200+ products
+  - Product images are external URLs — needs CDN for speed
+  - Large bundle size (framer-motion is heavy) — could be optimized
+
+BACKEND:
+  - Express.js — handles moderate traffic well
+  - Render free tier — server sleeps after 15 min, cold start 30s
+  - Admin queries load ALL records — slow at 1000+ orders
+  - No pagination on admin endpoints
+
+DATABASE:
+  - PostgreSQL — perfectly fine for this scale
+  - Missing indexes — add them on orders.status, orders.created_at
+  - Render free tier — 256MB storage (enough for 10,000+ orders)
+
+BEFORE RUNNING ADS:
+  1. Upgrade Render to paid plan ($7/mo) — no more sleep/cold starts
+  2. Add pagination to product listings
+  3. Use CDN for product images
+  4. Add database indexes for common queries
+  5. Fix admin auth (JWT/database sessions)
+  6. Test checkout flow thoroughly
+  7. Make sure analytics IDs are set in admin settings
+
+
+================================================================================
+SECTION 19: DESIGN DETAILS
+================================================================================
+
+Color Scheme:
+  Primary:    #E85D04 (orange)
+  Accent:     #FB8500 (bright orange)
+  Background: #FFFAF5 (cream) / white
+  Text:       #111827 (dark gray)
+  Success:    #16a34a (green)
+
+Fonts:
+  Headings: Outfit (font-display)
+  Body:     Plus Jakarta Sans (font-body)
+
+Design Elements:
+  - Gradient buttons (orange → bright orange)
+  - Rounded corners (xl, 2xl)
+  - Subtle shadows and hover effects
+  - Framer Motion animations throughout
+  - Glass-effect navbar on scroll
+  - Premium feel with gold/orange accents
+
+
+================================================================================
+END OF REPORT
+================================================================================

@@ -1,0 +1,44 @@
+2026-04-09T19:14:53.982072Z	Cloning repository...
+2026-04-09T19:14:56.126938Z	From https://github.com/georgelsmith333-hub/trynex-liestyle
+2026-04-09T19:14:56.127329Z	 * branch            2023bf6e33ca93c9a35c7b37eda0d3b6ccf832c2 -> FETCH_HEAD
+2026-04-09T19:14:56.12742Z	
+2026-04-09T19:14:56.249188Z	HEAD is now at 2023bf6 fix: sync pnpm-lock.yaml for Cloudflare build (tiptap deps)
+2026-04-09T19:14:56.249612Z	
+2026-04-09T19:14:56.292363Z	
+2026-04-09T19:14:56.292787Z	Using v2 root directory strategy
+2026-04-09T19:14:56.305888Z	Success: Finished cloning repository files
+2026-04-09T19:14:58.133286Z	Checking for configuration in a Wrangler configuration file (BETA)
+2026-04-09T19:14:58.133702Z	
+2026-04-09T19:14:59.229915Z	No Wrangler configuration file found. Continuing.
+2026-04-09T19:14:59.408883Z	Detected the following tools from environment: nodejs@20.20.0, pnpm@10.11.1
+2026-04-09T19:14:59.409238Z	Installing nodejs 20.20.0
+2026-04-09T19:15:00.248453Z	Trying to update node-build... ok
+2026-04-09T19:15:00.309211Z	To follow progress, use 'tail -f /tmp/node-build.20260409191500.806.log' or pass --verbose
+2026-04-09T19:15:00.358326Z	Downloading node-v20.20.0-linux-x64.tar.gz...
+2026-04-09T19:15:00.5666Z	-> https://nodejs.org/dist/v20.20.0/node-v20.20.0-linux-x64.tar.gz
+2026-04-09T19:15:02.882707Z	
+2026-04-09T19:15:02.883049Z	WARNING: node-v20.20.0-linux-x64 is in LTS Maintenance mode and nearing its end of life.
+2026-04-09T19:15:02.883125Z	It only receives *critical* security updates, *critical* bug fixes and documentation updates.
+2026-04-09T19:15:02.883187Z	
+2026-04-09T19:15:02.883254Z	Installing node-v20.20.0-linux-x64...
+2026-04-09T19:15:03.457472Z	Installed node-v20.20.0-linux-x64 to /opt/buildhome/.asdf/installs/nodejs/20.20.0
+2026-04-09T19:15:03.457827Z	
+2026-04-09T19:15:05.542409Z	
+2026-04-09T19:15:05.543422Z	changed 1 package in 888ms
+2026-04-09T19:15:05.550102Z	Reshimming asdf nodejs...
+2026-04-09T19:15:07.644675Z	Preparing pnpm@10.11.1 for immediate activation...
+2026-04-09T19:15:08.551966Z	Installing project dependencies: pnpm install
+2026-04-09T19:15:09.117478Z	Scope: all 9 workspace projects
+2026-04-09T19:15:09.611237Z	 ERR_PNPM_OUTDATED_LOCKFILE  Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with <ROOT>/artifacts/trynex-storefront/package.json
+2026-04-09T19:15:09.61171Z	
+2026-04-09T19:15:09.611786Z	Note that in CI environments this setting is true by default. If you still need to run install in such cases, use "pnpm install --no-frozen-lockfile"
+2026-04-09T19:15:09.611882Z	
+2026-04-09T19:15:09.611936Z	  Failure reason:
+2026-04-09T19:15:09.612022Z	  specifiers in the lockfile ({"@tiptap/extension-image":"^3.22.3","@tiptap/extension-link":"^3.22.3","@tiptap/extension-placeholder":"^3.22.3","@tiptap/pm":"^3.22.3","@tiptap/react":"^3.22.3","@tiptap/starter-kit":"^3.22.3","dompurify":"^3.3.3","react-helmet-async":"^3.0.0","@hookform/resolvers":"^3.10.0","@radix-ui/react-accordion":"^1.2.4","@radix-ui/react-alert-dialog":"^1.1.7","@radix-ui/react-aspect-ratio":"^1.1.3","@radix-ui/react-avatar":"^1.1.4","@radix-ui/react-checkbox":"^1.1.5","@radix-ui/react-collapsible":"^1.1.4","@radix-ui/react-context-menu":"^2.2.7","@radix-ui/react-dialog":"^1.1.7","@radix-ui/react-dropdown-menu":"^2.1.7","@radix-ui/react-hover-card":"^1.1.7","@radix-ui/react-label":"^2.1.3","@radix-ui/react-menubar":"^1.1.7","@radix-ui/react-navigation-menu":"^1.2.6","@radix-ui/react-popover":"^1.1.7","@radix-ui/react-progress":"^1.1.3","@radix-ui/react-radio-group":"^1.2.4","@radix-ui/react-scroll-area":"^1.2.4","@radix-ui/react-select":"^2.1.7","@radix-ui/react-separator":"^1.1.3","@radix-ui/react-slider":"^1.2.4","@radix-ui/react-slot":"^1.2.0","@radix-ui/react-switch":"^1.1.4","@radix-ui/react-tabs":"^1.1.4","@radix-ui/react-toast":"^1.2.7","@radix-ui/react-toggle":"^1.1.3","@radix-ui/react-toggle-group":"^1.1.3","@radix-ui/react-tooltip":"^1.2.0","@replit/vite-plugin-cartographer":"catalog:","@replit/vite-plugin-dev-banner":"catalog:","@replit/vite-plugin-runtime-error-modal":"catalog:","@tailwindcss/typography":"^0.5.15","@tailwindcss/vite":"catalog:","@tanstack/react-query":"catalog:","@types/dompurify":"^3.2.0","@types/node":"catalog:","@types/react":"catalog:","@types/react-dom":"catalog:","@vitejs/plugin-react":"catalog:","@workspace/api-client-react":"workspace:*","class-variance-authority":"catalog:","clsx":"catalog:","cmdk":"^1.1.1","date-fns":"^3.6.0","embla-carousel-react":"^8.6.0","framer-motion":"catalog:","input-otp":"^1.4.2","lucide-react":"catalog:","next-themes":"^0.4.6","react":"catalog:","react-day-picker":"^9.11.1","react-dom":"catalog:","react-hook-form":"^7.71.2","react-icons":"^5.4.0","react-resizable-panels":"^2.1.7","recharts":"^2.15.4","sonner":"^2.0.7","tailwind-merge":"catalog:","tailwindcss":"catalog:","tw-animate-css":"^1.4.0","vaul":"^1.1.2","vite":"catalog:","wouter":"^3.3.5","zod":"catalog:"}) don't match specs in package.json ({"@hookform/resolvers":"^3.10.0","@radix-ui/react-accordion":"^1.2.4","@radix-ui/react-alert-dialog":"^1.1.7","@radix-ui/react-aspect-ratio":"^1.1.3","@radix-ui/react-avatar":"^1.1.4","@radix-ui/react-checkbox":"^1.1.5","@radix-ui/react-collapsible":"^1.1.4","@radix-ui/react-context-menu":"^2.2.7","@radix-ui/react-dialog":"^1.1.7","@radix-ui/react-dropdown-menu":"^2.1.7","@radix-ui/react-hover-card":"^1.1.7","@radix-ui/react-label":"^2.1.3","@radix-ui/react-menubar":"^1.1.7","@radix-ui/react-navigation-menu":"^1.2.6","@radix-ui/react-popover":"^1.1.7","@radix-ui/react-progress":"^1.1.3","@radix-ui/react-radio-group":"^1.2.4","@radix-ui/react-scroll-area":"^1.2.4","@radix-ui/react-select":"^2.1.7","@radix-ui/react-separator":"^1.1.3","@radix-ui/react-slider":"^1.2.4","@radix-ui/react-slot":"^1.2.0","@radix-ui/react-switch":"^1.1.4","@radix-ui/react-tabs":"^1.1.4","@radix-ui/react-toast":"^1.2.7","@radix-ui/react-toggle":"^1.1.3","@radix-ui/react-toggle-group":"^1.1.3","@radix-ui/react-tooltip":"^1.2.0","@replit/vite-plugin-cartographer":"catalog:","@replit/vite-plugin-dev-banner":"catalog:","@replit/vite-plugin-runtime-error-modal":"catalog:","@tailwindcss/typography":"^0.5.15","@tailwindcss/vite":"catalog:","@tanstack/react-query":"catalog:","@types/node":"catalog:","@types/react":"catalog:","@types/react-dom":"catalog:","@vitejs/plugin-react":"catalog:","@workspace/api-client-react":"workspace:*","class-variance-authority":"catalog:","clsx":"catalog:","cmdk":"^1.1.1","date-fns":"^3.6.0","embla-carousel-react":"^8.6.0","framer-motion":"catalog:","input-otp":"^1.4.2","lucide-react":"catalog:","next-themes":"^0.4.6","react":"catalog:","react-day-picker":"^9.11.1","react-dom":"catalog:","react-hook-form":"^7.71.2","react-icons":"^5.4.0","react-resizable-panels":"^2.1.7","recharts":"^2.15.4","sonner":"^2.0.7","tailwind-merge":"catalog:","tailwindcss":"catalog:","tw-animate-css":"^1.4.0","vaul":"^1.1.2","vite":"catalog:","wouter":"^3.3.5","zod":"catalog:","react-helmet-async":"^3.0.0"})
+2026-04-09T19:15:09.698846Z	Error: Exit with error code: 1
+2026-04-09T19:15:09.699172Z	    at ChildProcess.<anonymous> (/snapshot/dist/run-build.js)
+2026-04-09T19:15:09.699231Z	    at Object.onceWrapper (node:events:652:26)
+2026-04-09T19:15:09.699271Z	    at ChildProcess.emit (node:events:537:28)
+2026-04-09T19:15:09.699317Z	    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+2026-04-09T19:15:09.706167Z	Failed: build command exited with code: 1
+2026-04-09T19:15:10.519212Z	Failed: error occurred while running build command

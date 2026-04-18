@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "tCytvaUKpj7oEILkFIdkO"
+uri = "file://attached_assets/FULL_AUDIT_REPORT.txt"
+type = "text"
+title = "TryNex Lifestyle — Complete Website Breakdown"
+
+[[outputs]]
+id = "33HHp_DWduja0AXdXop8o"
+uri = "file://attached_assets/PRODUCTION_STATUS_REPORT.txt"
+type = "text"
+title = "TryNex — Exact Production Status + Render vs ProCloudify Comparison"

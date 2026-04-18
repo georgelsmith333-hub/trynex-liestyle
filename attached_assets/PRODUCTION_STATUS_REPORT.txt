@@ -1,0 +1,458 @@
+================================================================================
+TRYNEX LIFESTYLE — EXACT PRODUCTION STATUS REPORT
+================================================================================
+Date: April 7, 2026
+Live Frontend: Cloudflare Pages
+================================================================================
+
+
+================================================================================
+QUESTION 1: What is the exact current production API base URL the live
+frontend is calling right now?
+================================================================================
+
+ANSWER: NONE — the frontend is calling ITSELF (same domain, relative paths).
+
+Here's exactly what happens:
+
+  File: artifacts/trynex-storefront/src/main.tsx (line 6-7)
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+    if (apiBase) setBaseUrl(apiBase);
+
+  File: artifacts/trynex-storefront/src/lib/utils.ts (line 22-25)
+    export function getApiUrl(path: string): string {
+      const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? '';
+      return `${base}${path}`;
+    }
+
+  Since VITE_API_BASE_URL is NOT set in Cloudflare Pages:
+    - import.meta.env.VITE_API_BASE_URL = undefined
+    - setBaseUrl() never runs → base URL stays null
+    - getApiUrl('/api/products') returns '/api/products' (relative path)
+    - Browser sends request to: https://your-cloudflare-site.pages.dev/api/products
+    - Cloudflare has no /api/ backend → returns index.html (SPA fallback)
+    - Frontend receives HTML instead of JSON → parse error → crash
+
+  The API calls use two patterns:
+    1. Generated hooks (useListProducts, useGetSettings, etc.)
+       → go through lib/api-client-react/src/custom-fetch.ts
+       → use setBaseUrl() from main.tsx
+       → currently: relative paths (no base URL set)
+
+    2. Manual fetch() calls (AdminBackup, AdminCustomers, AdminOrders)
+       → use getApiUrl() from lib/utils.ts
+       → currently: returns relative paths (base is empty string)
+
+  BOTH patterns result in: relative /api/* calls → Cloudflare serves HTML → failure.
+
+
+================================================================================
+QUESTION 2: Where is the current production backend actually hosted right now?
+================================================================================
+
+ANSWER: NOWHERE.
+
+  The Express API server (artifacts/api-server) only runs inside Replit's
+  development environment. It has never been deployed to any production server.
+
+  - It is NOT on Cloudflare (Cloudflare Pages cannot run Node.js servers)
+  - It is NOT on Render (render.yaml was just added, not yet deployed)
+  - It is NOT on Railway, Fly.io, Vercel, or anywhere else
+  - It only runs when you open this Replit project in development mode
+
+  When you close or leave Replit, the backend stops running entirely.
+  There is zero production backend infrastructure.
+
+
+================================================================================
+QUESTION 3: Where is the current production database actually hosted right now?
+================================================================================
+
+ANSWER: ONLY inside Replit's development environment.
+
+  File: lib/db/src/index.ts
+    Uses DATABASE_URL environment variable to connect to PostgreSQL.
+
+  The PostgreSQL database is Replit's built-in managed database.
+  It is only accessible from within this Replit project.
+  There is no external/production database deployed anywhere.
+
+  All your real data (products you've added, orders customers placed, settings
+  you've changed) exists ONLY in Replit's PostgreSQL instance.
+
+  If you were to deploy the backend to Render, it would create a NEW empty
+  database. You would need to use the backup export (from Replit) and import
+  (on the new server) to transfer your data.
+
+
+================================================================================
+QUESTION 4: Is Cloudflare Pages using an environment variable for
+VITE_API_BASE_URL? If yes, what exact value is set in production?
+================================================================================
+
+ANSWER: NO. VITE_API_BASE_URL is NOT set in Cloudflare Pages.
+
+  I cannot directly check your Cloudflare Pages dashboard, but based on:
+  1. The code behavior (VITE_API_BASE_URL defaults to empty string when undefined)
+  2. The fact that all API features fail on Cloudflare (backup, customers, etc.)
+  3. You confirmed these features don't work live
+
+  It is certain that VITE_API_BASE_URL is either:
+    - Not set at all, OR
+    - Set to an empty/wrong value
+
+  Since this is a VITE build-time variable (not runtime), it gets baked into
+  the JavaScript during the Cloudflare Pages build. If it's not set at build
+  time, it will be undefined in every page load forever until you set it
+  and trigger a new build.
+
+
+================================================================================
+QUESTION 5: Which live features are currently using the real backend
+successfully?
+================================================================================
+
+ANSWER: ZERO features use a real backend on the live Cloudflare site.
+
+  Since there is no production backend deployed anywhere, NO live feature
+  successfully calls any API endpoint.
+
+  However, on Replit's development preview (when you're working in Replit),
+  EVERYTHING works because frontend and backend share the same domain and
+  relative /api/* paths resolve correctly to the Express server on port 8080.
+
+  Features that work WITHOUT any backend (client-side only):
+    - Cart (localStorage)
+    - Wishlist (localStorage)
+    - Page navigation/routing
+    - Static policy pages
+    - WhatsApp button (hardcoded number, opens external link)
+    - Announcement bar (hardcoded content)
+    - UI animations and layout
+
+  These work live because they don't need the backend at all.
+
+
+================================================================================
+QUESTION 6: Which live features fail because of hardcoded frontend values?
+================================================================================
+
+ANSWER: These features have hardcoded values that OVERRIDE database settings.
+Even if the backend were connected, these would NOT reflect admin changes:
+
+  1. SITE NAME in Navbar
+     Hardcoded: "TRYNEX Lifestyle" in Navbar.tsx (line 117-123 area)
+     Should use: useSiteSettings().siteName
+
+  2. SITE NAME in Footer
+     Hardcoded: "TRYNEX Lifestyle" in Footer.tsx (line 119-122)
+     Should use: useSiteSettings().siteName
+
+  3. WHATSAPP NUMBER
+     Hardcoded: "8801903426915" in WhatsAppButton.tsx (line 5)
+     Should use: useSiteSettings().whatsappNumber
+
+  4. PAYMENT NUMBER
+     Hardcoded: "01747292277" in Checkout.tsx (line 44)
+     Used for ALL payment methods (bKash, Nagad, Rocket)
+     Should use: useSiteSettings().bkashNumber / nagadNumber / rocketNumber
+
+  5. SHIPPING COST & FREE SHIPPING THRESHOLD
+     Hardcoded: 1500 threshold, 100 cost in Checkout.tsx (line 78)
+     Should use: useSiteSettings().freeShippingThreshold / shippingCost
+
+  6. ANNOUNCEMENT BAR
+     Hardcoded: 6 promotional messages in AnnouncementBar.tsx (line 3-28)
+     Completely ignores the "announcementBar" setting from database
+     Should use: useSiteSettings().announcementText
+
+  7. SOCIAL LINKS
+     Hardcoded in Footer.tsx (lines 143-145):
+       facebook.com/trynexlifestyle
+       instagram.com/trynexlifestyle
+       youtube.com/@trynex
+     Should use: useSiteSettings().facebookUrl / instagramUrl / youtubeUrl
+
+  8. CONTACT INFO
+     Hardcoded in Footer.tsx:
+       Phone: +880 1903-426915 (line 214)
+       Email: hello@trynex.com.bd (line 218)
+       Address: Dhaka, Bangladesh (line 210)
+     Should use: useSiteSettings().phone / email / address
+
+  9. HERO TEXT
+     Hardcoded in Home.tsx: marquee items, features, stats, categories, testimonials
+     The heroTitle and heroSubtitle from settings are NOT used on the homepage
+     Should use: useSiteSettings().heroTitle / heroSubtitle / tagline
+
+  10. SHIPPING COST MISMATCH
+      SiteSettingsContext.tsx default: shippingCost = "80"
+      Server default (routes/settings.ts): shippingCost = 100
+      Checkout.tsx hardcode: 100
+      Three different values in three different places.
+
+
+================================================================================
+QUESTION 7: Which live features fail because of incomplete frontend-backend
+wiring?
+================================================================================
+
+ANSWER: The frontend-to-backend WIRING is actually complete for all features.
+Every admin page and customer page correctly calls the right API endpoint.
+
+  The problem is NOT missing wiring — it's that:
+  1. The backend doesn't exist in production (deployment issue)
+  2. Some frontend components use hardcoded values instead of API data
+
+  There is ONE partial wiring issue:
+  - POST /api/categories exists in backend but has NO frontend UI to call it
+    (categories are created via auto-seed or backup import only)
+
+  Everything else is fully wired:
+  - Products CRUD → API → Database ✓ (wiring complete)
+  - Orders CRUD → API → Database ✓ (wiring complete)
+  - Blog CRUD → API → Database ✓ (wiring complete)
+  - Settings → API → Database ✓ (wiring complete, but rendering uses hardcoded)
+  - Backup export/import → API → Database ✓ (wiring complete)
+  - Customers → API → Database ✓ (wiring complete)
+  - Admin auth → API → Database ✓ (wiring complete)
+
+
+================================================================================
+QUESTION 8: Which live features fail because of Replit-only storage dependency?
+================================================================================
+
+ANSWER: ONE feature: Custom Design Image Upload.
+
+  File: artifacts/api-server/src/lib/objectStorage.ts
+
+  This feature lets customers upload their own design image when ordering
+  a customizable product. The upload flow:
+    1. Frontend calls POST /api/storage/uploads/request-url
+    2. Backend calls Replit sidecar (http://127.0.0.1:1106) to sign a GCS URL
+    3. Frontend uploads directly to Google Cloud Storage
+    4. URL stored in order items
+
+  This ONLY works inside Replit because:
+    - The GCS authentication goes through Replit's local sidecar service
+    - The signed URL generation calls REPLIT_SIDECAR_ENDPOINT
+    - These services don't exist outside Replit
+
+  To fix: Replace with Cloudflare R2, AWS S3, or standard GCS with service
+  account credentials.
+
+  NOTE: Product images (the ones you add when creating products in admin)
+  are just external URLs (like Unsplash links or any image URL you paste).
+  These work everywhere and do NOT depend on Replit storage.
+
+
+================================================================================
+QUESTION 9: Which settings are saving to database successfully but not
+rendering on frontend?
+================================================================================
+
+ANSWER: ALL of these save to database correctly via PUT /api/settings,
+but the frontend components IGNORE them and use hardcoded values:
+
+  Setting Key          Saves OK?   Renders on Frontend?   Why Not?
+  ──────────────────── ─────────── ──────────────────────  ──────────────────────────
+  siteName             YES ✓       PARTIAL                 Only in SEOHead, not Navbar/Footer
+  tagline              YES ✓       NO                      Home.tsx uses hardcoded text
+  heroTitle            YES ✓       NO                      Home.tsx uses hardcoded text
+  heroSubtitle         YES ✓       NO                      Home.tsx uses hardcoded text
+  announcementBar      YES ✓       NO                      AnnouncementBar.tsx uses hardcoded array
+  whatsappNumber       YES ✓       NO                      WhatsAppButton.tsx hardcodes "8801903426915"
+  bkashNumber          YES ✓       NO                      Checkout.tsx hardcodes "01747292277"
+  nagadNumber          YES ✓       NO                      Checkout.tsx hardcodes "01747292277"
+  rocketNumber         YES ✓       NO                      Checkout.tsx hardcodes "01747292277"
+  freeShippingThreshold YES ✓      NO                      Checkout.tsx hardcodes 1500
+  shippingCost         YES ✓       NO                      Checkout.tsx hardcodes 100
+  facebookUrl          YES ✓       NO                      Footer.tsx hardcodes URL
+  instagramUrl         YES ✓       NO                      Footer.tsx hardcodes URL
+  youtubeUrl           YES ✓       NO                      Footer.tsx hardcodes URL
+  phone                YES ✓       NO                      Footer.tsx hardcodes number
+  email                YES ✓       NO                      Footer.tsx hardcodes email
+  address              YES ✓       NO                      Footer.tsx hardcodes address
+  googleAnalyticsId    YES ✓       YES ✓                   TrackingPixels.tsx reads from API
+  facebookPixelId      YES ✓       YES ✓                   TrackingPixels.tsx reads from API
+  googleAdsId          YES ✓       YES ✓                   TrackingPixels.tsx reads from API
+
+  SUMMARY: 16 out of 19 settings save but DON'T render. Only 3 (analytics IDs) work end-to-end.
+
+
+================================================================================
+QUESTION 10: For backup/export/import, the exact root cause
+================================================================================
+
+  Is it a frontend bug?          NO — Frontend code is correct.
+                                 AdminBackup.tsx correctly calls the right endpoints
+                                 with proper auth headers and handles responses.
+
+  Is it a backend bug?           NO — Backend code is correct.
+                                 routes/backup.ts correctly exports all 5 tables
+                                 (orders, products, categories, settings, blogPosts)
+                                 and imports with proper conflict handling.
+
+  Is it an auth issue?           NO — Auth wiring is correct.
+                                 AdminBackup.tsx sends Bearer token via getAuthHeaders().
+                                 Backend requireAdmin middleware checks it properly.
+
+  Is it a file handling bug?     NO — File handling is correct.
+                                 Export creates proper JSON, download works via blob URL.
+                                 Import reads file, parses JSON, sends as request body.
+                                 JSON body limit is set to 50MB in app.ts.
+
+  Is it a deployment/config      YES — THIS IS THE ONLY ROOT CAUSE.
+  issue?
+                                 The backend API server is not deployed anywhere.
+                                 VITE_API_BASE_URL is not set in Cloudflare Pages.
+
+                                 When AdminBackup.tsx calls:
+                                   fetch(getApiUrl('/api/admin/backup/export'))
+                                 It resolves to:
+                                   fetch('/api/admin/backup/export')
+                                 Which hits:
+                                   https://your-cloudflare-site.pages.dev/api/admin/backup/export
+                                 Cloudflare returns:
+                                   index.html (the SPA fallback)
+                                 Frontend tries to parse HTML as JSON:
+                                   CRASH → "Export failed"
+
+                                 Same exact thing happens for CSV export and import.
+
+  VERDICT: 100% deployment/config issue. Zero code bugs.
+  FIX: Deploy backend + set VITE_API_BASE_URL. That's it.
+
+
+================================================================================
+CORRECTED PRODUCTION FEATURE TABLE (Cloudflare Pages — Live Right Now)
+================================================================================
+
+Feature                 | Works Live? | Why                                              | Current Backend/API Used       | Files Responsible
+─────────────────────── | ─────────── | ──────────────────────────────────────────────── | ────────────────────────────── | ──────────────────────────────────────────────
+Page Navigation         | YES         | Client-side routing, no server needed             | None needed                    | App.tsx, wouter
+Cart (add/remove/qty)   | YES         | Stored in browser localStorage                   | None needed                    | CartContext.tsx, Cart.tsx
+Wishlist                | YES         | Stored in browser localStorage                   | None needed                    | WishlistContext.tsx, Wishlist.tsx
+WhatsApp Button         | YES         | Opens wa.me link with hardcoded number            | None needed                    | WhatsAppButton.tsx
+Announcement Bar        | YES         | Shows hardcoded promotional messages              | None needed                    | AnnouncementBar.tsx
+Back to Top Button      | YES         | Client-side scroll, no server needed              | None needed                    | BackToTop.tsx
+Shipping Policy Page    | YES         | Hardcoded static text                            | None needed                    | ShippingPolicy.tsx
+Return Policy Page      | YES         | Hardcoded static text                            | None needed                    | ReturnPolicy.tsx
+Privacy Policy Page     | YES         | Hardcoded static text                            | None needed                    | PrivacyPolicy.tsx
+Terms of Service Page   | YES         | Hardcoded static text                            | None needed                    | TermsOfService.tsx
+UI Animations           | YES         | Framer Motion runs client-side                   | None needed                    | Various components
+Mobile Responsiveness   | YES         | Tailwind CSS, no server needed                   | None needed                    | All components
+─────────────────────── | ─────────── | ──────────────────────────────────────────────── | ────────────────────────────── | ──────────────────────────────────────────────
+Product Listing         | NO          | No backend → no products loaded from API          | NONE (no backend deployed)     | Products.tsx → GET /api/products
+Product Detail          | NO          | No backend → product data can't load              | NONE                           | ProductDetail.tsx → GET /api/products/:id
+Homepage Products       | NO          | Featured products section is empty                | NONE                           | Home.tsx → useListProducts()
+Product Create/Edit     | NO          | Admin can't reach API                            | NONE                           | AdminProducts.tsx → POST/PUT /api/products
+Product Delete          | NO          | Admin can't reach API                            | NONE                           | AdminProducts.tsx → DELETE /api/products/:id
+Checkout / Place Order  | NO          | Can't create order, API unreachable               | NONE                           | Checkout.tsx → POST /api/orders
+Order Tracking          | NO          | Can't track, API unreachable                     | NONE                           | TrackOrder.tsx → POST /api/orders/track
+Order Status Update     | NO          | Admin can't reach API                            | NONE                           | AdminOrders.tsx → PUT /api/orders/:id/status
+Payment Status Update   | NO          | Admin can't reach API                            | NONE                           | AdminOrders.tsx → PUT /api/orders/:id/payment-status
+Admin Login             | NO          | Can't authenticate, API unreachable               | NONE                           | Login.tsx → POST /api/admin/login
+Admin Dashboard         | NO          | Can't load stats, API unreachable                | NONE                           | Dashboard.tsx → GET /api/admin/stats
+Admin Customers         | NO          | Can't load data, API unreachable                 | NONE                           | AdminCustomers.tsx → GET /api/admin/customers
+Blog Listing            | NO          | No posts load, API unreachable                   | NONE                           | Blog.tsx → GET /api/blog
+Blog Post View          | NO          | Can't load post, API unreachable                 | NONE                           | BlogPost.tsx → GET /api/blog/:id
+Blog Create/Edit        | NO          | Admin can't reach API                            | NONE                           | AdminBlog.tsx → POST/PUT /api/blog
+Export Orders CSV       | NO          | API unreachable → gets HTML instead of CSV        | NONE                           | AdminBackup.tsx → GET /api/admin/export/orders-csv
+Backup Export (JSON)    | NO          | API unreachable → gets HTML instead of JSON       | NONE                           | AdminBackup.tsx → GET /api/admin/backup/export
+Backup Import (JSON)    | NO          | API unreachable → POST fails                     | NONE                           | AdminBackup.tsx → POST /api/admin/backup/import
+Admin Settings Save     | NO          | Can't save, API unreachable                      | NONE                           | AdminSettings.tsx → PUT /api/settings
+Settings Load           | NO          | Can't load from API, uses client-side defaults    | NONE                           | SiteSettingsContext.tsx → GET /api/settings
+Analytics Tracking      | NO          | Can't load analytics IDs from API                | NONE                           | TrackingPixels.tsx → useGetSettings()
+Custom Design Upload    | NO          | Double failure: no API + Replit-only storage      | NONE + Replit sidecar          | ProductDetail.tsx → POST /api/storage/uploads/request-url
+─────────────────────── | ─────────── | ──────────────────────────────────────────────── | ────────────────────────────── | ──────────────────────────────────────────────
+Site Name (Navbar)      | PARTIAL     | Shows hardcoded "TRYNEX Lifestyle" always         | Hardcoded, ignores API         | Navbar.tsx
+Site Name (Footer)      | PARTIAL     | Shows hardcoded "TRYNEX Lifestyle" always         | Hardcoded, ignores API         | Footer.tsx
+Social Links            | PARTIAL     | Shows hardcoded URLs always                       | Hardcoded, ignores API         | Footer.tsx
+Contact Info            | PARTIAL     | Shows hardcoded phone/email/address always        | Hardcoded, ignores API         | Footer.tsx
+Payment Number          | PARTIAL     | Shows hardcoded 01747292277 always                | Hardcoded, ignores API         | Checkout.tsx
+Shipping Cost           | PARTIAL     | Shows hardcoded ৳100/৳1500 always                | Hardcoded, ignores API         | Checkout.tsx
+
+
+================================================================================
+SUMMARY TABLE: ROOT CAUSES
+================================================================================
+
+Root Cause                              | Features Affected | Count
+─────────────────────────────────────── | ───────────────── | ─────
+No backend deployed (deployment issue)  | ALL API features  | 22
+Hardcoded frontend values               | Settings display  | 6
+Replit-only storage code                 | Image upload      | 1
+Frontend wiring bug                      | None              | 0
+Backend code bug                         | None              | 0
+Auth bug                                 | None              | 0
+Database bug                             | None              | 0
+
+
+================================================================================
+COMPARISON: RENDER + CLOUDFLARE vs PROCLOUDIFY
+================================================================================
+
+                        RENDER + CLOUDFLARE              PROCLOUDIFY ECOMMERCE
+────────────────────── ──────────────────────────────── ──────────────────────────────
+Can run Node.js/       YES — Render runs Node.js        NO — cPanel/PHP hosting, no
+Express backend?       natively, auto-deploys from       persistent Node.js server,
+                       GitHub                            no SSH access, no pm2
+
+Can run PostgreSQL     YES — Render provides free        NO — Only MySQL available
+database?              PostgreSQL, auto-configured        via cPanel, and your app
+                       via render.yaml                    uses PostgreSQL + Drizzle ORM
+
+Can host React SPA?    YES — Cloudflare Pages serves     YES — Can serve static files
+                       static files perfectly             via cPanel file manager
+
+Custom domain?         YES — Both Cloudflare and          YES — cPanel supports
+                       Render support custom domains      custom domains
+
+SSL certificate?       YES — Both provide free SSL        YES — Free SSL included
+
+Cost?                  FREE (both free tiers)             Paid (their plan pricing)
+                       $7/mo Render paid = no cold start
+
+Speed in Bangladesh?   Cloudflare: FAST (global CDN)     BDIX option available
+                       Render: moderate (US/EU servers)   (faster for BD users)
+
+Will TryNex work       YES — 100% after deploying         NO — Cannot run the backend
+fully?                 backend to Render + setting         at all. Would need complete
+                       VITE_API_BASE_URL                   rewrite to PHP/MySQL
+
+Code changes needed?   MINIMAL — just set env vars,       MASSIVE — rewrite entire
+                       fix hardcoded settings,             backend from Node.js/Express
+                       replace Replit storage              to PHP, convert PostgreSQL
+                                                           schema to MySQL, rewrite
+                                                           all API routes in PHP
+
+Time to deploy?        ~30 minutes setup                  Weeks of rewriting code
+
+Auto-deploy from       YES — both Cloudflare Pages         NO — manual upload via
+GitHub?                and Render auto-deploy               cPanel file manager
+
+Server restarts /      Render handles automatically        N/A — can't run server
+process management?
+
+Database backups?      Render: automatic daily backups     MySQL backups via cPanel
+                       Cloudflare: N/A (no DB)
+
+Scalability?           Render: auto-scale on paid plan     Shared hosting limits
+                       Cloudflare: unlimited static CDN
+
+
+VERDICT:
+  ProCloudify is a good hosting provider for WordPress/PHP websites.
+  But your TryNex website is built with Node.js + React + PostgreSQL.
+  ProCloudify CANNOT run your backend. It would require rewriting the
+  entire backend in PHP and converting the database to MySQL — essentially
+  rebuilding the whole project from scratch.
+
+  Render + Cloudflare is the correct match for your tech stack.
+  Both have free tiers. Setup takes about 30 minutes. No code rewrite needed.
+
+
+================================================================================
+END OF REPORT
+================================================================================

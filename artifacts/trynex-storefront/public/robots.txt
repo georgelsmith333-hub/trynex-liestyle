@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin/login
+Disallow: /api/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /wishlist
+
+Sitemap: https://trynex.com.bd/api/sitemap.xml

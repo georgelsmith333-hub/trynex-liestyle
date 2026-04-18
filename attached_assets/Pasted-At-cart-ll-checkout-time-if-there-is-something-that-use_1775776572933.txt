@@ -1,0 +1,23 @@
+At cart ll checkout time if there is something that user not inputted than it should scroll automatic to that fields so it will be like more user friendly behaviour right.
+
+
+At checkout time i see there is showing sll districts but there is no options coming sfter that to select,  like suppose i stay in Sylhet District, But it should clearly show and suggest with full addresses like Sylhet is district suppose client selected that as their district then they will see option to select Zela and Then Upozela or like that, suppose: Sylhet, and under sylhet there is lots of places but im at Habiganj so in 2nd box there will come with all names so they can find and select habiganj from it or also there should be perfectly option to manually input also. And after 2nd box selected then it will show all towns at habiganj then as per my address but as per whole Bangladesh all district and cities and towns to detect customer address perfect you Will need to include everything so then when a order actually get confirm we can say yes its confirm because we will have the correct client home address so we can easily send them their ordered item using delivery system and also make sure that you add lots of mindblowing features so it Will be easier everywhere for client, like you can do keep a better option Where if client wants to input their address automatically detection then they can click on that and it will fetch clients present location and input on those boxes automatically everything with all things and no mock or fake things.. 
+
+
+
+After that i see that when i open the sute at first there is something coming at the top of the navbar for few seconds,  a scrolling texts, and for this the navbar at first scroll breaks or come to downside if i scroll down instantly after opening and then when the text go away then the navbar get fix to the top perfectly and not break, so i think it should not be, you need to design this thing more perfectly and place it to anywhere else or you can inout it just below to the navbar by marchthing perfectly with the website design.
+
+
+
+Another thing i can see that the flash sale has countdown timer but theme of that can be more premium and best effects ir 3d type but make sure that it not breaks anything for doing these things and also make sure that full website will work anywhere any device very perfectly. 
+
+
+Also, see website footer info is written: © 2026 TryNex Lifestyle and then Made within Bangladesh.
+
+
+But i think the professional © 2026 TryNex Lifestyle Bd copyrights or or etc type it should be and be perfect. And also the Made within Bangladesh ❤️ should be just top of that, and just make these 2 things but do not conflict anything else or footer view responsiveness or any kind of issue i dont expect from you and u do not also. And make sure you keep other things ok do not gonna change all things because the site overall is okay i need more improvements so im looking for specific things to you so do not get panic and do not do false thing or nit exoected things and make sure all your things after you will finish you will finish with the final oush to github also as u know then it deploy trigger auto to the cloudflare and render also and make sure all everything do at once completely and finally. Do not keep any bugs audit find solve and done.
+
+
+
+
+Another thing you can see there is a little arrow type somthing which is not compatibly showing on mobile devices and overlapped on other things because not responsive or other issues has what you need find out and solve but do not make any new problem just solve out all problem. What ive red marked the area and sent you the picture so u can understand about which arrow symbol im tslking about and why its happening and what do for smaller screens how the design will be and other all things at full a to z all frontend and admin panel pages you should be very professional web expert type and work fully and finish until everything fully mindblowing with no single issue and every specific things is awesome working and business scaling ready website.

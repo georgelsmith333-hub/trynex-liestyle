@@ -1,0 +1,86 @@
+2026-04-09T19:44:09.805245Z	Cloning repository...
+2026-04-09T19:44:11.827022Z	From https://github.com/georgelsmith333-hub/trynex-liestyle
+2026-04-09T19:44:11.827525Z	 * branch            0f82f6727614ac3c19d8d9e7a3e2f6df736b6ddc -> FETCH_HEAD
+2026-04-09T19:44:11.827638Z	
+2026-04-09T19:44:11.942917Z	HEAD is now at 0f82f67 fix: sync all files - storefront package.json with tiptap deps, lockfile, admin fixes
+2026-04-09T19:44:11.943535Z	
+2026-04-09T19:44:11.997096Z	
+2026-04-09T19:44:11.997583Z	Using v2 root directory strategy
+2026-04-09T19:44:12.01064Z	Success: Finished cloning repository files
+2026-04-09T19:44:13.699261Z	Checking for configuration in a Wrangler configuration file (BETA)
+2026-04-09T19:44:13.699906Z	
+2026-04-09T19:44:14.810237Z	No Wrangler configuration file found. Continuing.
+2026-04-09T19:44:15.027964Z	Detected the following tools from environment: nodejs@20.20.0, pnpm@10.26.1
+2026-04-09T19:44:15.028473Z	Installing nodejs 20.20.0
+2026-04-09T19:44:15.823989Z	Trying to update node-build... ok
+2026-04-09T19:44:15.900423Z	To follow progress, use 'tail -f /tmp/node-build.20260409194415.797.log' or pass --verbose
+2026-04-09T19:44:15.965476Z	Downloading node-v20.20.0-linux-x64.tar.gz...
+2026-04-09T19:44:16.109127Z	-> https://nodejs.org/dist/v20.20.0/node-v20.20.0-linux-x64.tar.gz
+2026-04-09T19:44:18.56025Z	
+2026-04-09T19:44:18.560491Z	WARNING: node-v20.20.0-linux-x64 is in LTS Maintenance mode and nearing its end of life.
+2026-04-09T19:44:18.560563Z	It only receives *critical* security updates, *critical* bug fixes and documentation updates.
+2026-04-09T19:44:18.560625Z	
+2026-04-09T19:44:18.560675Z	Installing node-v20.20.0-linux-x64...
+2026-04-09T19:44:19.180004Z	Installed node-v20.20.0-linux-x64 to /opt/buildhome/.asdf/installs/nodejs/20.20.0
+2026-04-09T19:44:19.181014Z	
+2026-04-09T19:44:20.541405Z	
+2026-04-09T19:44:20.542022Z	changed 1 package in 509ms
+2026-04-09T19:44:20.55066Z	Reshimming asdf nodejs...
+2026-04-09T19:44:22.85876Z	Preparing pnpm@10.26.1 for immediate activation...
+2026-04-09T19:44:25.705187Z	Installing project dependencies: pnpm install
+2026-04-09T19:44:26.220636Z	Scope: all 9 workspace projects
+2026-04-09T19:44:26.298434Z	Lockfile is up to date, resolution step is skipped
+2026-04-09T19:44:26.357783Z	Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-04-09T19:44:26.444719Z	Packages: +569
+2026-04-09T19:44:26.446046Z	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-04-09T19:44:27.359566Z	Progress: resolved 569, reused 0, downloaded 53, added 0
+2026-04-09T19:44:28.361545Z	Progress: resolved 569, reused 0, downloaded 122, added 23
+2026-04-09T19:44:29.362657Z	Progress: resolved 569, reused 0, downloaded 188, added 51
+2026-04-09T19:44:30.370999Z	Progress: resolved 569, reused 0, downloaded 379, added 323
+2026-04-09T19:44:31.372375Z	Progress: resolved 569, reused 0, downloaded 416, added 336
+2026-04-09T19:44:32.373464Z	Progress: resolved 569, reused 0, downloaded 568, added 428
+2026-04-09T19:44:33.058156Z	Progress: resolved 569, reused 0, downloaded 569, added 569, done
+2026-04-09T19:44:33.31883Z	.../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-04-09T19:44:33.422499Z	.../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-04-09T19:44:33.770964Z	
+2026-04-09T19:44:33.771434Z	dependencies:
+2026-04-09T19:44:33.771525Z	+ @replit/connectors-sdk 0.3.0
+2026-04-09T19:44:33.771609Z	
+2026-04-09T19:44:33.771671Z	devDependencies:
+2026-04-09T19:44:33.771721Z	+ prettier 3.8.1
+2026-04-09T19:44:33.771768Z	+ typescript 5.9.3
+2026-04-09T19:44:33.771814Z	
+2026-04-09T19:44:33.8367Z	. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-04-09T19:44:33.855069Z	. preinstall: Done
+2026-04-09T19:44:34.098908Z	Done in 8.1s using pnpm v10.26.1
+2026-04-09T19:44:34.148295Z	Executing user command: corepack enable && pnpm install && pnpm --filter @workspace/trynex-storefront run build
+2026-04-09T19:44:35.132449Z	Scope: all 9 workspace projects
+2026-04-09T19:44:35.234159Z	Lockfile is up to date, resolution step is skipped
+2026-04-09T19:44:35.350252Z	Already up to date
+2026-04-09T19:44:36.845098Z	
+2026-04-09T19:44:36.904894Z	. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-04-09T19:44:36.919458Z	. preinstall: Done
+2026-04-09T19:44:37.066023Z	Done in 2.3s using pnpm v10.26.1
+2026-04-09T19:44:37.698851Z	
+2026-04-09T19:44:37.699121Z	> @workspace/trynex-storefront@0.0.0 build /opt/buildhome/repo/artifacts/trynex-storefront
+2026-04-09T19:44:37.699182Z	> vite build --config vite.config.ts
+2026-04-09T19:44:37.699222Z	
+2026-04-09T19:44:38.154338Z	[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+2026-04-09T19:44:38.260344Z	transforming...
+2026-04-09T19:44:38.930485Z	[33msrc/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+2026-04-09T19:44:40.619757Z	[32m✓[39m 1134 modules transformed.
+2026-04-09T19:44:40.625207Z	[31m✗[39m Build failed in 2.41s
+2026-04-09T19:44:40.625458Z	[31merror during build:
+2026-04-09T19:44:40.625533Z	[31m[vite:load-fallback] Could not load /opt/buildhome/repo/artifacts/trynex-storefront/src/components/ui/ConfirmDialog (imported by src/pages/admin/AdminReviews.tsx): ENOENT: no such file or directory, open '/opt/buildhome/repo/artifacts/trynex-storefront/src/components/ui/ConfirmDialog'[31m
+2026-04-09T19:44:40.625578Z	    at async open (node:internal/fs/promises:634:25)
+2026-04-09T19:44:40.625618Z	    at async Object.readFile (node:internal/fs/promises:1236:14)
+2026-04-09T19:44:40.625658Z	    at async Object.handler (file:///opt/buildhome/repo/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33169:21)
+2026-04-09T19:44:40.625695Z	    at async PluginDriver.hookFirstAndGetPlugin (file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:22453:28)
+2026-04-09T19:44:40.625881Z	    at async file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21445:33
+2026-04-09T19:44:40.625966Z	    at async Queue.work (file:///opt/buildhome/repo/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:22681:32)[39m
+2026-04-09T19:44:40.681637Z	/opt/buildhome/repo/artifacts/trynex-storefront:
+2026-04-09T19:44:40.681901Z	 ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/trynex-storefront@0.0.0 build: `vite build --config vite.config.ts`
+2026-04-09T19:44:40.681957Z	Exit status 1
+2026-04-09T19:44:40.732539Z	Failed: Error while executing user command. Exited with error code: 1
+2026-04-09T19:44:40.739034Z	Failed: build command exited with code: 1
+2026-04-09T19:44:41.381533Z	Failed: error occurred while running build command

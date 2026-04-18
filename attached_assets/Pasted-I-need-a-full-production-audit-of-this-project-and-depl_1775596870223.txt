@@ -1,0 +1,147 @@
+I need a full production audit of this project and deployment. Do not make any code changes yet. First inspect everything and return a complete report in plain text, with clear sections.
+
+Project/repo:
+
+GitHub repo: georgelsmith333-hub/trynex-liestyle
+Live frontend is deployed on Cloudflare Pages
+Some things work live: adding/editing products, live orders, order status updates, payment status updates, order tracking
+Some things do not fully work: backup/export/import, some site settings like site name and other admin changes do not fully reflect live
+
+Your task:
+Give me the exact current state of the full website and system, frontend + backend + database + storage + deployment, A to Z.
+
+Return the report in this exact structure:
+
+MONOREPO / PROJECT STRUCTURE
+List every app/package/folder that matters
+Explain what each package does
+Identify which package is frontend, which is backend, which is shared
+FRONTEND AUDIT
+Frontend framework and stack
+Build tool
+Routing
+State management / data fetching
+UI libraries
+Which environment variables frontend uses
+Which API base URL frontend is currently configured to use in production
+Which pages/components are fully dynamic vs hardcoded
+Which settings on the site are coming from backend and which are hardcoded in frontend
+Which admin features are wired and working from frontend side
+Which admin buttons/options exist in UI but are not fully wired
+BACKEND AUDIT
+Backend framework and stack
+All route files and route groups
+Full list of public API endpoints
+Full list of admin API endpoints
+Which endpoints are actually used by frontend
+Which endpoints exist but are unused or partially used
+Auth method used by admin
+CORS config
+Cookie/session/token behavior
+Any Replit-specific code or assumptions still present
+DATABASE AUDIT
+Database type
+ORM/migrations
+List all main tables/models/entities
+Which features write to DB successfully right now
+Which features likely fail due to missing DB wiring
+Whether product/order/settings/blog/backup data are stored in DB
+Whether any seeded/mock/fallback data is still being used anywhere
+SETTINGS / CONFIG AUDIT
+Trace exactly how site settings work end to end
+Where site name, logo, tagline, hero text, contact info, payment info, announcement bar, tracking ids, etc are stored
+Which settings save correctly to backend/database
+Which settings do not render on live frontend and why
+Identify all hardcoded fallback values in code
+Identify stale cache or missing refetch problems if present
+BACKUP / EXPORT / IMPORT AUDIT
+List all export/import/backup routes
+Explain expected request and response formats
+Explain why these features are not fully working live
+Tell whether issue is frontend wiring, backend logic, auth, file handling, or deployment/storage related
+STORAGE / MEDIA / UPLOAD AUDIT
+Explain how uploads/files/images are handled
+Which provider/service is expected
+Whether storage is local, cloud, Replit object storage, or something else
+Which storage features are working live
+Which are broken and why
+List all required storage-related env vars
+DEPLOYMENT AUDIT
+Explain the intended architecture of this repo
+Explain what is currently deployed on Cloudflare
+Explain what is currently expected to run separately as backend
+Confirm whether current live setup is frontend-only, split frontend/backend, or something hybrid
+State whether Cloudflare deployment itself is correct or whether issue is app wiring
+Identify every production URL/domain/API origin currently in use
+Identify all required env vars for production across frontend and backend
+FEATURE STATUS MATRIX
+Make a table with these columns:
+Feature
+Frontend wired? yes/no/partial
+Backend exists? yes/no/partial
+Database wired? yes/no/partial
+Live working? yes/no/partial
+Root cause if broken
+Exact files involved
+
+Include at least these features:
+
+product listing
+product create/edit/delete
+cart
+checkout/order create
+order tracking
+payment status update
+admin login
+site settings
+homepage content editing
+site name change
+blog
+image/file upload
+export orders csv
+backup export
+backup import
+analytics IDs
+SEO/meta settings
+contact/payment info
+ROOT CAUSE SUMMARY
+Give the top 10 actual issues in order of priority
+For each issue, say whether it is:
+frontend bug
+backend bug
+database issue
+storage issue
+deployment/config issue
+caching issue
+leftover Replit dependency
+FIX PLAN
+Give the exact recommended fix plan in order
+Separate into:
+must fix before launch
+should fix soon
+optional improvements
+For each fix, list exact files to edit
+SCALE / PERFORMANCE REVIEW
+Will this stack handle 50 to 100+ products and paid traffic?
+What will slow down first?
+What should be improved before running Facebook Ads / Google Ads?
+Mention frontend caching, DB/query efficiency, image handling, API bottlenecks, and admin reliability
+
+Important instructions:
+
+Do not give vague answers
+Mention exact file paths
+Mention exact route names
+Mention exact env var names
+Mention exact hardcoded values if found
+Mention exact reasons something works or fails
+If unsure, say “uncertain” and explain what must be checked
+Do not change code yet
+This is only an audit/report
+
+At the end, provide these final summaries:
+A. What is definitely working live
+B. What is definitely broken live
+C. What is partially wired
+D. What still depends on Replit or old assumptions
+E. Whether Cloudflare deployment is fundamentally okay or not

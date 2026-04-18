@@ -1,0 +1,237 @@
+torefront Fixes & UX Improvements
+Multiple bug fixes and UX improvements across the storefront: order status updates failing, cart variant images not displaying, payment method branding, related product suggestions not filtering by category, shipping time display improvements, checkout form splitting name fields, and Bangladesh district autocomplete address selector.
+
+
+View plan
+
+Checkpoint made
+1 hour ago
+
+3 messages & 17 actions
+
+Proposed plan
+Objective
+Implement Task #5: Storefront Fixes & UX Improvements
+
+Tasks
+T001: Fix related products category bug
+Blocked By: []
+Details: ProductDetail.tsx line 259 uses category: product?.category (string) but ListProductsParams requires categoryId (integer). Fix to use categoryId: product?.categoryId.
+Files: artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+T002: Fix order status update auth headers
+Blocked By: []
+Details: useUpdateOrderStatus hook gets request at hook instantiation, not mutation variables. Move getAuthHeaders() to hook init.
+Files: artifacts/trynex-storefront/src/pages/admin/AdminOrders.tsx
+T003: Cart variant images
+Blocked By: []
+Details: Use currently displayed image (activeImage) instead of always product.imageUrl when adding to cart.
+Files: artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+T004: Add international payment methods
+Blocked By: []
+Details: Add Visa/Mastercard/Amex "card" option to checkout payment methods.
+Files: artifacts/trynex-storefront/src/pages/Checkout.tsx
+T005: Update shipping/delivery time display
+Blocked By: []
+Details: Change delivery time in ProductDetail specs to "24-48 hours" with green emphasis.
+Files: artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+T006: Checkout name field split
+Blocked By: []
+Details: Split "Full Name" into "First Name" + "Last Name", combine on submit as customerName.
+Files: artifacts/trynex-storefront/src/pages/Checkout.tsx
+T007: Bangladesh districts auto-search
+Blocked By: []
+Details: Replace select dropdown with searchable input + dropdown for 64 districts.
+Files: artifacts/trynex-storefront/src/pages/Checkout.tsx
+
+View plan
+
+Show less
+Now let me implement all fixes in parallel. Starting with the independent edits:
+
+
+4 actions
+Now fix the mutation call sites to not pass request in variables (since we moved it to hook init):
+
+
+2 actions
+Now let me tackle the Checkout.tsx changes — split name fields, add card payment, and make district searchable:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now let me make the Checkout.tsx changes. I need to:
+
+Split name into firstName/lastName
+Add card payment method
+Make district dropdown searchable
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now update the onSubmit to combine first/last name:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now update the form fields - replace "Full Name" with first/last name fields, and replace the district select with a searchable dropdown:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now I need to update the form to use setValue for the district field (since it'll be a custom searchable input, not a registered select). Let me update the form setup:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now replace the form fields section with split name and searchable district:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now add the card payment method (Visa/MC/Amex) to the payment options:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now I need to update the submit button text to handle the card payment method, and update the isMobilePayment check:
+
+
+2 actions
+Now I also need to update the PAYMENT_LABELS in AdminOrders.tsx to include card:
+
+
+Edited artifacts/trynex-storefront/src/pages/admin/AdminOrders.tsx
+Now I need to make sure the gateway step also handles card payment correctly. Let me check the gateway step logic:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+The gateway step uses effectiveGatewayMethod which only maps to 'bkash'|'nagad'|'rocket'. For card payments, we need to handle this differently — skip the mobile payment gateway step and go directly to success. Let me check how the flow works:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+For card payment, the order should go to success step directly since there's no mobile payment gateway needed. Let me update the onSubmit to handle card:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now I need to also handle the card payment's advance info display. The card payment should show "Full payment required" instead of "15% advance". Let me also add card info to the advance display area:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now let me add an info card for the card payment method when selected:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now add a card payment info box after the mobile payment info:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now let me also check if the backend supports 'card' as a payment method. Let me check the orders schema/routes:
+
+
+2 actions
+Good — the backend stores paymentMethod as TEXT, so 'card' is already supported. The OpenAPI spec already includes 'card' in the enum (line 119 of api.schemas.ts).
+
+Now let me also check if we need to update the complete list of 64 districts. Let me count what we have:
+
+
+Ran grep
+Let me restart the workflow to check that the app compiles correctly:
+
+
+2 actions
+Everything compiled cleanly — no errors. The Vite HMR picked up all changes. Let me take a screenshot to verify:
+
+
+Took a screenshot
+Product page is working. Let me also check the checkout page:
+
+
+Took a screenshot
+The checkout redirected to the cart page because the cart is empty (that's expected behavior). The app compiled and is running without errors.
+
+Now let me run the code review to verify the changes:
+
+
+3 actions
+Good feedback. The code review highlighted that the card payment success page messaging is misleading. Let me fix the success page to show appropriate messaging based on payment method:
+
+
+2 actions
+Let me verify the app still compiles cleanly:
+
+Checked console and system logs
+All good — no errors, HMR picked up the Checkout.tsx changes cleanly. Now let me clean up and update the project docs:
+
+
+2 actions
+Now let me update the replit.md to reflect the changes:
+
+
+2 actions
+Now let me clean up the session plan and write the commit message:
+
+
+Ran rm
+
+Validation failed · 1 failed
+
+Deciding on review issue resolutions
+Let me address the review feedback. I need to:
+
+Update shipping time across ShippingPolicy.tsx and add green highlight in ProductDetail
+Improve cart variant image handling with color-aware image selection
+District autocomplete improvements
+
+Edited artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+Now update ShippingPolicy.tsx with updated timeframes:
+
+
+Edited artifacts/trynex-storefront/src/pages/ShippingPolicy.tsx
+Now update the processing time in ShippingPolicy:
+
+
+Edited artifacts/trynex-storefront/src/pages/ShippingPolicy.tsx
+Now let me update the DISTRICTS list in Checkout.tsx to use the canonical 64 Bangladesh districts (removing "Other" and ensuring all 64 are present):
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now I need to add the shippingCity auto-fill when a district is selected. Let me update the district selection handler to auto-fill the city (division):
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+I need to add shippingCity to the checkout schema and auto-fill it when district is selected. Let me look at how the order is created to see if shippingCity is used:
+
+The CreateOrderRequest type already has shippingCity as optional. I need to auto-fill it. Let me update the checkout form to include a city field that gets auto-populated:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now update the district selection to auto-fill the city/division:
+
+
+Edited artifacts/trynex-storefront/src/pages/Checkout.tsx
+Now add a visible "Division" display field after the district selector to show the auto-filled division:
+
+
+2 actions
+Now let me also update the onSubmit to include shippingCity in the order data:
+
+
+Opened artifacts/trynex-storefront/src/pages/Checkout.tsx
+Good - shippingCity is already included via ...rest since it's part of the form data. The CreateOrderRequest type already has shippingCity as optional.
+
+Now let me improve the cart variant image handling. The key issue is that when a user selects a color, we should try to find the matching image from the product's images array. Let me update ProductDetail to do this:
+
+
+Opened artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+Now let me also update the color selection to automatically update the active image when a color is selected (if the product has multiple images, select the image at the same index as the color):
+
+
+Edited artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+Let me verify the app still compiles:
+
+Checked console and system logs
+All changes compiled cleanly. Let me update the commit message and try again:
+
+
+Validation failed · 1 failed
+0
+Passed
+1
+Failed
+13.9s
+Duration
+fail
+Code_review
+13.9s

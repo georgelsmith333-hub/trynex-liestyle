@@ -1,0 +1,46 @@
+2026-04-09T19:22:19.181135Z	Cloning repository...
+2026-04-09T19:22:21.384955Z	From https://github.com/georgelsmith333-hub/trynex-liestyle
+2026-04-09T19:22:21.385505Z	 * branch            4575ce83fde993a71c38f90df0e7d079b4aee70b -> FETCH_HEAD
+2026-04-09T19:22:21.385726Z	
+2026-04-09T19:22:21.538929Z	HEAD is now at 4575ce8 fix: pin pnpm@10.26.1 via packageManager + regenerate lockfile for Cloudflare build
+2026-04-09T19:22:21.539379Z	
+2026-04-09T19:22:21.595098Z	
+2026-04-09T19:22:21.595577Z	Using v2 root directory strategy
+2026-04-09T19:22:21.613113Z	Success: Finished cloning repository files
+2026-04-09T19:22:24.363381Z	Checking for configuration in a Wrangler configuration file (BETA)
+2026-04-09T19:22:24.364089Z	
+2026-04-09T19:22:25.495854Z	No Wrangler configuration file found. Continuing.
+2026-04-09T19:22:25.824738Z	Detected the following tools from environment: nodejs@20.20.0, pnpm@10.26.1
+2026-04-09T19:22:25.825213Z	Installing nodejs 20.20.0
+2026-04-09T19:22:27.001574Z	Trying to update node-build... ok
+2026-04-09T19:22:27.094492Z	To follow progress, use 'tail -f /tmp/node-build.20260409192227.803.log' or pass --verbose
+2026-04-09T19:22:27.161651Z	Downloading node-v20.20.0-linux-x64.tar.gz...
+2026-04-09T19:22:27.362469Z	-> https://nodejs.org/dist/v20.20.0/node-v20.20.0-linux-x64.tar.gz
+2026-04-09T19:22:30.25214Z	
+2026-04-09T19:22:30.253921Z	WARNING: node-v20.20.0-linux-x64 is in LTS Maintenance mode and nearing its end of life.
+2026-04-09T19:22:30.254058Z	It only receives *critical* security updates, *critical* bug fixes and documentation updates.
+2026-04-09T19:22:30.254133Z	
+2026-04-09T19:22:30.254296Z	Installing node-v20.20.0-linux-x64...
+2026-04-09T19:22:30.932465Z	Installed node-v20.20.0-linux-x64 to /opt/buildhome/.asdf/installs/nodejs/20.20.0
+2026-04-09T19:22:30.932751Z	
+2026-04-09T19:22:33.203378Z	
+2026-04-09T19:22:33.204116Z	changed 1 package in 1s
+2026-04-09T19:22:33.211924Z	Reshimming asdf nodejs...
+2026-04-09T19:22:36.271836Z	Preparing pnpm@10.26.1 for immediate activation...
+2026-04-09T19:22:39.834198Z	Installing project dependencies: pnpm install
+2026-04-09T19:22:40.545363Z	Scope: all 9 workspace projects
+2026-04-09T19:22:41.165296Z	 ERR_PNPM_OUTDATED_LOCKFILE  Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with <ROOT>/artifacts/trynex-storefront/package.json
+2026-04-09T19:22:41.165743Z	
+2026-04-09T19:22:41.165841Z	Note that in CI environments this setting is true by default. If you still need to run install in such cases, use "pnpm install --no-frozen-lockfile"
+2026-04-09T19:22:41.165935Z	
+2026-04-09T19:22:41.165995Z	  Failure reason:
+2026-04-09T19:22:41.166061Z	  specifiers in the lockfile don't match specifiers in package.json:
+2026-04-09T19:22:41.166119Z	* 8 dependencies were removed: @tiptap/extension-image@^3.22.3, @tiptap/extension-link@^3.22.3, @tiptap/extension-placeholder@^3.22.3, @tiptap/pm@^3.22.3, @tiptap/react@^3.22.3, @tiptap/starter-kit@^3.22.3, dompurify@^3.3.3, @types/dompurify@^3.2.0
+2026-04-09T19:22:41.166204Z	
+2026-04-09T19:22:41.239686Z	Error: Exit with error code: 1
+2026-04-09T19:22:41.239974Z	    at ChildProcess.<anonymous> (/snapshot/dist/run-build.js)
+2026-04-09T19:22:41.240058Z	    at Object.onceWrapper (node:events:652:26)
+2026-04-09T19:22:41.240132Z	    at ChildProcess.emit (node:events:537:28)
+2026-04-09T19:22:41.2402Z	    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+2026-04-09T19:22:41.250139Z	Failed: build command exited with code: 1
+2026-04-09T19:22:42.070599Z	Failed: error occurred while running build command
