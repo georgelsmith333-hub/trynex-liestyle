@@ -32,6 +32,16 @@ export function AnnouncementBar() {
     return () => window.removeEventListener('resize', updateHeight);
   }, [visible]);
 
+  // Auto-hide after 6 seconds for a cleaner viewing experience
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => {
+      setVisible(false);
+      document.documentElement.style.setProperty('--announcement-height', '0px');
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [visible]);
+
   const handleClose = () => {
     setVisible(false);
     document.documentElement.style.setProperty('--announcement-height', '0px');

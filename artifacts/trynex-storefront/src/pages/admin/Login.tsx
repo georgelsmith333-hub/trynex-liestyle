@@ -21,14 +21,14 @@ export default function AdminLogin() {
         localStorage.setItem('trynex_admin_token', res.token);
         setLocation("/admin");
       } else {
-        setErrorMsg("Incorrect password. Default password is: Admins@Trynex");
+        setErrorMsg("Incorrect password. Please try again.");
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       if (message.toLowerCase().includes("network") || message.toLowerCase().includes("failed to fetch")) {
         setErrorMsg("Cannot reach the server. Check your internet connection.");
       } else {
-        setErrorMsg("Incorrect password. Default password is: Admins@Trynex");
+        setErrorMsg("Incorrect password. Please try again.");
       }
     }
   };

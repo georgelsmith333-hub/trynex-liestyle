@@ -14,12 +14,20 @@ function hashPassword(password: string): string {
 }
 
 async function ensureAdminExists() {
+  const desiredHash = hashPassword(ADMIN_PASSWORD);
   const existing = await db.select().from(adminTable).limit(1);
   if (existing.length === 0) {
     await db.insert(adminTable).values({
       username: "admin",
-      passwordHash: hashPassword(ADMIN_PASSWORD),
+      passwordHash: desiredHash,
     });
+  } else if (existing[0].passwordHash !== desiredHash) {
+    // Auto-sync to current ADMIN_PASSWORD env var so a fresh deploy
+    // with a new password takes effect without manual reset.
+    await db
+      .update(adminTable)
+      .set({ passwordHash: desiredHash })
+      .where(eq(adminTable.username, "admin"));
   }
 }
 
