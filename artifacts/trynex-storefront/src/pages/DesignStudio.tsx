@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -10,212 +10,31 @@ import { getApiUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, RotateCcw, Trash2, ShoppingCart,
-  ZoomIn, ZoomOut, RotateCw, Move, Ruler, Palette,
+  ZoomIn, ZoomOut, RotateCw, Move, Ruler,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
   Scissors, Info, Eye, EyeOff, Loader2,
+  Type, Layers as LayersIcon, Sparkles,
+  Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
+  Image as ImageIcon, Plus,
 } from "lucide-react";
+import {
+  PRODUCTS, type DesignProduct, GarmentSVG,
+} from "./design-studio/mockups";
 
 /* ═══════════════════════════════════════════════════════
-   PRODUCT DEFINITIONS
-   All SVG coordinates are in the base coordinate space
-   (before the padded viewBox offset is applied).
+   LAYER MODEL
 ════════════════════════════════════════════════════════ */
 
-type ProductType = "white-tshirt" | "black-tshirt" | "white-mug" | "black-mug";
+interface Transform { x: number; y: number; scale: number; rotation: number; opacity: number }
+const ZERO_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
-interface DesignProduct {
-  id: ProductType;
-  name: string;
-  garmentColor: string;
-  description: string;
-  /** viewBox string — includes 24px padding on all sides */
-  viewBox: string;
-  /** aspect ratio of viewBox (width/height) */
-  aspect: number;
-  /** print zone in base (un-padded) SVG coordinates */
-  printZone: { x: number; y: number; w: number; h: number };
+interface BaseLayer { id: string; name: string; visible: boolean; locked: boolean; transform: Transform }
+interface ImageLayer extends BaseLayer { type: "image"; src: string; naturalW: number; naturalH: number }
+interface TextLayer extends BaseLayer {
+  type: "text"; text: string; fontFamily: string; fontWeight: number;
+  fontStyle: "normal" | "italic"; fontSize: number; color: string;
 }
-
-// T-shirt: base space 400×480; viewBox with 24px padding = "-24 -24 448 528"
-// Mug: base space 400×340; viewBox with 24px padding = "-24 -24 448 388"
-const TSHIRT_PZ = { x: 128, y: 168, w: 144, h: 155 };
-const MUG_PZ   = { x: 80,  y: 58,  w: 210, h: 148 };
-
-const PRODUCTS: DesignProduct[] = [
-  { id: "white-tshirt", name: "White T-Shirt",  garmentColor: "#F8F7F4", description: "230GSM Cotton", viewBox: "-24 -24 448 528", aspect: 448/528, printZone: TSHIRT_PZ },
-  { id: "black-tshirt", name: "Black T-Shirt",  garmentColor: "#1a1a1a", description: "230GSM Cotton", viewBox: "-24 -24 448 528", aspect: 448/528, printZone: TSHIRT_PZ },
-  { id: "white-mug",    name: "White Mug",       garmentColor: "#F5F5F5", description: "11oz Ceramic",  viewBox: "-24 -24 448 388", aspect: 448/388, printZone: MUG_PZ   },
-  { id: "black-mug",    name: "Black Mug",       garmentColor: "#1C1917", description: "11oz Ceramic",  viewBox: "-24 -24 448 388", aspect: 448/388, printZone: MUG_PZ   },
-];
-
-/* ═══════════════════════════════════════════════════════
-   SVG PRODUCT MOCKUPS
-════════════════════════════════════════════════════════ */
-
-function TShirtSVGParts({ color, showPrintZone }: { color: string; showPrintZone: boolean }) {
-  const isDark = /^#[01234]/i.test(color);
-  const stitchColor = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)";
-  const highlight = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)";
-  const shadeColor = isDark ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.07)";
-
-  const BODY = "M130,55 Q122,82 110,100 L0,140 L12,218 L108,192 L108,448 L292,448 L292,192 L388,218 L400,140 L290,100 Q278,82 270,55 Q242,98 200,106 Q158,98 130,55 Z";
-  const COLLAR = "M130,55 Q158,98 200,106 Q242,98 270,55 Q260,40 200,36 Q140,40 130,55 Z";
-  const pz = TSHIRT_PZ;
-
-  return (
-    <>
-      <defs>
-        <filter id="ts-shadow" x="-8%" y="-8%" width="116%" height="120%">
-          <feDropShadow dx="0" dy="10" stdDeviation="16" floodColor="rgba(0,0,0,0.18)" />
-        </filter>
-        <filter id="ts-fabric" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="2" result="noise" />
-          <feColorMatrix type="saturate" values="0" in="noise" result="grey" />
-          <feComponentTransfer in="grey" result="subtleNoise">
-            <feFuncA type="linear" slope="0.15" />
-          </feComponentTransfer>
-          <feBlend in="SourceGraphic" in2="subtleNoise" mode="soft-light" />
-        </filter>
-        <linearGradient id="ts-hl" x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stopColor={highlight} />
-          <stop offset="40%" stopColor="transparent" />
-          <stop offset="100%" stopColor={isDark ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.03)"} />
-        </linearGradient>
-        <linearGradient id="ts-body-grad" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0)"} />
-          <stop offset="50%" stopColor="transparent" />
-          <stop offset="100%" stopColor={isDark ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.04)"} />
-        </linearGradient>
-        <radialGradient id="ts-chest-light" cx="0.5" cy="0.35" r="0.45">
-          <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.25)"} />
-          <stop offset="100%" stopColor="transparent" />
-        </radialGradient>
-        <clipPath id="ts-clip"><path d={BODY} /></clipPath>
-        <clipPath id="ts-pz-clip">
-          <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} />
-        </clipPath>
-        <filter id="ts-wrinkle-overlay" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.035 0.025" numOctaves="3" seed="7" result="wrinkle" />
-          <feColorMatrix type="saturate" values="0" in="wrinkle" result="greyWrinkle" />
-          <feComponentTransfer in="greyWrinkle" result="subtleWrinkle">
-            <feFuncA type="linear" slope="0.12" />
-          </feComponentTransfer>
-          <feBlend in="SourceGraphic" in2="subtleWrinkle" mode="multiply" />
-        </filter>
-      </defs>
-      <path d={BODY} fill={color} filter="url(#ts-shadow)" />
-      <g clipPath="url(#ts-clip)" filter="url(#ts-fabric)">
-        <path d={BODY} fill={color} />
-      </g>
-      <path d={BODY} fill="url(#ts-hl)" />
-      <path d={BODY} fill="url(#ts-body-grad)" />
-      <path d={BODY} fill="url(#ts-chest-light)" />
-      <path d="M108,192 L12,218 L12,175 L108,148 Z" fill={shadeColor} clipPath="url(#ts-clip)" />
-      <path d="M292,192 L388,218 L388,175 L292,148 Z" fill={shadeColor} clipPath="url(#ts-clip)" />
-      <path d="M155,148 Q178,155 200,156 Q222,155 245,148 L245,170 Q222,178 200,180 Q178,178 155,170 Z" fill={isDark ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.02)"} clipPath="url(#ts-clip)" />
-      <path d={COLLAR} fill={isDark ? "#0d0d0d" : "#e8e6e2"} />
-      <path d={COLLAR} fill={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)"} />
-      <ellipse cx="200" cy="100" rx="68" ry="16" fill="rgba(0,0,0,0.08)" clipPath="url(#ts-clip)" />
-      <g clipPath="url(#ts-clip)" stroke={stitchColor} fill="none" strokeWidth="1" strokeDasharray="3 2.5">
-        <line x1="108" y1="195" x2="108" y2="448" />
-        <line x1="292" y1="195" x2="292" y2="448" />
-      </g>
-      <line x1="108" y1="448" x2="292" y2="448" stroke={stitchColor} fill="none" strokeWidth="1" strokeDasharray="3 2.5" />
-      <path d="M12,218 L108,192" stroke={stitchColor} fill="none" strokeWidth="0.8" strokeDasharray="3 2.5" />
-      <path d="M388,218 L292,192" stroke={stitchColor} fill="none" strokeWidth="0.8" strokeDasharray="3 2.5" />
-      {showPrintZone && (
-        <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h}
-          fill="rgba(232,93,4,0.03)" stroke="rgba(232,93,4,0.45)"
-          strokeWidth="1.5" strokeDasharray="6 4" rx="4" />
-      )}
-    </>
-  );
-}
-
-function MugSVGParts({ color, showPrintZone }: { color: string; showPrintZone: boolean }) {
-  const isDark = /^#[01234]/i.test(color);
-  const highlight = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)";
-  const rimColor = isDark ? "#2a2a2a" : "#d0d0d0";
-  const handleColor = isDark ? "#222" : "#c8c8c8";
-  const innerColor = isDark ? "#111" : "#e8e6e2";
-  const pz = MUG_PZ;
-
-  const MUG_BODY = "M68,45 L72,285 Q75,312 95,318 L305,318 Q325,312 328,285 L332,45 Z";
-
-  return (
-    <>
-      <defs>
-        <filter id="mug-shadow" x="-8%" y="-8%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="10" stdDeviation="18" floodColor="rgba(0,0,0,0.2)" />
-        </filter>
-        <filter id="mug-ceramic" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="2" seed="5" result="noise" />
-          <feColorMatrix type="saturate" values="0" in="noise" result="grey" />
-          <feComponentTransfer in="grey" result="subtleNoise">
-            <feFuncA type="linear" slope="0.08" />
-          </feComponentTransfer>
-          <feBlend in="SourceGraphic" in2="subtleNoise" mode="soft-light" />
-        </filter>
-        <linearGradient id="mug-shade" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(0,0,0,0.20)" />
-          <stop offset="8%" stopColor="rgba(0,0,0,0.06)" />
-          <stop offset="45%" stopColor="transparent" />
-          <stop offset="85%" stopColor="transparent" />
-          <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
-        </linearGradient>
-        <linearGradient id="mug-hl" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="transparent" />
-          <stop offset="15%" stopColor={highlight} />
-          <stop offset="35%" stopColor="transparent" />
-        </linearGradient>
-        <linearGradient id="mug-vshade" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0)"} />
-          <stop offset="85%" stopColor="transparent" />
-          <stop offset="100%" stopColor={isDark ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.06)"} />
-        </linearGradient>
-        <radialGradient id="mug-specular" cx="0.28" cy="0.25" r="0.25">
-          <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.35)"} />
-          <stop offset="100%" stopColor="transparent" />
-        </radialGradient>
-        <clipPath id="mug-body-clip"><path d={MUG_BODY} /></clipPath>
-        <filter id="mug-wrinkle-overlay" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.04 0.02" numOctaves="2" seed="11" result="ceramicGrain" />
-          <feColorMatrix type="saturate" values="0" in="ceramicGrain" result="greyCeramic" />
-          <feComponentTransfer in="greyCeramic" result="subtleCeramic">
-            <feFuncA type="linear" slope="0.08" />
-          </feComponentTransfer>
-          <feBlend in="SourceGraphic" in2="subtleCeramic" mode="multiply" />
-        </filter>
-      </defs>
-      <path d="M332,105 Q380,100 388,168 Q388,235 332,230 L332,208 Q362,208 366,168 Q366,130 332,128 Z"
-        fill={handleColor} filter="url(#mug-shadow)" />
-      <path d="M335,112 Q370,108 375,168 Q375,226 335,222" stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.08)"} fill="none" strokeWidth="1.5" />
-      <path d={MUG_BODY} fill={color} filter="url(#mug-shadow)" />
-      <g clipPath="url(#mug-body-clip)" filter="url(#mug-ceramic)">
-        <path d={MUG_BODY} fill={color} />
-      </g>
-      <path d={MUG_BODY} fill="url(#mug-shade)" />
-      <path d={MUG_BODY} fill="url(#mug-hl)" />
-      <path d={MUG_BODY} fill="url(#mug-vshade)" />
-      <path d={MUG_BODY} fill="url(#mug-specular)" />
-      <ellipse cx="200" cy="45" rx="132" ry="24" fill={rimColor} />
-      <ellipse cx="200" cy="43" rx="130" ry="22" fill={color} />
-      <ellipse cx="200" cy="41" rx="124" ry="18" fill={innerColor} />
-      <ellipse cx="200" cy="41" rx="118" ry="14" fill="rgba(0,0,0,0.12)" />
-      <ellipse cx="200" cy="318" rx="116" ry="10" fill="rgba(0,0,0,0.12)" />
-      {showPrintZone && (
-        <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h}
-          fill="rgba(232,93,4,0.03)" stroke="rgba(232,93,4,0.45)"
-          strokeWidth="1.5" strokeDasharray="6 4" rx="4"
-          clipPath="url(#mug-body-clip)" />
-      )}
-    </>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
-   SIZE CHART
-════════════════════════════════════════════════════════ */
+type Layer = ImageLayer | TextLayer;
 
 const SIZE_CHART = [
   { size: "XS", chest: "36", length: "26" },
@@ -227,22 +46,86 @@ const SIZE_CHART = [
   { size: "XXXL", chest: "48", length: "32" },
 ];
 
-/* ═══════════════════════════════════════════════════════
-   DESIGN STATE
-════════════════════════════════════════════════════════ */
+const FONT_FAMILIES = [
+  { label: "Sans (Inter)",  value: "Inter, system-ui, sans-serif" },
+  { label: "Display Bold",  value: "'Helvetica Neue', Arial, sans-serif" },
+  { label: "Serif",         value: "'Playfair Display', Georgia, serif" },
+  { label: "Mono",          value: "'JetBrains Mono', ui-monospace, monospace" },
+  { label: "Script",        value: "'Brush Script MT', cursive" },
+];
 
-interface DesignState {
-  /** offset in SVG base-space units from print-zone center */
-  x: number;
-  y: number;
-  scale: number;
-  rotation: number;
-  opacity: number;
-}
+interface Template { id: string; name: string; preview: string; create: () => Layer[] }
+function uid() { return Math.random().toString(36).slice(2, 10); }
+const TEMPLATES: Template[] = [
+  {
+    id: "tpl-bigword", name: "Big Word", preview: "DREAM",
+    create: () => [{
+      id: uid(), name: "DREAM", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM, scale: 1.4 },
+      text: "DREAM", fontFamily: FONT_FAMILIES[1].value, fontWeight: 900,
+      fontStyle: "normal", fontSize: 64, color: "#111111",
+    }],
+  },
+  {
+    id: "tpl-namaste", name: "Namaste", preview: "নমস্কার",
+    create: () => [{
+      id: uid(), name: "নমস্কার", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM },
+      text: "নমস্কার", fontFamily: FONT_FAMILIES[2].value, fontWeight: 700,
+      fontStyle: "italic", fontSize: 48, color: "#7c2d12",
+    }],
+  },
+  {
+    id: "tpl-stack", name: "Stacked", preview: "GOOD\nVIBES",
+    create: () => [
+      {
+        id: uid(), name: "GOOD", type: "text", visible: true, locked: false,
+        transform: { ...ZERO_TRANSFORM, y: -22 },
+        text: "GOOD", fontFamily: FONT_FAMILIES[1].value, fontWeight: 900,
+        fontStyle: "normal", fontSize: 50, color: "#E85D04",
+      },
+      {
+        id: uid(), name: "VIBES", type: "text", visible: true, locked: false,
+        transform: { ...ZERO_TRANSFORM, y: 22 },
+        text: "VIBES", fontFamily: FONT_FAMILIES[1].value, fontWeight: 900,
+        fontStyle: "normal", fontSize: 50, color: "#111111",
+      },
+    ],
+  },
+  {
+    id: "tpl-mono", name: "Mono Tag", preview: "// trynex",
+    create: () => [{
+      id: uid(), name: "// trynex", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM },
+      text: "// trynex", fontFamily: FONT_FAMILIES[3].value, fontWeight: 600,
+      fontStyle: "normal", fontSize: 38, color: "#111111",
+    }],
+  },
+  {
+    id: "tpl-script", name: "Script", preview: "Cheers",
+    create: () => [{
+      id: uid(), name: "Cheers", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM, rotation: -8 },
+      text: "Cheers", fontFamily: FONT_FAMILIES[4].value, fontWeight: 700,
+      fontStyle: "italic", fontSize: 60, color: "#1e3a5f",
+    }],
+  },
+  {
+    id: "tpl-emoji", name: "Heart Stack", preview: "♥ DHAKA",
+    create: () => [{
+      id: uid(), name: "♥ DHAKA", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM },
+      text: "♥ DHAKA", fontFamily: FONT_FAMILIES[1].value, fontWeight: 800,
+      fontStyle: "normal", fontSize: 44, color: "#dc2626",
+    }],
+  },
+];
 
 /* ═══════════════════════════════════════════════════════
    MAIN PAGE
 ════════════════════════════════════════════════════════ */
+
+type RightTab = "upload" | "text" | "layers" | "templates";
 
 export default function DesignStudio() {
   const [, navigate] = useLocation();
@@ -250,29 +133,63 @@ export default function DesignStudio() {
   const settings = useSiteSettings();
   const { toast } = useToast();
 
-  const [selectedProduct, setSelectedProduct] = useState<DesignProduct>(PRODUCTS[1]);
-  // selectedColor tracks the independently-chosen garment color (may differ from selectedProduct when admin colors don't match any product exactly)
-  const [selectedColor, setSelectedColor] = useState<{ name: string; hex: string }>({ name: PRODUCTS[1].name, hex: PRODUCTS[1].garmentColor });
-  const [activeTab, setActiveTab] = useState<"controls" | "sizes" | "colors">("controls");
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [imgNaturalW, setImgNaturalW] = useState(1);
-  const [imgNaturalH, setImgNaturalH] = useState(1);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [showPrintZone, setShowPrintZone] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<DesignProduct>(PRODUCTS[0]);
+  const [selectedColor, setSelectedColor] = useState<{ name: string; hex: string }>(
+    { name: PRODUCTS[0].name, hex: PRODUCTS[0].garmentColor }
+  );
+  const [activeTab, setActiveTab] = useState<RightTab>("upload");
   const [selectedSize, setSelectedSize] = useState("M");
+  const [showPrintZone, setShowPrintZone] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [design, setDesign] = useState<DesignState>({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  /* Layers + history */
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const layersRef = useRef<Layer[]>([]);
+  useEffect(() => { layersRef.current = layers; }, [layers]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const selectedLayerIdRef = useRef<string | null>(null);
+  useEffect(() => { selectedLayerIdRef.current = selectedLayerId; }, [selectedLayerId]);
+  const historyRef = useRef<{ stack: Layer[][]; index: number }>({ stack: [[]], index: 0 });
+  const [, forceHistoryTick] = useState(0);
+
+  const commitLayers = useCallback((next: Layer[]) => {
+    const h = historyRef.current;
+    h.stack = h.stack.slice(0, h.index + 1);
+    h.stack.push(next);
+    if (h.stack.length > 50) h.stack.shift();
+    h.index = h.stack.length - 1;
+    setLayers(next);
+    forceHistoryTick(t => t + 1);
+  }, []);
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    if (h.index > 0) { h.index -= 1; setLayers(h.stack[h.index]); forceHistoryTick(t => t + 1); }
+  }, []);
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    if (h.index < h.stack.length - 1) { h.index += 1; setLayers(h.stack[h.index]); forceHistoryTick(t => t + 1); }
+  }, []);
+  const canUndo = historyRef.current.index > 0;
+  const canRedo = historyRef.current.index < historyRef.current.stack.length - 1;
+
+  /* Snap guides */
+  const [snapGuides, setSnapGuides] = useState<{ v: boolean; h: boolean }>({ v: false, h: false });
 
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; dx: number; dy: number } | null>(null);
-  const pinchRef = useRef<{ dist: number; scale: number; angle: number; rot: number } | null>(null);
+  const fileInputAddRef = useRef<HTMLInputElement>(null);
 
   const pz = selectedProduct.printZone;
-  const isMug = selectedProduct.id.includes("mug");
+  const isMug = selectedProduct.category === "mug";
+  const isCap = selectedProduct.category === "cap";
 
-  /* ── SVG coordinate transform helpers ── */
+  const selectedLayer = useMemo(
+    () => layers.find(l => l.id === selectedLayerId) ?? null,
+    [layers, selectedLayerId]
+  );
+
+  /* ── Coord helpers ─────────────────────────────────── */
   const clientToSVG = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -284,7 +201,35 @@ export default function DesignStudio() {
     return { x: r.x, y: r.y };
   }, []);
 
-  /* ── File upload ── */
+  /* ── Layer mutation helpers ────────────────────────── */
+  const updateLayer = useCallback((id: string, mut: (l: Layer) => Layer, commit: boolean) => {
+    const next = layers.map(l => (l.id === id ? mut(l) : l));
+    if (commit) commitLayers(next); else setLayers(next);
+  }, [layers, commitLayers]);
+
+  const addLayer = useCallback((layer: Layer) => {
+    const next = [...layers, layer];
+    commitLayers(next);
+    setSelectedLayerId(layer.id);
+  }, [layers, commitLayers]);
+
+  const removeLayer = useCallback((id: string) => {
+    const next = layers.filter(l => l.id !== id);
+    commitLayers(next);
+    if (selectedLayerId === id) setSelectedLayerId(next[next.length - 1]?.id ?? null);
+  }, [layers, selectedLayerId, commitLayers]);
+
+  const moveLayer = useCallback((id: string, dir: -1 | 1) => {
+    const idx = layers.findIndex(l => l.id === id);
+    if (idx < 0) return;
+    const j = idx + dir;
+    if (j < 0 || j >= layers.length) return;
+    const next = layers.slice();
+    [next[idx], next[j]] = [next[j], next[idx]];
+    commitLayers(next);
+  }, [layers, commitLayers]);
+
+  /* ── File upload ───────────────────────────────────── */
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast({ title: "Invalid file", description: "Please upload a JPG or PNG image.", variant: "destructive" });
@@ -293,11 +238,16 @@ export default function DesignStudio() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const src = e.target?.result as string;
-      setImageDataUrl(src);
-      setDesign({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
-      // Get natural dimensions
       const img = new Image();
-      img.onload = () => { setImgNaturalW(img.naturalWidth); setImgNaturalH(img.naturalHeight); };
+      img.onload = () => {
+        const layer: ImageLayer = {
+          id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
+          type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+          visible: true, locked: false, transform: { ...ZERO_TRANSFORM },
+        };
+        addLayer(layer);
+        setActiveTab("layers");
+      };
       img.src = src;
     };
     reader.readAsDataURL(file);
@@ -309,22 +259,24 @@ export default function DesignStudio() {
     if (file) handleFileUpload(file);
   };
 
-  /* ── Background removal ── */
+  /* ── Background removal (only on selected image layer) ── */
   const handleRemoveBg = async () => {
-    if (!imageDataUrl) return;
+    if (!selectedLayer || selectedLayer.type !== "image") return;
     setIsRemoving(true);
     try {
       const res = await fetch(getApiUrl("/api/remove-bg"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageDataUrl }),
+        body: JSON.stringify({ image: selectedLayer.src }),
       });
       if (!res.ok) throw new Error("Failed");
       const { result } = await res.json();
-      setImageDataUrl(result);
-      // Update dimensions for the new image
       const img = new Image();
-      img.onload = () => { setImgNaturalW(img.naturalWidth); setImgNaturalH(img.naturalHeight); };
+      img.onload = () => {
+        updateLayer(selectedLayer.id, l => l.type === "image"
+          ? { ...l, src: result, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
+          : l, true);
+      };
       img.src = result;
       toast({ title: "Background removed!", description: "Your image background has been removed." });
     } catch {
@@ -338,154 +290,221 @@ export default function DesignStudio() {
     }
   };
 
-  /* ── SVG drag interaction ── */
-  const handleSVGPointerDown = useCallback((e: React.PointerEvent<SVGImageElement>) => {
-    e.preventDefault();
-    (e.target as Element).setPointerCapture(e.pointerId);
-    const svgPt = clientToSVG(e.clientX, e.clientY);
-    dragRef.current = { startX: svgPt.x, startY: svgPt.y, dx: design.x, dy: design.y };
-    setIsDragging(true);
-  }, [clientToSVG, design.x, design.y]);
+  /* ── Multi-pointer interaction (drag + pinch + rotate) ── */
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureRef = useRef<
+    | { mode: "drag"; layerId: string; startSvg: { x: number; y: number }; startT: Transform }
+    | { mode: "pinch"; layerId: string; startDist: number; startAngle: number; startMid: { x: number; y: number }; startT: Transform }
+    | null
+  >(null);
 
-  const handleSVGPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    const drag = dragRef.current;
-    if (!drag) return;
-    const svgPt = clientToSVG(e.clientX, e.clientY);
-    const nextX = drag.dx + (svgPt.x - drag.startX);
-    const nextY = drag.dy + (svgPt.y - drag.startY);
-    setDesign(prev => ({ ...prev, x: nextX, y: nextY }));
+  const SNAP_THRESHOLD = 6; // svg units
+
+  const beginDrag = (layerId: string, clientX: number, clientY: number) => {
+    const layer = layersRef.current.find(l => l.id === layerId);
+    if (!layer || layer.locked) return;
+    const startSvg = clientToSVG(clientX, clientY);
+    gestureRef.current = { mode: "drag", layerId, startSvg, startT: { ...layer.transform } };
+  };
+  const beginPinch = (layerId: string, p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    const layer = layersRef.current.find(l => l.id === layerId);
+    if (!layer || layer.locked) return;
+    const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+    const startDist = Math.hypot(dx, dy);
+    const startAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const mid = clientToSVG((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+    gestureRef.current = { mode: "pinch", layerId, startDist, startAngle, startMid: mid, startT: { ...layer.transform } };
+  };
+
+  const onSvgPointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+
+    if (pointersRef.current.size === 1) {
+      // Hit test: find topmost layer at this svg point. If background → deselect.
+      const target = e.target as Element;
+      const layerId = target.getAttribute?.("data-layer-id");
+      if (layerId) {
+        setSelectedLayerId(layerId);
+        selectedLayerIdRef.current = layerId; // sync immediately so a fast second finger pinches the right layer
+        beginDrag(layerId, e.clientX, e.clientY);
+      } else {
+        setSelectedLayerId(null);
+        selectedLayerIdRef.current = null;
+        gestureRef.current = null;
+      }
+    } else if (pointersRef.current.size === 2) {
+      // Prefer the layer the active gesture is already on; fall back to selected
+      const target = e.target as Element;
+      const hitId = target.getAttribute?.("data-layer-id") ?? null;
+      const targetId = (gestureRef.current?.layerId) ?? hitId ?? selectedLayerIdRef.current;
+      if (targetId) {
+        if (selectedLayerIdRef.current !== targetId) {
+          setSelectedLayerId(targetId);
+          selectedLayerIdRef.current = targetId;
+        }
+        const [p1, p2] = Array.from(pointersRef.current.values());
+        beginPinch(targetId, p1, p2);
+      }
+    }
   }, [clientToSVG]);
 
-  const handleSVGPointerUp = useCallback(() => {
-    dragRef.current = null;
-    setIsDragging(false);
-  }, []);
+  const onSvgPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = gestureRef.current;
+    if (!g) return;
 
-  /* ── Touch pinch-to-zoom on the SVG ── */
-  const handleSVGTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[1].clientX - e.touches[0].clientX;
-      const dy = e.touches[1].clientY - e.touches[0].clientY;
-      pinchRef.current = {
-        dist: Math.sqrt(dx * dx + dy * dy),
-        scale: design.scale,
-        angle: Math.atan2(dy, dx) * (180 / Math.PI),
-        rot: design.rotation,
-      };
+    if (g.mode === "drag") {
+      const cur = clientToSVG(e.clientX, e.clientY);
+      let nx = g.startT.x + (cur.x - g.startSvg.x);
+      let ny = g.startT.y + (cur.y - g.startSvg.y);
+      const showV = Math.abs(nx) < SNAP_THRESHOLD;
+      const showH = Math.abs(ny) < SNAP_THRESHOLD;
+      if (showV) nx = 0;
+      if (showH) ny = 0;
+      setSnapGuides({ v: showV, h: showH });
+      setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, x: nx, y: ny } } : l));
+    } else if (g.mode === "pinch" && pointersRef.current.size >= 2) {
+      const pts = Array.from(pointersRef.current.values());
+      const [p1, p2] = pts;
+      const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+      const dist = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const mid = clientToSVG((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+      const scale = Math.max(0.1, Math.min(5, g.startT.scale * (dist / Math.max(g.startDist, 1))));
+      const rotation = g.startT.rotation + (angle - g.startAngle);
+      const x = g.startT.x + (mid.x - g.startMid.x);
+      const y = g.startT.y + (mid.y - g.startMid.y);
+      setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, scale, rotation, x, y } } : l));
     }
-  }, [design.scale, design.rotation]);
+  }, [clientToSVG]);
 
-  const handleSVGTouchMove = useCallback((e: React.TouchEvent) => {
-    const pinch = pinchRef.current;
-    if (e.touches.length === 2 && pinch) {
-      e.preventDefault();
-      const dx = e.touches[1].clientX - e.touches[0].clientX;
-      const dy = e.touches[1].clientY - e.touches[0].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      const nextScale = Math.max(0.1, Math.min(5, pinch.scale * (dist / pinch.dist)));
-      const nextRot = pinch.rot + (angle - pinch.angle);
-      setDesign(prev => ({ ...prev, scale: nextScale, rotation: nextRot }));
+  const endGesture = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    const g = gestureRef.current;
+    if (!g) return;
+    if (pointersRef.current.size === 0) {
+      // commit final state to history — pull from the ref so we never use stale closure data
+      commitLayers(layersRef.current);
+      gestureRef.current = null;
+      setSnapGuides({ v: false, h: false });
+    } else if (pointersRef.current.size === 1 && g.mode === "pinch") {
+      // Drop back to drag with the remaining pointer
+      const [p] = Array.from(pointersRef.current.values());
+      beginDrag(g.layerId, p.x, p.y);
     }
-  }, []);
+  }, [commitLayers]);
 
-  const handleSVGTouchEnd = useCallback(() => { pinchRef.current = null; }, []);
-
-  /* ── SVG corner resize handle drag ── */
-  const handleResizeHandleDown = useCallback((e: React.PointerEvent<SVGCircleElement>, corner: string) => {
-    e.stopPropagation();
-    (e.target as Element).setPointerCapture(e.pointerId);
-    const startPt = clientToSVG(e.clientX, e.clientY);
-    const startScale = design.scale;
-    const cx = pz.x + pz.w / 2 + design.x;
-    const cy = pz.y + pz.h / 2 + design.y;
-
-    const onMove = (me: PointerEvent) => {
-      const pt = clientToSVG(me.clientX, me.clientY);
-      const startDist = Math.sqrt((startPt.x - cx) ** 2 + (startPt.y - cy) ** 2);
-      const newDist = Math.sqrt((pt.x - cx) ** 2 + (pt.y - cy) ** 2);
-      const nextScale = Math.max(0.1, Math.min(5, startScale * (newDist / Math.max(startDist, 1))));
-      setDesign(prev => ({ ...prev, scale: nextScale }));
+  /* ── Keyboard shortcuts: undo/redo, delete ─────────── */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if (meta && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      else if ((e.key === "Delete" || e.key === "Backspace") && selectedLayerId
+        && document.activeElement?.tagName !== "INPUT"
+        && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault(); removeLayer(selectedLayerId);
+      }
     };
-    const onUp = () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }, [clientToSVG, design.scale, design.x, design.y, pz]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo, selectedLayerId, removeLayer]);
 
-  /* ── Add to cart ── */
+  /* ── Compute layer SVG geometry ────────────────────── */
+  const layerGeom = (l: Layer) => {
+    const cx = pz.x + pz.w / 2 + l.transform.x;
+    const cy = pz.y + pz.h / 2 + l.transform.y;
+    if (l.type === "image") {
+      const aspect = l.naturalW / Math.max(l.naturalH, 1);
+      const w = pz.w * l.transform.scale;
+      const h = w / aspect;
+      return { cx, cy, w, h, x: cx - w / 2, y: cy - h / 2 };
+    }
+    // text — approximate bounding box from font metrics
+    const w = (l.text.length * l.fontSize * 0.55) * l.transform.scale;
+    const h = l.fontSize * 1.2 * l.transform.scale;
+    return { cx, cy, w, h, x: cx - w / 2, y: cy - h / 2 };
+  };
+
+  /* ── Add to cart ───────────────────────────────────── */
   const handleAddToCart = useCallback(async () => {
-    if (!imageDataUrl) {
-      toast({ title: "No design", description: "Please upload a design image first.", variant: "destructive" });
+    if (layers.length === 0) {
+      toast({ title: "No design", description: "Add an image or text layer first.", variant: "destructive" });
       return;
     }
     setIsAddingToCart(true);
     try {
-      // Capture snapshot via canvas — garment color base + design overlay
-      let snapshotUrl = imageDataUrl;
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 600;
-        canvas.height = isMug ? Math.round(600 * 340 / 400) : Math.round(600 * 480 / 400);
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          // Scale from SVG base units to canvas pixels
-          const scaleX = canvas.width / 400;
-          const scaleY = canvas.height / (isMug ? 340 : 480);
-          // 1. Fill garment color as background so snapshot reflects the actual product color
-          ctx.fillStyle = selectedColor.hex;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          const img = new Image();
-          await new Promise<void>(r => { img.onload = () => r(); img.src = imageDataUrl; });
-          const pzCx = (pz.x + pz.w / 2 + design.x) * scaleX;
-          const pzCy = (pz.y + pz.h / 2 + design.y) * scaleY;
-          const imgW = pz.w * design.scale * scaleX;
-          const imgH = imgW * (img.naturalHeight / img.naturalWidth);
+      // Compose snapshot via canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = 600;
+      canvas.height = Math.round(600 * selectedProduct.baseHeight / 400);
+      const ctx = canvas.getContext("2d");
+      let snapshotUrl = "";
+      if (ctx) {
+        const sx = canvas.width / 400;
+        const sy = canvas.height / selectedProduct.baseHeight;
+        ctx.fillStyle = selectedColor.hex;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clip to print zone
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(pz.x * sx, pz.y * sy, pz.w * sx, pz.h * sy);
+        ctx.clip();
+        for (const l of layers) {
+          if (!l.visible) continue;
+          const g = layerGeom(l);
           ctx.save();
-          ctx.beginPath();
-          ctx.rect(pz.x * scaleX, pz.y * scaleY, pz.w * scaleX, pz.h * scaleY);
-          ctx.clip();
-          ctx.translate(pzCx, pzCy);
-          ctx.rotate((design.rotation * Math.PI) / 180);
-          ctx.globalAlpha = design.opacity;
-          ctx.globalCompositeOperation = 'multiply';
-          ctx.drawImage(img, -imgW / 2, -imgH / 2, imgW, imgH);
-          ctx.globalCompositeOperation = 'source-over';
+          ctx.translate(g.cx * sx, g.cy * sy);
+          ctx.rotate((l.transform.rotation * Math.PI) / 180);
+          ctx.globalAlpha = l.transform.opacity;
+          if (l.type === "image") {
+            const img = new Image();
+            await new Promise<void>(r => { img.onload = () => r(); img.src = l.src; });
+            ctx.globalCompositeOperation = "multiply";
+            ctx.drawImage(img, -(g.w * sx) / 2, -(g.h * sy) / 2, g.w * sx, g.h * sy);
+          } else {
+            ctx.fillStyle = l.color;
+            ctx.font = `${l.fontStyle} ${l.fontWeight} ${Math.round(l.fontSize * l.transform.scale * sy)}px ${l.fontFamily}`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(l.text, 0, 0);
+          }
           ctx.restore();
-          snapshotUrl = canvas.toDataURL("image/png", 0.85);
         }
-      } catch {}
+        ctx.restore();
+        snapshotUrl = canvas.toDataURL("image/png", 0.85);
+      }
 
-      // Display price from admin-configured settings (server re-derives this at order time)
       const displayPrice = isMug
         ? (settings.studioMugPrice || 799)
         : (settings.studioTshirtPrice || 1099);
 
-      // Compress the uploaded image to ~256px max dimension before cart storage
-      // to avoid hitting localStorage quotas with high-res originals
-      let compressedImage = imageDataUrl;
-      try {
-        const compressCanvas = document.createElement("canvas");
-        const compressCtx = compressCanvas.getContext("2d");
-        const compressImg = new Image();
-        await new Promise<void>((resolve, reject) => {
-          compressImg.onload = () => resolve();
-          compressImg.onerror = reject;
-          compressImg.src = imageDataUrl;
-        });
-        const maxDim = 512;
-        const ratio = Math.min(maxDim / compressImg.width, maxDim / compressImg.height, 1);
-        compressCanvas.width = Math.round(compressImg.width * ratio);
-        compressCanvas.height = Math.round(compressImg.height * ratio);
-        compressCtx?.drawImage(compressImg, 0, 0, compressCanvas.width, compressCanvas.height);
-        compressedImage = compressCanvas.toDataURL("image/webp", 0.7);
-      } catch {}
+      // Compress first image layer for storage
+      const firstImage = layers.find((l): l is ImageLayer => l.type === "image");
+      let compressedImage = snapshotUrl;
+      if (firstImage) {
+        try {
+          const c = document.createElement("canvas");
+          const cc = c.getContext("2d");
+          const cimg = new Image();
+          await new Promise<void>((res, rej) => { cimg.onload = () => res(); cimg.onerror = rej; cimg.src = firstImage.src; });
+          const maxDim = 512;
+          const ratio = Math.min(maxDim / cimg.width, maxDim / cimg.height, 1);
+          c.width = Math.round(cimg.width * ratio);
+          c.height = Math.round(cimg.height * ratio);
+          cc?.drawImage(cimg, 0, 0, c.width, c.height);
+          compressedImage = c.toDataURL("image/webp", 0.7);
+        } catch {}
+      }
 
       addToCart({
         productId: 0,
         name: `Custom ${selectedProduct.name}`,
         price: displayPrice,
         quantity: 1,
-        size: isMug ? undefined : selectedSize,
+        size: isMug || isCap ? undefined : selectedSize,
         color: selectedColor.name,
         imageUrl: snapshotUrl,
         customImages: [compressedImage],
@@ -495,52 +514,18 @@ export default function DesignStudio() {
           color: selectedColor.name,
           colorHex: selectedColor.hex,
           size: selectedSize,
-          designParams: { x: design.x, y: design.y, scale: design.scale, rotation: design.rotation, opacity: design.opacity },
+          layerCount: layers.length,
         }),
       });
 
-      toast({ title: "✓ Added to cart!", description: `Custom ${selectedProduct.name} (${selectedColor.name}) is ready for checkout.` });
+      toast({ title: "✓ Added to cart!", description: `Custom ${selectedProduct.name} (${selectedColor.name}) is ready.` });
       setTimeout(() => navigate("/cart"), 800);
     } finally {
       setIsAddingToCart(false);
     }
-  }, [imageDataUrl, design, selectedProduct, selectedColor, selectedSize, isMug, pz, addToCart, toast, navigate]);
+  }, [layers, selectedProduct, selectedColor, selectedSize, isMug, isCap, pz, addToCart, toast, navigate, settings]);
 
-  /* ── Nudge & reset ── */
-  const nudge = (axis: "x" | "y", amount: number) =>
-    setDesign(prev => ({ ...prev, [axis]: prev[axis] + amount }));
-
-  const resetDesign = () =>
-    setDesign({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 });
-
-  /* ── Image in SVG coordinates ── */
-  const aspect = imgNaturalW / Math.max(imgNaturalH, 1);
-  // Fit image in print zone by default
-  const imgSvgW = pz.w * design.scale;
-  const imgSvgH = imgSvgW / aspect;
-  const imgX = pz.x + pz.w / 2 + design.x - imgSvgW / 2;
-  const imgY = pz.y + pz.h / 2 + design.y - imgSvgH / 2;
-  const imgCx = pz.x + pz.w / 2 + design.x;
-  const imgCy = pz.y + pz.h / 2 + design.y;
-
-  /* ── Corner handle positions ── */
-  const handles = imageDataUrl ? [
-    { key: "nw", x: imgX, y: imgY },
-    { key: "ne", x: imgX + imgSvgW, y: imgY },
-    { key: "sw", x: imgX, y: imgY + imgSvgH },
-    { key: "se", x: imgX + imgSvgW, y: imgY + imgSvgH },
-  ].map(h => {
-    // Rotate handle around image center
-    const dx = h.x - imgCx, dy = h.y - imgCy;
-    const rad = (design.rotation * Math.PI) / 180;
-    return {
-      key: h.key,
-      x: imgCx + dx * Math.cos(rad) - dy * Math.sin(rad),
-      y: imgCy + dx * Math.sin(rad) + dy * Math.cos(rad),
-    };
-  }) : [];
-
-  /* ── Studio color palette — per product type ── */
+  /* ── Studio color palette — per product type ───────── */
   const parseColors = (raw: string) => {
     try { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr as { name: string; hex: string }[]; } catch {}
     return null;
@@ -562,37 +547,100 @@ export default function DesignStudio() {
     ? (parseColors(settings.studioMugColors) ?? DEFAULT_MUG_COLORS)
     : (parseColors(settings.studioTshirtColors) ?? DEFAULT_TSHIRT_COLORS);
 
+  /* ── Selected layer: corner handles for resize ─────── */
+  const handleResizeDown = useCallback((e: React.PointerEvent<SVGCircleElement>) => {
+    e.stopPropagation();
+    if (!selectedLayer || selectedLayer.locked) return;
+    (e.target as Element).setPointerCapture(e.pointerId);
+    const startPt = clientToSVG(e.clientX, e.clientY);
+    const startT = { ...selectedLayer.transform };
+    const cx = pz.x + pz.w / 2 + startT.x;
+    const cy = pz.y + pz.h / 2 + startT.y;
+    const startDist = Math.hypot(startPt.x - cx, startPt.y - cy) || 1;
+
+    const onMove = (me: PointerEvent) => {
+      const pt = clientToSVG(me.clientX, me.clientY);
+      const newDist = Math.hypot(pt.x - cx, pt.y - cy);
+      const next = Math.max(0.1, Math.min(5, startT.scale * (newDist / startDist)));
+      setLayers(prev => prev.map(l => l.id === selectedLayer.id
+        ? { ...l, transform: { ...l.transform, scale: next } } : l));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      // commit
+      setLayers(curr => { commitLayers(curr); return curr; });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, [selectedLayer, clientToSVG, pz, commitLayers]);
+
+  /* ── Renderable layer geometry list (memo) ─────────── */
+  const layersRender = layers.map(l => ({ layer: l, geom: layerGeom(l) }));
+  const selGeom = selectedLayer ? layerGeom(selectedLayer) : null;
+  // Rotated handle positions for the selected layer
+  const rotatedCorners = useMemo(() => {
+    if (!selectedLayer || !selGeom) return [];
+    const { cx, cy, x, y, w, h } = selGeom;
+    const rad = (selectedLayer.transform.rotation * Math.PI) / 180;
+    const corners = [
+      { key: "nw", x, y },
+      { key: "ne", x: x + w, y },
+      { key: "sw", x, y: y + h },
+      { key: "se", x: x + w, y: y + h },
+    ];
+    return corners.map(c => {
+      const dx = c.x - cx; const dy = c.y - cy;
+      return {
+        key: c.key,
+        x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+        y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+      };
+    });
+  }, [selectedLayer, selGeom]);
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F5F3F0' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F5F3F0" }}>
       <SEOHead
         title="Design Studio — TryNex Lifestyle"
-        description="Design your own custom T-shirt or mug. Upload your artwork, position it live on the product, and add to cart instantly."
+        description="Design your own custom apparel and accessories. Upload artwork or add text, position it live, and add to cart instantly."
         canonical="/design-studio"
       />
       <Navbar />
 
       {/* Page header */}
-      <div className="border-b border-gray-200 sticky top-0 z-30" style={{ background: 'white' }}>
+      <div className="border-b border-gray-200 sticky top-0 z-30" style={{ background: "white" }}>
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div>
             <h1 className="font-display font-black text-xl text-gray-900">Design Studio</h1>
             <p className="text-xs text-gray-500 mt-0.5">You imagine — we craft it.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Undo / Redo */}
+            <button onClick={undo} disabled={!canUndo}
+              className="p-2 rounded-xl text-gray-600 disabled:opacity-30"
+              style={{ background: "#f3f4f6" }} title="Undo (Ctrl+Z)">
+              <Undo2 className="w-4 h-4" />
+            </button>
+            <button onClick={redo} disabled={!canRedo}
+              className="p-2 rounded-xl text-gray-600 disabled:opacity-30"
+              style={{ background: "#f3f4f6" }} title="Redo (Ctrl+Y)">
+              <Redo2 className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setShowPrintZone(v => !v)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
-              style={{ background: showPrintZone ? '#fff4ee' : '#f3f4f6', color: showPrintZone ? '#E85D04' : '#6b7280' }}
+              style={{ background: showPrintZone ? "#fff4ee" : "#f3f4f6", color: showPrintZone ? "#E85D04" : "#6b7280" }}
             >
               {showPrintZone ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
               Print Zone
             </button>
             <motion.button
               onClick={handleAddToCart}
-              disabled={!imageDataUrl || isAddingToCart}
+              disabled={layers.length === 0 || isAddingToCart}
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 12px rgba(232,93,4,0.35)' }}
+              style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.35)" }}
             >
               {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
               Add to Cart
@@ -606,118 +654,146 @@ export default function DesignStudio() {
 
           {/* ═══════ LEFT: MOCKUP CANVAS ═══════ */}
           <div className="flex-1 min-w-0">
-            {/* Product tabs */}
-            <div className="flex gap-2 mb-5 flex-wrap">
+            {/* Product tabs (scrollable on mobile) */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
               {PRODUCTS.map(prod => (
                 <button
                   key={prod.id}
-                  onClick={() => { setSelectedProduct(prod); setSelectedColor({ name: prod.name, hex: prod.garmentColor }); resetDesign(); }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+                  onClick={() => {
+                    setSelectedProduct(prod);
+                    setSelectedColor({ name: prod.name, hex: prod.garmentColor });
+                  }}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
                   style={{
-                    background: selectedProduct.id === prod.id ? 'linear-gradient(135deg,#E85D04,#FB8500)' : 'white',
-                    color: selectedProduct.id === prod.id ? 'white' : '#374151',
-                    border: selectedProduct.id === prod.id ? 'none' : '1.5px solid #e5e7eb',
-                    boxShadow: selectedProduct.id === prod.id ? '0 4px 12px rgba(232,93,4,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
+                    background: selectedProduct.id === prod.id ? "linear-gradient(135deg,#E85D04,#FB8500)" : "white",
+                    color: selectedProduct.id === prod.id ? "white" : "#374151",
+                    border: selectedProduct.id === prod.id ? "none" : "1.5px solid #e5e7eb",
+                    boxShadow: selectedProduct.id === prod.id ? "0 4px 12px rgba(232,93,4,0.3)" : "0 1px 4px rgba(0,0,0,0.05)",
                   }}
                 >
                   <span
-                    className="w-4 h-4 rounded-full border shrink-0"
-                    style={{ background: prod.garmentColor, borderColor: prod.garmentColor === '#F8F7F4' || prod.garmentColor === '#F5F5F5' ? '#d1d5db' : prod.garmentColor }}
+                    className="w-3.5 h-3.5 rounded-full border shrink-0"
+                    style={{ background: prod.garmentColor, borderColor: prod.garmentColor === "#F8F7F4" || prod.garmentColor === "#F5F5F5" || prod.garmentColor === "#F2EFE9" || prod.garmentColor === "#F5F2EC" ? "#d1d5db" : prod.garmentColor }}
                   />
                   {prod.name}
                 </button>
               ))}
             </div>
 
+            {/* Garment color swatches */}
+            <div className="flex gap-1.5 mb-4 flex-wrap">
+              {studioColors.map(c => {
+                const isSelected = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
+                return (
+                  <button key={c.hex} title={c.name}
+                    onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
+                    className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110"
+                    style={{
+                      background: c.hex,
+                      borderColor: isSelected ? "#E85D04" : (c.hex.toUpperCase() === "#FFFFFF" || c.hex === "#F5F5F5" ? "#d1d5db" : c.hex),
+                      boxShadow: isSelected ? "0 0 0 2px rgba(232,93,4,0.3)" : "0 1px 3px rgba(0,0,0,0.10)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+
             {/* Mockup area */}
             <div
               className="relative rounded-3xl overflow-hidden select-none"
               style={{
-                background: 'radial-gradient(ellipse at 50% 40%, #F2F0ED 0%, #E8E5E1 50%, #DDDAD5 100%)',
-                border: '1px solid #d8d5d0',
-                boxShadow: 'inset 0 2px 20px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.08)',
+                background: "radial-gradient(ellipse at 50% 40%, #F2F0ED 0%, #E8E5E1 50%, #DDDAD5 100%)",
+                border: "1px solid #d8d5d0",
+                boxShadow: "inset 0 2px 20px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.08)",
               }}
             >
               <div
                 className="relative w-full"
                 style={{ aspectRatio: `${selectedProduct.aspect}` }}
               >
-                {/* The interactive SVG canvas */}
                 <svg
                   ref={svgRef}
                   viewBox={selectedProduct.viewBox}
                   className="absolute inset-0 w-full h-full"
-                  style={{ touchAction: 'none', userSelect: 'none' }}
-                  onPointerMove={handleSVGPointerMove}
-                  onPointerUp={handleSVGPointerUp}
-                  onPointerCancel={handleSVGPointerUp}
-                  onTouchStart={handleSVGTouchStart}
-                  onTouchMove={handleSVGTouchMove}
-                  onTouchEnd={handleSVGTouchEnd}
+                  style={{ touchAction: "none", userSelect: "none" }}
+                  onPointerDown={onSvgPointerDown}
+                  onPointerMove={onSvgPointerMove}
+                  onPointerUp={endGesture}
+                  onPointerCancel={endGesture}
                 >
-                  {/* Product SVG parts — driven by selectedColor.hex for live preview */}
-                  {isMug
-                    ? <MugSVGParts color={selectedColor.hex} showPrintZone={showPrintZone} />
-                    : <TShirtSVGParts color={selectedColor.hex} showPrintZone={showPrintZone} />
-                  }
+                  <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={showPrintZone} />
 
-                  {/* Design image with realistic "printed on" effect */}
-                  {imageDataUrl && (
-                    <>
-                      <defs>
-                        <clipPath id="design-clip">
-                          <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx="4" />
-                        </clipPath>
-                        <filter id="design-printed" x="-5%" y="-5%" width="110%" height="110%">
-                          <feTurbulence type="fractalNoise" baseFrequency={isMug ? "0.008 0.015" : "0.025 0.018"} numOctaves="3" seed="3" result="dispNoise" />
-                          <feDisplacementMap in="SourceGraphic" in2="dispNoise" scale={isMug ? "3" : "4"} xChannelSelector="R" yChannelSelector="G" result="displaced" />
-                          <feTurbulence type="fractalNoise" baseFrequency={isMug ? "0.8" : "0.5"} numOctaves="4" seed="9" result="texNoise" />
-                          <feColorMatrix type="saturate" values="0" in="texNoise" result="greyTex" />
-                          <feComponentTransfer in="greyTex" result="softTex">
-                            <feFuncA type="linear" slope={isMug ? "0.06" : "0.10"} />
-                          </feComponentTransfer>
-                          <feBlend in="displaced" in2="softTex" mode="multiply" result="textured" />
-                        </filter>
-                      </defs>
-                      <g clipPath="url(#design-clip)" style={{ mixBlendMode: 'multiply' }} filter="url(#design-printed)">
-                        <image
-                          href={imageDataUrl}
-                          x={imgX}
-                          y={imgY}
-                          width={imgSvgW}
-                          height={imgSvgH}
-                          opacity={design.opacity}
-                          transform={`rotate(${design.rotation}, ${imgCx}, ${imgCy})`}
-                          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-                          onPointerDown={handleSVGPointerDown}
-                          preserveAspectRatio="none"
-                        />
-                      </g>
-                      <g clipPath="url(#design-clip)" style={{ mixBlendMode: 'soft-light', pointerEvents: 'none' }}>
-                        <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h}
-                          fill="url(#ts-chest-light)" opacity="0.3" />
-                      </g>
+                  {/* Layers (clipped to print zone) */}
+                  <defs>
+                    <clipPath id="design-clip">
+                      <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx="4" />
+                    </clipPath>
+                  </defs>
+                  <g clipPath="url(#design-clip)" style={{ mixBlendMode: "multiply" }}>
+                    {layersRender.map(({ layer: l, geom: g }) => {
+                      if (!l.visible) return null;
+                      if (l.type === "image") {
+                        return (
+                          <image key={l.id}
+                            data-layer-id={l.id}
+                            href={l.src}
+                            x={g.x} y={g.y} width={g.w} height={g.h}
+                            opacity={l.transform.opacity}
+                            transform={`rotate(${l.transform.rotation}, ${g.cx}, ${g.cy})`}
+                            preserveAspectRatio="none"
+                            style={{ cursor: l.locked ? "not-allowed" : "grab" }}
+                          />
+                        );
+                      }
+                      // text
+                      return (
+                        <text key={l.id}
+                          data-layer-id={l.id}
+                          x={g.cx} y={g.cy}
+                          fill={l.color}
+                          fontFamily={l.fontFamily}
+                          fontWeight={l.fontWeight}
+                          fontStyle={l.fontStyle}
+                          fontSize={l.fontSize * l.transform.scale}
+                          opacity={l.transform.opacity}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          transform={`rotate(${l.transform.rotation}, ${g.cx}, ${g.cy})`}
+                          style={{ cursor: l.locked ? "not-allowed" : "grab", userSelect: "none" }}
+                        >{l.text}</text>
+                      );
+                    })}
+                  </g>
 
-                      {/* Corner resize handles */}
-                      {handles.map(h => (
-                        <circle
-                          key={h.key}
-                          cx={h.x}
-                          cy={h.y}
-                          r={7}
-                          fill="white"
-                          stroke="#E85D04"
-                          strokeWidth="2"
-                          style={{ cursor: h.key === "nw" || h.key === "se" ? 'nwse-resize' : 'nesw-resize', touchAction: 'none', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.2))' }}
-                          onPointerDown={(e) => handleResizeHandleDown(e, h.key)}
-                        />
-                      ))}
-                    </>
+                  {/* Selection outline + handles */}
+                  {selectedLayer && selGeom && (
+                    <g pointerEvents="none">
+                      <rect x={selGeom.x} y={selGeom.y} width={selGeom.w} height={selGeom.h}
+                        fill="none" stroke="#E85D04" strokeWidth="1.5" strokeDasharray="4 3"
+                        transform={`rotate(${selectedLayer.transform.rotation}, ${selGeom.cx}, ${selGeom.cy})`} />
+                    </g>
+                  )}
+                  {selectedLayer && rotatedCorners.map(h => (
+                    <circle key={h.key} cx={h.x} cy={h.y} r={7}
+                      fill="white" stroke="#E85D04" strokeWidth="2"
+                      style={{ cursor: "nwse-resize", touchAction: "none", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.2))" }}
+                      onPointerDown={handleResizeDown}
+                    />
+                  ))}
+
+                  {/* Snap guides */}
+                  {snapGuides.v && (
+                    <line x1={pz.x + pz.w / 2} y1={pz.y - 8} x2={pz.x + pz.w / 2} y2={pz.y + pz.h + 8}
+                      stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
+                  )}
+                  {snapGuides.h && (
+                    <line x1={pz.x - 8} y1={pz.y + pz.h / 2} x2={pz.x + pz.w + 8} y2={pz.y + pz.h / 2}
+                      stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
                   )}
                 </svg>
 
-                {/* Upload prompt (shown only when no image) */}
-                {!imageDataUrl && (
+                {/* Empty state */}
+                {layers.length === 0 && (
                   <div
                     className="absolute inset-0 flex items-center justify-center cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
@@ -726,18 +802,17 @@ export default function DesignStudio() {
                   >
                     <motion.div
                       whileHover={{ scale: 1.02 }}
-                      className="text-center px-10 py-10 rounded-2xl"
-                      style={{ background: 'rgba(255,255,255,0.80)', border: '2px dashed rgba(232,93,4,0.35)', backdropFilter: 'blur(6px)' }}
+                      className="text-center px-8 py-8 rounded-2xl"
+                      style={{ background: "rgba(255,255,255,0.85)", border: "2px dashed rgba(232,93,4,0.35)", backdropFilter: "blur(6px)" }}
                     >
                       <div
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                        style={{ background: 'linear-gradient(135deg,#fff4ee,#ffe8d4)' }}
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                        style={{ background: "linear-gradient(135deg,#fff4ee,#ffe8d4)" }}
                       >
-                        <Upload className="w-8 h-8 text-orange-500" />
+                        <Upload className="w-7 h-7 text-orange-500" />
                       </div>
-                      <p className="font-black text-gray-800 text-lg mb-1">Upload Your Design</p>
-                      <p className="text-sm text-gray-500">JPG or PNG · Max 10MB</p>
-                      <p className="text-xs text-gray-400 mt-2">or drag & drop here</p>
+                      <p className="font-black text-gray-800 text-base mb-1">Upload or add text</p>
+                      <p className="text-xs text-gray-500">JPG, PNG · or pick a Template</p>
                     </motion.div>
                   </div>
                 )}
@@ -745,285 +820,381 @@ export default function DesignStudio() {
                 {/* Fabric label */}
                 <div className="absolute top-4 left-4">
                   <span className="px-3 py-1.5 rounded-xl text-xs font-black"
-                    style={{ background: 'rgba(255,255,255,0.9)', color: '#374151', backdropFilter: 'blur(4px)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                    style={{ background: "rgba(255,255,255,0.9)", color: "#374151", backdropFilter: "blur(4px)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
                     {selectedProduct.description}
                   </span>
                 </div>
               </div>
 
               {/* Interaction hint */}
-              {imageDataUrl && (
-                <div className="px-4 py-3 text-xs font-semibold text-gray-500 flex items-center gap-2 border-t border-gray-100"
-                  style={{ background: 'white' }}>
+              {layers.length > 0 && (
+                <div className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 flex items-center gap-2 border-t border-gray-100"
+                  style={{ background: "white" }}>
                   <Move className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                  Drag to move · Pinch to resize (mobile) · Corner handles to resize (desktop)
+                  Drag to move · Pinch to scale & rotate · Center snaps when aligned
                 </div>
               )}
             </div>
           </div>
 
-          {/* ═══════ RIGHT: CONTROLS ═══════ */}
-          <div className="lg:w-[320px] shrink-0 flex flex-col gap-4">
+          {/* ═══════ RIGHT: TABBED PANEL ═══════ */}
+          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4">
 
-            {/* Upload / Remove BG */}
-            <div className="p-4 rounded-2xl" style={{ background: 'white', border: '1px solid #e9e5e0' }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }}
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white"
-                  style={{ background: 'linear-gradient(135deg,#E85D04,#FB8500)', boxShadow: '0 4px 12px rgba(232,93,4,0.3)' }}
-                >
-                  <Upload className="w-4 h-4" />
-                  {imageDataUrl ? "Change Image" : "Upload Image"}
-                </button>
-                {imageDataUrl && (
-                  <button
-                    onClick={() => { setImageDataUrl(null); resetDesign(); }}
-                    className="p-2.5 rounded-xl"
-                    style={{ background: '#fee2e2', color: '#dc2626' }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              {imageDataUrl && (
-                <>
-                  <motion.button
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    onClick={handleRemoveBg}
-                    disabled={isRemoving}
-                    className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all"
-                    style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' }}
-                  >
-                    {isRemoving
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
-                      : <><Scissors className="w-4 h-4" /> Remove Background</>
-                    }
-                  </motion.button>
-                  <div className="mt-3">
-                    <img
-                      src={imageDataUrl}
-                      alt="Preview"
-                      className="w-full h-20 object-contain rounded-xl"
-                      style={{ background: 'repeating-conic-gradient(#ccc 0% 25%,#f0f0f0 0% 50%) 0 0/16px 16px' }}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Tab panel */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid #e9e5e0' }}>
+            {/* Tab strip */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #e9e5e0" }}>
               <div className="flex border-b border-gray-100">
                 {[
-                  { id: "controls" as const, label: "Adjust", icon: Move },
-                  { id: "sizes" as const, label: "Size Guide", icon: Ruler },
-                  { id: "colors" as const, label: "Colors", icon: Palette },
+                  { id: "upload" as const,    label: "Upload",    icon: Upload },
+                  { id: "text" as const,      label: "Text",      icon: Type },
+                  { id: "layers" as const,    label: "Layers",    icon: LayersIcon },
+                  { id: "templates" as const, label: "Templates", icon: Sparkles },
                 ].map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors"
+                  <button key={id} onClick={() => setActiveTab(id)}
+                    className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] font-bold transition-colors"
                     style={{
-                      color: activeTab === id ? '#E85D04' : '#6b7280',
-                      borderBottom: activeTab === id ? '2px solid #E85D04' : '2px solid transparent',
-                      marginBottom: '-1px',
+                      color: activeTab === id ? "#E85D04" : "#6b7280",
+                      borderBottom: activeTab === id ? "2px solid #E85D04" : "2px solid transparent",
+                      marginBottom: "-1px",
                     }}
                   >
-                    <Icon className="w-3.5 h-3.5" />{label}
+                    <Icon className="w-4 h-4" />{label}
                   </button>
                 ))}
               </div>
 
               <AnimatePresence mode="wait">
-                {activeTab === "controls" && (
-                  <motion.div key="controls" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-4">
-                    {/* Garment size */}
-                    {!isMug && (
-                      <div>
+                {/* ── UPLOAD TAB ── */}
+                {activeTab === "upload" && (
+                  <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                      className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                      style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.3)" }}
+                    >
+                      <Upload className="w-4 h-4" /> Upload Image
+                    </button>
+                    <p className="text-[11px] text-gray-500 text-center">JPG, PNG, or WebP · Max 10MB</p>
+
+                    {selectedLayer?.type === "image" && (
+                      <>
+                        <div className="rounded-xl border border-gray-100 p-2">
+                          <img src={selectedLayer.src} alt="Preview" className="w-full h-20 object-contain rounded-lg"
+                            style={{ background: "repeating-conic-gradient(#ccc 0% 25%,#f0f0f0 0% 50%) 0 0/16px 16px" }} />
+                        </div>
+                        <button onClick={handleRemoveBg} disabled={isRemoving}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
+                          style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
+                        >
+                          {isRemoving
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
+                            : <><Scissors className="w-4 h-4" /> Remove Background</>}
+                        </button>
+                      </>
+                    )}
+
+                    {/* Garment size picker (apparel only) */}
+                    {!isMug && !isCap && (
+                      <div className="pt-3 border-t border-gray-100">
                         <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Garment Size</label>
                         <div className="flex flex-wrap gap-1.5">
                           {SIZE_CHART.map(s => (
                             <button key={s.size} onClick={() => setSelectedSize(s.size)}
                               className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
                               style={{
-                                background: selectedSize === s.size ? 'linear-gradient(135deg,#E85D04,#FB8500)' : '#f3f4f6',
-                                color: selectedSize === s.size ? 'white' : '#374151',
-                                boxShadow: selectedSize === s.size ? '0 2px 8px rgba(232,93,4,0.3)' : 'none',
+                                background: selectedSize === s.size ? "linear-gradient(135deg,#E85D04,#FB8500)" : "#f3f4f6",
+                                color: selectedSize === s.size ? "white" : "#374151",
+                                boxShadow: selectedSize === s.size ? "0 2px 8px rgba(232,93,4,0.3)" : "none",
                               }}
                             >{s.size}</button>
                           ))}
                         </div>
+                        <details className="mt-3">
+                          <summary className="text-[11px] font-bold text-gray-500 cursor-pointer flex items-center gap-1">
+                            <Ruler className="w-3 h-3" /> Size guide
+                          </summary>
+                          <div className="mt-2 rounded-lg overflow-hidden border border-gray-100">
+                            <table className="w-full text-[11px]">
+                              <thead><tr style={{ background: "#f9fafb" }}>
+                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Size</th>
+                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Chest</th>
+                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Length</th>
+                              </tr></thead>
+                              <tbody>
+                                {SIZE_CHART.map((row, i) => (
+                                  <tr key={row.size} className="border-t border-gray-50"
+                                    style={{ background: selectedSize === row.size ? "#fff4ee" : i % 2 === 0 ? "white" : "#fafafa" }}>
+                                    <td className="px-2 py-1.5 font-black" style={{ color: selectedSize === row.size ? "#E85D04" : "#111" }}>{row.size}</td>
+                                    <td className="px-2 py-1.5 text-gray-600">{row.chest}"</td>
+                                    <td className="px-2 py-1.5 text-gray-600">{row.length}"</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </details>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ── TEXT TAB ── */}
+                {activeTab === "text" && (
+                  <motion.div key="text" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
+                    <button
+                      onClick={() => {
+                        const layer: TextLayer = {
+                          id: uid(), name: "New text", type: "text", visible: true, locked: false,
+                          transform: { ...ZERO_TRANSFORM },
+                          text: "Your text", fontFamily: FONT_FAMILIES[0].value,
+                          fontWeight: 700, fontStyle: "normal", fontSize: 40, color: "#111111",
+                        };
+                        addLayer(layer);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+                      style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.3)" }}
+                    >
+                      <Plus className="w-4 h-4" /> Add Text Layer
+                    </button>
+
+                    {selectedLayer?.type === "text" ? (
+                      <>
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Text</label>
+                          <input value={selectedLayer.text}
+                            onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, text: e.target.value, name: e.target.value || "Text" } : l, false)}
+                            onBlur={() => commitLayers(layers)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-gray-200 focus:border-orange-400 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Font</label>
+                          <select value={selectedLayer.fontFamily}
+                            onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontFamily: e.target.value } : l, true)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border border-gray-200 outline-none"
+                          >
+                            {FONT_FAMILIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Size</label>
+                            <input type="number" min={8} max={200} value={selectedLayer.fontSize}
+                              onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontSize: Math.max(8, Math.min(200, parseInt(e.target.value) || 12)) } : l, false)}
+                              onBlur={() => commitLayers(layers)}
+                              className="w-full px-2 py-1.5 rounded-lg text-sm border border-gray-200 outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Color</label>
+                            <input type="color" value={selectedLayer.color}
+                              onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, color: e.target.value } : l, false)}
+                              onBlur={() => commitLayers(layers)}
+                              className="w-full h-9 rounded-lg border border-gray-200 cursor-pointer" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontWeight: l.fontWeight >= 800 ? 400 : 800 } : l, true)}
+                            className="flex-1 py-2 rounded-lg text-sm font-black border"
+                            style={{
+                              background: selectedLayer.fontWeight >= 800 ? "#fff4ee" : "white",
+                              color: selectedLayer.fontWeight >= 800 ? "#E85D04" : "#374151",
+                              borderColor: selectedLayer.fontWeight >= 800 ? "#fdd5b4" : "#e5e7eb",
+                            }}
+                          >B</button>
+                          <button
+                            onClick={() => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontStyle: l.fontStyle === "italic" ? "normal" : "italic" } : l, true)}
+                            className="flex-1 py-2 rounded-lg text-sm italic font-bold border"
+                            style={{
+                              background: selectedLayer.fontStyle === "italic" ? "#fff4ee" : "white",
+                              color: selectedLayer.fontStyle === "italic" ? "#E85D04" : "#374151",
+                              borderColor: selectedLayer.fontStyle === "italic" ? "#fdd5b4" : "#e5e7eb",
+                            }}
+                          >I</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-xs text-gray-500 p-3 rounded-xl text-center" style={{ background: "#f9fafb" }}>
+                        Add a text layer or select one to edit it.
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ── LAYERS TAB ── */}
+                {activeTab === "layers" && (
+                  <motion.div key="layers" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
+                    {/* Add buttons */}
+                    <div className="flex gap-2">
+                      <input ref={fileInputAddRef} type="file" accept="image/jpeg,image/png,image/webp"
+                        className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
+                      <button onClick={() => fileInputAddRef.current?.click()}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border"
+                        style={{ background: "white", color: "#374151", borderColor: "#e5e7eb" }}>
+                        <ImageIcon className="w-3.5 h-3.5" /> Image
+                      </button>
+                      <button onClick={() => setActiveTab("text")}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border"
+                        style={{ background: "white", color: "#374151", borderColor: "#e5e7eb" }}>
+                        <Type className="w-3.5 h-3.5" /> Text
+                      </button>
+                    </div>
+
+                    {/* Layer list (top of stack first) */}
+                    {layers.length === 0 ? (
+                      <div className="text-xs text-gray-500 p-4 rounded-xl text-center" style={{ background: "#f9fafb" }}>
+                        No layers yet. Add an image or text to start.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {[...layers].reverse().map((l) => {
+                          const isSel = selectedLayerId === l.id;
+                          return (
+                            <div key={l.id}
+                              onClick={() => setSelectedLayerId(l.id)}
+                              className="flex items-center gap-2 p-2 rounded-lg cursor-pointer border"
+                              style={{
+                                background: isSel ? "#fff4ee" : "white",
+                                borderColor: isSel ? "#fdd5b4" : "#eee",
+                              }}
+                            >
+                              <button onClick={(e) => { e.stopPropagation();
+                                updateLayer(l.id, x => ({ ...x, visible: !x.visible }), true);
+                              }} className="text-gray-400 hover:text-gray-700" title="Show/hide">
+                                {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                              </button>
+                              {l.type === "image" ? (
+                                <img src={l.src} alt="" className="w-7 h-7 rounded object-cover bg-gray-100 shrink-0" />
+                              ) : (
+                                <div className="w-7 h-7 rounded flex items-center justify-center shrink-0"
+                                  style={{ background: "#f3f4f6", color: l.color, fontWeight: 800, fontSize: 10 }}>T</div>
+                              )}
+                              <span className="text-xs font-bold text-gray-700 truncate flex-1">{l.name}</span>
+                              <button onClick={(e) => { e.stopPropagation(); moveLayer(l.id, 1); }} className="text-gray-400 hover:text-gray-700" title="Bring forward">
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); moveLayer(l.id, -1); }} className="text-gray-400 hover:text-gray-700" title="Send backward">
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation();
+                                updateLayer(l.id, x => ({ ...x, locked: !x.locked }), true);
+                              }} className="text-gray-400 hover:text-gray-700" title="Lock/unlock">
+                                {l.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); removeLayer(l.id); }} className="text-red-400 hover:text-red-600" title="Delete">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Scale */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Scale</label>
-                        <span className="text-xs font-bold text-gray-600">{Math.round(design.scale * 100)}%</span>
-                      </div>
-                      <input type="range" min="10" max="300" step="5"
-                        value={Math.round(design.scale * 100)}
-                        onChange={e => setDesign(prev => ({ ...prev, scale: parseInt(e.target.value) / 100 }))}
-                        className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: '#E85D04' }}
-                        disabled={!imageDataUrl} />
-                      <div className="flex justify-between mt-1">
-                        <button onClick={() => setDesign(p => ({ ...p, scale: Math.max(0.1, p.scale - 0.05) }))} disabled={!imageDataUrl}
-                          className="text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-30"><ZoomOut className="w-4 h-4" /></button>
-                        <button onClick={() => setDesign(p => ({ ...p, scale: Math.min(5, p.scale + 0.05) }))} disabled={!imageDataUrl}
-                          className="text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-30"><ZoomIn className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-
-                    {/* Rotation */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Rotation</label>
-                        <span className="text-xs font-bold text-gray-600">{Math.round(design.rotation)}°</span>
-                      </div>
-                      <input type="range" min="-180" max="180" step="1"
-                        value={design.rotation}
-                        onChange={e => setDesign(prev => ({ ...prev, rotation: parseInt(e.target.value) }))}
-                        className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: '#E85D04' }}
-                        disabled={!imageDataUrl} />
-                      <div className="flex justify-between mt-1">
-                        <button onClick={() => setDesign(p => ({ ...p, rotation: p.rotation - 5 }))} disabled={!imageDataUrl}
-                          className="text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-30"><RotateCcw className="w-4 h-4" /></button>
-                        <button onClick={() => setDesign(p => ({ ...p, rotation: 0 }))} disabled={!imageDataUrl}
-                          className="text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-30">Reset</button>
-                        <button onClick={() => setDesign(p => ({ ...p, rotation: p.rotation + 5 }))} disabled={!imageDataUrl}
-                          className="text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-30"><RotateCw className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-
-                    {/* Opacity */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Opacity</label>
-                        <span className="text-xs font-bold text-gray-600">{Math.round(design.opacity * 100)}%</span>
-                      </div>
-                      <input type="range" min="10" max="100" step="5"
-                        value={Math.round(design.opacity * 100)}
-                        onChange={e => setDesign(prev => ({ ...prev, opacity: parseInt(e.target.value) / 100 }))}
-                        className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: '#E85D04' }}
-                        disabled={!imageDataUrl} />
-                    </div>
-
-                    {/* Position nudge */}
-                    <div>
-                      <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Position</label>
-                      <div className="grid grid-cols-3 gap-1 w-28 mx-auto">
-                        <div />
-                        <button onClick={() => nudge("y", -4)} disabled={!imageDataUrl}
-                          className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center disabled:opacity-30">
-                          <ArrowUp className="w-4 h-4" />
-                        </button>
-                        <div />
-                        <button onClick={() => nudge("x", -4)} disabled={!imageDataUrl}
-                          className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center disabled:opacity-30">
-                          <ArrowLeft className="w-4 h-4" />
-                        </button>
-                        <button onClick={resetDesign} disabled={!imageDataUrl}
-                          className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center disabled:opacity-30">
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => nudge("x", 4)} disabled={!imageDataUrl}
-                          className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center disabled:opacity-30">
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <div />
-                        <button onClick={() => nudge("y", 4)} disabled={!imageDataUrl}
-                          className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center disabled:opacity-30">
-                          <ArrowDown className="w-4 h-4" />
-                        </button>
-                        <div />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {activeTab === "sizes" && (
-                  <motion.div key="sizes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
-                    <p className="text-xs text-gray-500 mb-3">All measurements in inches. Chest = half chest (pit to pit).</p>
-                    <div className="rounded-xl overflow-hidden border border-gray-100">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr style={{ background: '#f9fafb' }}>
-                            <th className="px-3 py-2 text-left font-black text-gray-600">Size</th>
-                            <th className="px-3 py-2 text-left font-black text-gray-600">Chest</th>
-                            <th className="px-3 py-2 text-left font-black text-gray-600">Length</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {SIZE_CHART.map((row, i) => (
-                            <tr key={row.size} onClick={() => setSelectedSize(row.size)}
-                              className="cursor-pointer border-t border-gray-50 transition-colors"
-                              style={{ background: selectedSize === row.size ? '#fff4ee' : i % 2 === 0 ? 'white' : '#fafafa' }}>
-                              <td className="px-3 py-2.5 font-black" style={{ color: selectedSize === row.size ? '#E85D04' : '#111' }}>{row.size}</td>
-                              <td className="px-3 py-2.5 font-semibold text-gray-600">{row.chest}"</td>
-                              <td className="px-3 py-2.5 font-semibold text-gray-600">{row.length}"</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 p-3 rounded-xl text-xs text-gray-500 flex items-start gap-2"
-                      style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                      <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-green-600" />
-                      <span>For a relaxed fit, size up. May shrink 1–2% after first wash.</span>
-                    </div>
-                  </motion.div>
-                )}
-
-                {activeTab === "colors" && (
-                  <motion.div key="colors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
-                    <p className="text-xs text-gray-500 mb-3">Available garment colors. Tap a swatch to switch the product view.</p>
-                    <div className="grid grid-cols-6 gap-2">
-                      {studioColors.map(c => {
-                        const isSelected = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
-                        return (
-                          <div key={c.hex} className="flex flex-col items-center gap-1" title={c.name}>
-                            <div
-                              className="w-9 h-9 rounded-xl cursor-pointer transition-transform hover:scale-110 border-2"
-                              style={{
-                                background: c.hex,
-                                borderColor: isSelected ? '#E85D04' : (c.hex === '#FFFFFF' || c.hex === '#F5F5F5' ? '#d1d5db' : c.hex),
-                                boxShadow: isSelected ? '0 0 0 3px rgba(232,93,4,0.3)' : '0 2px 6px rgba(0,0,0,0.12)',
-                              }}
-                              onClick={() => {
-                                setSelectedColor({ name: c.name, hex: c.hex });
-                                // Switch product mockup if an exact match exists in PRODUCTS; prefer same category (shirt/mug)
-                                const exactMatch = PRODUCTS.find(p => p.garmentColor.toLowerCase() === c.hex.toLowerCase());
-                                if (exactMatch) {
-                                  setSelectedProduct(exactMatch);
-                                } else {
-                                  // Pick the closest product by category (keep mug/shirt type, change color via state only)
-                                  // Color reflected in canvas snapshot via selectedColor.hex; mockup stays nearest match
-                                  const isDark = /^#[012345]/i.test(c.hex);
-                                  const category = isMug ? "mug" : "tshirt";
-                                  const fallback = PRODUCTS.find(p => p.id === `${isDark ? "black" : "white"}-${category}`);
-                                  if (fallback) setSelectedProduct(fallback);
-                                }
-                              }}
-                            />
-                            <span className="text-[9px] font-semibold truncate w-full text-center" style={{ color: isSelected ? '#E85D04' : '#6b7280' }}>{c.name}</span>
+                    {/* Adjust selected layer */}
+                    {selectedLayer && (
+                      <div className="pt-3 border-t border-gray-100 space-y-3">
+                        <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">Adjust “{selectedLayer.name}”</div>
+                        {/* Scale */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[11px] font-bold text-gray-500">Scale</label>
+                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.scale * 100)}%</span>
                           </div>
-                        );
-                      })}
+                          <input type="range" min="10" max="300" step="5"
+                            value={Math.round(selectedLayer.transform.scale * 100)}
+                            onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: parseInt(e.target.value) / 100 } }), false)}
+                            onPointerUp={() => commitLayers(layers)}
+                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
+                          <div className="flex justify-between mt-1">
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.max(0.1, l.transform.scale - 0.05) } }), true)}
+                              className="text-gray-400 hover:text-orange-500"><ZoomOut className="w-4 h-4" /></button>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.min(5, l.transform.scale + 0.05) } }), true)}
+                              className="text-gray-400 hover:text-orange-500"><ZoomIn className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                        {/* Rotation */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[11px] font-bold text-gray-500">Rotation</label>
+                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.rotation)}°</span>
+                          </div>
+                          <input type="range" min="-180" max="180" step="1"
+                            value={selectedLayer.transform.rotation}
+                            onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: parseInt(e.target.value) } }), false)}
+                            onPointerUp={() => commitLayers(layers)}
+                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
+                          <div className="flex justify-between mt-1">
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation - 5 } }), true)}
+                              className="text-gray-400 hover:text-orange-500"><RotateCcw className="w-4 h-4" /></button>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: 0 } }), true)}
+                              className="text-xs font-bold text-gray-400 hover:text-orange-500">Reset</button>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation + 5 } }), true)}
+                              className="text-gray-400 hover:text-orange-500"><RotateCw className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                        {/* Opacity */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[11px] font-bold text-gray-500">Opacity</label>
+                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.opacity * 100)}%</span>
+                          </div>
+                          <input type="range" min="10" max="100" step="5"
+                            value={Math.round(selectedLayer.transform.opacity * 100)}
+                            onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, opacity: parseInt(e.target.value) / 100 } }), false)}
+                            onPointerUp={() => commitLayers(layers)}
+                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
+                        </div>
+                        {/* Position */}
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Position</label>
+                          <div className="grid grid-cols-3 gap-1 w-28 mx-auto">
+                            <div />
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y - 4 } }), true)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowUp className="w-4 h-4" /></button>
+                            <div />
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x - 4 } }), true)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></button>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...ZERO_TRANSFORM } }), true)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><RotateCcw className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x + 4 } }), true)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowRight className="w-4 h-4" /></button>
+                            <div />
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y + 4 } }), true)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowDown className="w-4 h-4" /></button>
+                            <div />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ── TEMPLATES TAB ── */}
+                {activeTab === "templates" && (
+                  <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
+                    <p className="text-[11px] text-gray-500 mb-3">Pick a starter — adds editable text layers you can tweak.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {TEMPLATES.map(t => (
+                        <button key={t.id}
+                          onClick={() => {
+                            const newLayers = t.create();
+                            commitLayers([...layers, ...newLayers]);
+                            setSelectedLayerId(newLayers[newLayers.length - 1].id);
+                            setActiveTab("layers");
+                          }}
+                          className="aspect-square rounded-xl flex flex-col items-center justify-center p-3 text-center border transition-all hover:border-orange-300 hover:shadow-sm"
+                          style={{ background: "#fafaf8", borderColor: "#eee" }}
+                        >
+                          <div className="text-base font-black text-gray-800 leading-tight whitespace-pre">{t.preview}</div>
+                          <div className="text-[10px] mt-2 text-gray-500 font-semibold">{t.name}</div>
+                        </button>
+                      ))}
                     </div>
                     <div className="mt-4 p-3 rounded-xl text-xs text-gray-500 flex items-start gap-2"
-                      style={{ background: '#fff4ee', border: '1px solid #fdd5b4' }}>
+                      style={{ background: "#fff4ee", border: "1px solid #fdd5b4" }}>
                       <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-orange-500" />
-                      <span>More colors on request via WhatsApp.</span>
+                      <span>Tap a template, then customize the text/font in the Text tab.</span>
                     </div>
                   </motion.div>
                 )}
@@ -1033,18 +1204,17 @@ export default function DesignStudio() {
             {/* Add to cart */}
             <motion.button
               onClick={handleAddToCart}
-              disabled={!imageDataUrl || isAddingToCart}
+              disabled={layers.length === 0 || isAddingToCart}
               whileTap={{ scale: 0.97 }}
               className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2.5 disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg,#E85D04,#FB8500)', boxShadow: '0 8px 24px rgba(232,93,4,0.35)' }}
+              style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 8px 24px rgba(232,93,4,0.35)" }}
             >
               {isAddingToCart
                 ? <><Loader2 className="w-5 h-5 animate-spin" /> Adding to Cart...</>
-                : <><ShoppingCart className="w-5 h-5" /> Add Custom {selectedProduct.name} to Cart</>
-              }
+                : <><ShoppingCart className="w-5 h-5" /> Add Custom {selectedProduct.name} to Cart</>}
             </motion.button>
 
-            {!isMug && (
+            {!isMug && !isCap && (
               <p className="text-center text-xs text-gray-400">
                 Size: <strong className="text-gray-600">{selectedSize}</strong> · Free shipping above ৳1,500
               </p>
