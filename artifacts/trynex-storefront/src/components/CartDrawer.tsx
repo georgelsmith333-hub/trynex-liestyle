@@ -5,6 +5,7 @@ import { Link, useLocation } from "wouter";
   import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Sparkles, Truck, Lock, Gift } from "lucide-react";
   import { motion, AnimatePresence } from "framer-motion";
   import { useEffect, useMemo } from "react";
+  import { createPortal } from "react-dom";
 
   export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     const { items, updateQuantity, removeFromCart, subtotal, itemCount } = useCart();
@@ -26,19 +27,19 @@ import { Link, useLocation } from "wouter";
     }, [items]);
 
     useEffect(() => {
-      if (open) {
-        document.body.style.overflow = 'hidden';
-        const handleEsc = (e: KeyboardEvent) => {
-          if (e.key === 'Escape') onClose();
-        };
-        document.addEventListener('keydown', handleEsc);
-        return () => {
-          document.body.style.overflow = '';
-          document.removeEventListener('keydown', handleEsc);
-        };
-      } else {
+      if (!open) {
         document.body.style.overflow = '';
+        return;
       }
+      document.body.style.overflow = 'hidden';
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      document.addEventListener('keydown', handleEsc);
+      return () => {
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', handleEsc);
+      };
     }, [open, onClose]);
 
     const handleCheckout = () => {
@@ -51,7 +52,9 @@ import { Link, useLocation } from "wouter";
       setLocation("/cart");
     };
 
-    return (
+    if (typeof document === 'undefined') return null;
+
+    const drawerNode = (
       <AnimatePresence>
         {open && (
           <>
@@ -61,8 +64,8 @@ import { Link, useLocation } from "wouter";
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-50"
-              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+              className="fixed inset-0"
+              style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 99990 }}
               onClick={onClose}
               aria-hidden="true"
             />
@@ -73,7 +76,8 @@ import { Link, useLocation } from "wouter";
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col drawer-mobile"
+              className="fixed top-0 right-0 w-full max-w-md bg-white shadow-2xl flex flex-col"
+              style={{ zIndex: 99991, height: '100dvh', maxHeight: '100dvh' }}
               role="dialog"
               aria-label="Shopping cart"
               aria-modal="true"
@@ -277,5 +281,7 @@ import { Link, useLocation } from "wouter";
         )}
       </AnimatePresence>
     );
+
+    return createPortal(drawerNode, document.body);
   }
   
