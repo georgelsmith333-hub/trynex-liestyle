@@ -367,25 +367,28 @@ router.post("/orders", async (req, res) => {
       };
     });
 
-    // Hamper items: trust client unitPrice but verify hamper exists in DB
+    // Hamper items: ALWAYS recompute price server-side. Never trust client.
     const hamperOrderItems: any[] = [];
     for (const item of hamperItems) {
       const note = parseNote(item);
       const h = note.hamper || {};
-      let unitPrice = Number(note.unitPrice ?? 0);
+      let unitPrice = -1; // sentinel; must be set by curated or custom branch
       let hamperName = h.hamperName || item.name || "Gift Hamper";
       let hamperContents = Array.isArray(h.items) ? h.items : [];
 
-      // Verify with DB if it's a curated hamper (not custom)
       if (h.hamperId && !h.isCustom) {
-        try {
-          const [dbHamper] = await db.select().from(hamperPackagesTable).where(eq(hamperPackagesTable.id, h.hamperId));
-          if (dbHamper) {
-            unitPrice = dbHamper.discountPrice ? parseFloat(dbHamper.discountPrice) : parseFloat(dbHamper.basePrice);
-            hamperName = dbHamper.name;
-            hamperContents = (dbHamper.items as any[]) || hamperContents;
-          }
-        } catch {}
+        // Curated hamper — must exist and be active
+        const [dbHamper] = await db
+          .select()
+          .from(hamperPackagesTable)
+          .where(and(eq(hamperPackagesTable.id, h.hamperId), eq(hamperPackagesTable.active, true)));
+        if (!dbHamper) {
+          res.status(400).json({ error: "Invalid hamper", message: `Hamper ${h.hamperId} not available` });
+          return;
+        }
+        unitPrice = dbHamper.discountPrice ? parseFloat(dbHamper.discountPrice) : parseFloat(dbHamper.basePrice);
+        hamperName = dbHamper.name;
+        hamperContents = (dbHamper.items as any[]) || hamperContents;
       } else if (h.isCustom) {
         // Custom hamper: recompute price server-side from real product prices.
         const productIds = hamperContents
@@ -413,6 +416,15 @@ router.post("/orders", async (req, res) => {
           unitPrice = 0;
         }
         hamperName = "Custom Gift Hamper";
+      } else {
+        // Hamper line with neither valid curated id nor isCustom — reject.
+        res.status(400).json({ error: "Invalid hamper", message: "Hamper line item missing required identifier" });
+        return;
+      }
+
+      if (unitPrice < 0 || !Number.isFinite(unitPrice)) {
+        res.status(400).json({ error: "Invalid hamper price" });
+        return;
       }
 
       hamperOrderItems.push({

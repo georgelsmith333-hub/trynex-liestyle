@@ -50,10 +50,10 @@ router.get("/hampers/:slug", async (req, res) => {
     const isNumeric = /^\d+$/.test(idOrSlug);
     let row: any;
     if (isNumeric) {
-      [row] = await db.select().from(hamperPackagesTable).where(eq(hamperPackagesTable.id, parseInt(idOrSlug, 10)));
+      [row] = await db.select().from(hamperPackagesTable).where(and(eq(hamperPackagesTable.id, parseInt(idOrSlug, 10)), eq(hamperPackagesTable.active, true)));
     }
     if (!row) {
-      [row] = await db.select().from(hamperPackagesTable).where(eq(hamperPackagesTable.slug, idOrSlug));
+      [row] = await db.select().from(hamperPackagesTable).where(and(eq(hamperPackagesTable.slug, idOrSlug), eq(hamperPackagesTable.active, true)));
     }
     if (!row) {
       res.status(404).json({ error: "not_found", message: "Hamper not found" });

@@ -55,7 +55,7 @@ export default function AdminHampers() {
   const load = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("admin_token");
+      const token = localStorage.getItem("trynex_admin_token");
       const res = await fetch(getApiUrl("/api/admin/hampers"), {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -77,7 +77,7 @@ export default function AdminHampers() {
       return;
     }
     try {
-      const token = localStorage.getItem("admin_token");
+      const token = localStorage.getItem("trynex_admin_token");
       const isUpdate = !!editing.id;
       const url = isUpdate ? getApiUrl(`/api/admin/hampers/${editing.id}`) : getApiUrl("/api/admin/hampers");
       const res = await fetch(url, {
@@ -100,7 +100,7 @@ export default function AdminHampers() {
 
   const remove = async (id: number) => {
     if (!confirm("Delete this hamper?")) return;
-    const token = localStorage.getItem("admin_token");
+    const token = localStorage.getItem("trynex_admin_token");
     await fetch(getApiUrl(`/api/admin/hampers/${id}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
