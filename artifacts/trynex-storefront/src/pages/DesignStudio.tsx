@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -16,10 +16,15 @@ import {
   Type, Layers as LayersIcon, Sparkles,
   Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
   Image as ImageIcon, Plus, Check, CloudUpload,
+  Box, Image as Image2D,
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
 } from "./design-studio/mockups";
+import { composeLayers, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
+
+// Lazy-load the 3D bundle so first-paint stays light.
+const ProductViewer3D = lazy(() => import("./design-studio/ProductViewer3D"));
 
 /* ═══════════════════════════════════════════════════════
    LAYER MODEL
@@ -28,7 +33,8 @@ import {
 interface Transform { x: number; y: number; scale: number; rotation: number; opacity: number }
 const ZERO_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
-interface BaseLayer { id: string; name: string; visible: boolean; locked: boolean; transform: Transform }
+type Face = "front" | "back";
+interface BaseLayer { id: string; name: string; visible: boolean; locked: boolean; transform: Transform; face?: Face }
 interface ImageLayer extends BaseLayer { type: "image"; src: string; naturalW: number; naturalH: number }
 interface TextLayer extends BaseLayer {
   type: "text"; text: string; fontFamily: string; fontWeight: number;
@@ -154,6 +160,18 @@ export default function DesignStudio() {
   const [showPrintZone, setShowPrintZone] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  /* View mode + active face */
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
+  const [activeFace, setActiveFace] = useState<Face>("front");
+  const supports3D = useMemo(() => hasWebGL2(), []);
+  // Tee/longsleeve/hoodie support a back face. Mug/cap → front only.
+  const supportsBack = useMemo(
+    () => ["tshirt", "longsleeve", "hoodie"].includes(selectedProduct.category),
+    [selectedProduct.category]
+  );
+  // Reset face to "front" when switching to a single-face product
+  useEffect(() => { if (!supportsBack) setActiveFace("front"); }, [supportsBack]);
 
   /* Layers + history */
   const [layers, setLayers] = useState<Layer[]>([]);
@@ -293,6 +311,13 @@ export default function DesignStudio() {
     [layers, selectedLayerId]
   );
 
+  // Layers belonging to the current face (other-face layers stay in state, just hidden in this view).
+  const currentFaceLayers = useMemo(
+    () => layers.filter(l => (l.face ?? "front") === activeFace),
+    [layers, activeFace]
+  );
+  const otherFaceCount = layers.length - currentFaceLayers.length;
+
   /* ── Coord helpers ─────────────────────────────────── */
   const clientToSVG = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -312,10 +337,12 @@ export default function DesignStudio() {
   }, [layers, commitLayers]);
 
   const addLayer = useCallback((layer: Layer) => {
-    const next = [...layers, layer];
+    // Stamp the layer with the face the user is currently viewing.
+    const stamped: Layer = { ...layer, face: layer.face ?? activeFace };
+    const next = [...layers, stamped];
     commitLayers(next);
-    setSelectedLayerId(layer.id);
-  }, [layers, commitLayers]);
+    setSelectedLayerId(stamped.id);
+  }, [layers, commitLayers, activeFace]);
 
   const removeLayer = useCallback((id: string) => {
     const next = layers.filter(l => l.id !== id);
@@ -540,46 +567,21 @@ export default function DesignStudio() {
     }
     setIsAddingToCart(true);
     try {
-      // Compose snapshot via canvas
+      // Compose snapshot using the shared composer (front face by default).
+      const frontLayers = layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[];
       const canvas = document.createElement("canvas");
-      canvas.width = 600;
-      canvas.height = Math.round(600 * selectedProduct.baseHeight / 400);
-      const ctx = canvas.getContext("2d");
-      let snapshotUrl = "";
-      if (ctx) {
-        const sx = canvas.width / 400;
-        const sy = canvas.height / selectedProduct.baseHeight;
-        ctx.fillStyle = selectedColor.hex;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Clip to print zone
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(pz.x * sx, pz.y * sy, pz.w * sx, pz.h * sy);
-        ctx.clip();
-        for (const l of layers) {
-          if (!l.visible) continue;
-          const g = layerGeom(l);
-          ctx.save();
-          ctx.translate(g.cx * sx, g.cy * sy);
-          ctx.rotate((l.transform.rotation * Math.PI) / 180);
-          ctx.globalAlpha = l.transform.opacity;
-          if (l.type === "image") {
-            const img = new Image();
-            await new Promise<void>(r => { img.onload = () => r(); img.src = l.src; });
-            ctx.globalCompositeOperation = "multiply";
-            ctx.drawImage(img, -(g.w * sx) / 2, -(g.h * sy) / 2, g.w * sx, g.h * sy);
-          } else {
-            ctx.fillStyle = l.color;
-            ctx.font = `${l.fontStyle} ${l.fontWeight} ${Math.round(l.fontSize * l.transform.scale * sy)}px ${l.fontFamily}`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(l.text, 0, 0);
-          }
-          ctx.restore();
-        }
-        ctx.restore();
-        snapshotUrl = canvas.toDataURL("image/png", 0.85);
-      }
+      await composeLayers({
+        canvas,
+        baseHeight: selectedProduct.baseHeight,
+        printZone: pz,
+        layers: frontLayers,
+        garmentColor: selectedColor.hex,
+        outW: 600,
+        outH: Math.round(600 * selectedProduct.baseHeight / 400),
+        clipToPrintZone: true,
+        blendMode: "multiply",
+      });
+      const snapshotUrl = canvas.toDataURL("image/png", 0.85);
 
       const displayPrice = isMug
         ? (settings.studioMugPrice || 799)
@@ -603,6 +605,25 @@ export default function DesignStudio() {
         } catch {}
       }
 
+      // If the design has a back face, also render a back snapshot for the order record.
+      const backLayers = layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[];
+      let backSnapshot: string | undefined;
+      if (backLayers.length > 0) {
+        const backCanvas = document.createElement("canvas");
+        await composeLayers({
+          canvas: backCanvas,
+          baseHeight: selectedProduct.baseHeight,
+          printZone: pz,
+          layers: backLayers,
+          garmentColor: selectedColor.hex,
+          outW: 600,
+          outH: Math.round(600 * selectedProduct.baseHeight / 400),
+          clipToPrintZone: true,
+          blendMode: "multiply",
+        });
+        backSnapshot = backCanvas.toDataURL("image/png", 0.85);
+      }
+
       addToCart({
         productId: 0,
         name: `Custom ${selectedProduct.name}`,
@@ -611,7 +632,7 @@ export default function DesignStudio() {
         size: isMug || isCap ? undefined : selectedSize,
         color: selectedColor.name,
         imageUrl: snapshotUrl,
-        customImages: [compressedImage],
+        customImages: backSnapshot ? [compressedImage, backSnapshot] : [compressedImage],
         customNote: JSON.stringify({
           studioDesign: true,
           product: selectedProduct.name,
@@ -619,6 +640,8 @@ export default function DesignStudio() {
           colorHex: selectedColor.hex,
           size: selectedSize,
           layerCount: layers.length,
+          frontLayerCount: frontLayers.length,
+          backLayerCount: backLayers.length,
         }),
       });
 
@@ -756,6 +779,29 @@ export default function DesignStudio() {
               style={{ background: "#f3f4f6" }} title="Redo (Ctrl+Y)">
               <Redo2 className="w-4 h-4" />
             </button>
+            {/* 2D / 3D toggle */}
+            {supports3D && (
+              <div className="hidden sm:flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
+                <button
+                  onClick={() => setViewMode("2d")}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
+                  style={{ background: viewMode === "2d" ? "#fff4ee" : "white", color: viewMode === "2d" ? "#E85D04" : "#6b7280" }}
+                  title="2D editor"
+                  data-testid="view-mode-2d"
+                >
+                  <Image2D className="w-3.5 h-3.5" /> 2D
+                </button>
+                <button
+                  onClick={() => setViewMode("3d")}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
+                  style={{ background: viewMode === "3d" ? "#fff4ee" : "white", color: viewMode === "3d" ? "#E85D04" : "#6b7280", borderLeft: "1px solid #e5e7eb" }}
+                  title="Realtime 3D preview"
+                  data-testid="view-mode-3d"
+                >
+                  <Box className="w-3.5 h-3.5" /> 3D
+                </button>
+              </div>
+            )}
             <button
               onClick={() => setShowPrintZone(v => !v)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
@@ -809,6 +855,32 @@ export default function DesignStudio() {
               ))}
             </div>
 
+            {/* Face switcher (only for tee/longsleeve/hoodie) */}
+            {supportsBack && (
+              <div className="flex gap-1.5 mb-3" data-testid="face-switcher">
+                {(["front", "back"] as const).map(f => (
+                  <button key={f}
+                    onClick={() => setActiveFace(f)}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                    style={{
+                      background: activeFace === f ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
+                      color: activeFace === f ? "white" : "#374151",
+                      border: activeFace === f ? "none" : "1.5px solid #e5e7eb",
+                      boxShadow: activeFace === f ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+                    }}
+                    data-testid={`face-${f}`}
+                  >
+                    {f === "front" ? "Front" : "Back"}
+                  </button>
+                ))}
+                {otherFaceCount > 0 && (
+                  <span className="px-3 py-2 text-[11px] font-bold text-gray-500" style={{ background: "#f3f4f6", borderRadius: 12 }}>
+                    {otherFaceCount} layer{otherFaceCount !== 1 ? "s" : ""} on the {activeFace === "front" ? "back" : "front"}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Garment color swatches */}
             <div className="flex gap-1.5 mb-4 flex-wrap">
               {studioColors.map(c => {
@@ -840,6 +912,36 @@ export default function DesignStudio() {
                 className="relative w-full"
                 style={{ aspectRatio: `${selectedProduct.aspect}` }}
               >
+                {viewMode === "3d" && supports3D ? (
+                  <div className="absolute inset-0" data-testid="viewer-3d">
+                    <Suspense fallback={
+                      <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading 3D preview…
+                      </div>
+                    }>
+                      <ProductViewer3D
+                        product={selectedProduct}
+                        garmentColor={selectedColor.hex}
+                        front={{
+                          layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
+                          printZone: pz,
+                          baseHeight: selectedProduct.baseHeight,
+                        }}
+                        back={supportsBack ? {
+                          layers: layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[],
+                          printZone: pz,
+                          baseHeight: selectedProduct.baseHeight,
+                        } : undefined}
+                        activeFace={activeFace}
+                      />
+                    </Suspense>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[11px] font-bold text-white pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
+                      Drag to rotate · Scroll to zoom
+                    </div>
+                  </div>
+                ) : (
+                <>
                 <svg
                   ref={svgRef}
                   viewBox={selectedProduct.viewBox}
@@ -859,7 +961,9 @@ export default function DesignStudio() {
                     </clipPath>
                   </defs>
                   <g clipPath="url(#design-clip)" style={{ mixBlendMode: "multiply" }}>
-                    {layersRender.map(({ layer: l, geom: g }) => {
+                    {layersRender
+                      .filter(({ layer }) => (layer.face ?? "front") === activeFace)
+                      .map(({ layer: l, geom: g }) => {
                       if (!l.visible) return null;
                       if (l.type === "image") {
                         return (
@@ -953,6 +1057,8 @@ export default function DesignStudio() {
                     {selectedProduct.description}
                   </span>
                 </div>
+                </>
+                )}
               </div>
 
               {/* Interaction hint */}

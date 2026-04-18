@@ -130,10 +130,17 @@
     }</script>
 
     <!-- Google Sign-In -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" data-cfasync="false" async defer></script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!--
+      data-cfasync="false" tells Cloudflare Rocket Loader to leave this script
+      alone. Without it, Rocket Loader rewrites type="module" to a synthetic
+      type that the browser refuses to execute, and the app stays a blank
+      white screen on mobile. The vite plugin in vite.config.ts also adds
+      data-cfasync="false" to every other <script> tag in the built HTML.
+    -->
+    <script type="module" data-cfasync="false" src="/src/main.tsx"></script>
   </body>
 </html>
