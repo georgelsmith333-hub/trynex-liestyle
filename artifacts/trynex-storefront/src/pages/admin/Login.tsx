@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAdminLogin } from "@workspace/api-client-react";
 import { Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { nukeAndReload } from "@/lib/cache-recovery";
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
@@ -26,10 +27,18 @@ export default function AdminLogin() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       const status = (err as { status?: number })?.status;
+      // A 400 here means the request reached the API but the body was
+      // missing/empty. The only known cause is a stale Service Worker on
+      // the user's device that mangles cross-origin POST bodies. Auto-fix
+      // by unregistering the SW, clearing caches, and reloading.
+      if (status === 400) {
+        setErrorMsg("Updating app to the latest version…");
+        await nukeAndReload("admin-login 400 (stale SW likely)");
+        return;
+      }
       if (status === 401) {
         setErrorMsg("Incorrect password. Please try again.");
       } else if (status === 405 || status === 404) {
-        // Wrong host — request hit the static site, not the API.
         setErrorMsg("Server unreachable: API route is misconfigured. Please contact the site admin.");
       } else if (status && status >= 500) {
         setErrorMsg("Server error. Please try again in a moment.");

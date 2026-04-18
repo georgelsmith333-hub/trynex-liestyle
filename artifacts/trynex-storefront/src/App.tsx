@@ -23,6 +23,7 @@ import { FlashSaleBar } from "@/components/FlashSaleBar";
 import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { useUtmCapture } from "@/hooks/useUtm";
 import { Loader } from "@/components/ui/Loader";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 const Home = lazy(() => import("./pages/Home"));
 const Products = lazy(() => import("./pages/Products"));
@@ -144,6 +145,7 @@ function AppInner() {
 
 function App() {
   return (
+    <AppErrorBoundary>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -177,6 +179,7 @@ function App() {
         </TooltipProvider>
       </QueryClientProvider>
     </HelmetProvider>
+    </AppErrorBoundary>
   );
 }
 
