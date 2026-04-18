@@ -394,28 +394,36 @@ router.post("/orders", async (req, res) => {
         const productIds = hamperContents
           .map((it: any) => Number(it.productId))
           .filter((id: number) => Number.isFinite(id) && id > 0);
-        if (productIds.length > 0) {
-          const dbProducts = await db
-            .select({ id: productsTable.id, price: productsTable.price, discountPrice: productsTable.discountPrice })
-            .from(productsTable)
-            .where(inArray(productsTable.id, productIds));
-          const priceById = new Map(dbProducts.map(p => [
-            p.id,
-            p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price),
-          ]));
-          let raw = 0;
-          for (const it of hamperContents) {
-            const pid = Number(it.productId);
-            const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
-            const unit = priceById.get(pid);
-            if (unit !== undefined) raw += unit * qty;
-          }
-          // 5% bundle discount, matches storefront builder
-          unitPrice = Math.round(raw * 0.95);
-        } else {
-          unitPrice = 0;
+        if (productIds.length === 0) {
+          res.status(400).json({ error: "Invalid hamper", message: "Custom hamper requires at least one product" });
+          return;
         }
+        const dbProducts = await db
+          .select({ id: productsTable.id, price: productsTable.price, discountPrice: productsTable.discountPrice })
+          .from(productsTable)
+          .where(inArray(productsTable.id, productIds));
+        const priceById = new Map(dbProducts.map(p => [
+          p.id,
+          p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price),
+        ]));
+        const validConstituents: Array<{ productId: number; quantity: number }> = [];
+        let raw = 0;
+        for (const it of hamperContents) {
+          const pid = Number(it.productId);
+          const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+          const unit = priceById.get(pid);
+          if (unit === undefined) continue;
+          raw += unit * qty;
+          validConstituents.push({ productId: pid, quantity: qty });
+        }
+        if (validConstituents.length === 0 || raw <= 0) {
+          res.status(400).json({ error: "Invalid hamper", message: "Custom hamper has no valid products" });
+          return;
+        }
+        // 5% bundle discount, matches storefront builder
+        unitPrice = Math.round(raw * 0.95);
         hamperName = "Custom Gift Hamper";
+        (h as any).__constituents = validConstituents;
       } else {
         // Hamper line with neither valid curated id nor isCustom — reject.
         res.status(400).json({ error: "Invalid hamper", message: "Hamper line item missing required identifier" });
@@ -427,21 +435,25 @@ router.post("/orders", async (req, res) => {
         return;
       }
 
+      const lineQty = Math.max(1, Math.floor(Number(item.quantity)));
+      const noteH: any = { ...h, items: hamperContents, hamperName };
+      delete noteH.__constituents;
       hamperOrderItems.push({
         productId: 0,
         productName: hamperName,
         productImage: item.imageUrl || null,
-        quantity: Math.max(1, Math.floor(Number(item.quantity))),
+        quantity: lineQty,
         price: unitPrice,
-        customNote: JSON.stringify({
-          hamper: {
-            ...h,
-            items: hamperContents,
-            hamperName,
-          },
-        }),
+        customNote: JSON.stringify({ hamper: noteH }),
         customImages: [],
         isHamper: true,
+        // For custom hampers we must decrement stock of each constituent product.
+        constituentProducts: (h as any).__constituents
+          ? ((h as any).__constituents as Array<{ productId: number; quantity: number }>).map(c => ({
+              productId: c.productId,
+              quantity: c.quantity * lineQty,
+            }))
+          : [],
       });
     }
 
@@ -464,8 +476,21 @@ router.post("/orders", async (req, res) => {
 
     const order = await db.transaction(async (tx) => {
       for (const item of orderItems) {
-        // Studio + hamper items have no catalog product — skip stock check and decrement
-        if ((item as any).isStudio || (item as any).isHamper) continue;
+        // Studio items have no catalog product — skip
+        if ((item as any).isStudio) continue;
+
+        // Custom hampers: validate + decrement stock of each constituent product
+        if ((item as any).isHamper) {
+          const constituents = ((item as any).constituentProducts || []) as Array<{ productId: number; quantity: number }>;
+          for (const c of constituents) {
+            const [prod] = await tx.select({ stock: productsTable.stock, name: productsTable.name }).from(productsTable).where(eq(productsTable.id, c.productId));
+            if (!prod || prod.stock < c.quantity) {
+              throw new Error(`Insufficient stock for hamper item ${prod?.name ?? c.productId}`);
+            }
+            await tx.update(productsTable).set({ stock: prod.stock - c.quantity }).where(eq(productsTable.id, c.productId));
+          }
+          continue;
+        }
 
         const [prod] = await tx.select({ stock: productsTable.stock }).from(productsTable).where(eq(productsTable.id, item.productId));
         if (!prod || prod.stock < item.quantity) {
