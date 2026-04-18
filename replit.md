@@ -119,7 +119,9 @@ lib/
 ## Environment Variables
 
 - `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)
-- `SESSION_SECRET` — Secret for JWT signing
+- `JWT_SECRET` — Secret for signing customer JWTs (login/account tokens)
+- `ADMIN_JWT_SECRET` — Separate secret for signing admin panel JWTs. Must be distinct from `JWT_SECRET` so a customer token cannot pass admin signature verification. Required in production.
+- `SESSION_SECRET` — Legacy/session secret (still read in some places)
 - `PORT` — Port for each service (set by Replit workflows)
 - `API_PORT` — API server port for storefront proxy (default: 8080)
 
