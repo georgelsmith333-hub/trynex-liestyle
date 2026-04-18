@@ -6,6 +6,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
+import { getApiUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, RotateCcw, Trash2, ShoppingCart,
@@ -313,7 +314,7 @@ export default function DesignStudio() {
     if (!imageDataUrl) return;
     setIsRemoving(true);
     try {
-      const res = await fetch("/api/remove-bg", {
+      const res = await fetch(getApiUrl("/api/remove-bg"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageDataUrl }),

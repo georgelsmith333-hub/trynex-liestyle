@@ -6,7 +6,7 @@ import {
   type Category, type Product, type CreateProductRequest, type UpdateProductRequest
 } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
-import { getAuthHeaders, formatPrice } from "@/lib/utils";
+import { getAuthHeaders, formatPrice, getApiUrl } from "@/lib/utils";
 import { Plus, Trash2, X, Package, Edit3, AlertTriangle, Search, Star, Upload, FileText, CheckCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -271,8 +271,7 @@ export default function AdminProducts() {
     setBulkUploading(true);
     setBulkResult(null);
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-      const resp = await fetch(`${apiBase}/api/products/bulk`, {
+      const resp = await fetch(getApiUrl('/api/products/bulk'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ products }),

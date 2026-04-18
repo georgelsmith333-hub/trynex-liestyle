@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { getApiBaseUrl } from "@/lib/utils";
 
 interface CustomerProfile {
   id: number;
@@ -23,8 +24,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function getApiUrl(path: string): string {
-  const base = (import.meta.env.VITE_API_BASE_URL as string || "").replace(/\/+$/, "");
-  return `${base}/api${path}`;
+  return `${getApiBaseUrl()}/api${path}`;
 }
 
 async function safeJsonParse(resp: Response): Promise<Record<string, unknown>> {

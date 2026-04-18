@@ -8,6 +8,7 @@ import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useListProducts, useGetTestimonials } from "@workspace/api-client-react";
+import { getApiUrl } from "@/lib/utils";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import {
   ArrowRight, Sparkles, Zap, Package, Star, Check, Truck,
@@ -597,7 +598,7 @@ function usePublicStats(): PublicStats {
 
   useEffect(() => {
     const fetchStats = () =>
-      fetch("/api/public-stats")
+      fetch(getApiUrl("/api/public-stats"))
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data) setStats(data); })
         .catch(() => {});

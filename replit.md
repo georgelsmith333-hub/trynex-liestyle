@@ -4,6 +4,27 @@
 
 Full-stack e-commerce platform for TryNex Lifestyle, a premium custom apparel brand from Bangladesh. Built as a pnpm workspace monorepo with TypeScript.
 
+## Production URLs & Auth Setup
+
+- **Storefront** (Cloudflare Pages): `https://trynexshop.com`
+- **API server** (Render): `https://trynex-api.onrender.com`
+- **Admin panel**: `https://trynexshop.com/admin/login` — default password `Admins@Trynex` (overridable by setting `ADMIN_PASSWORD` env var on Render; the password auto-syncs to the env value on every login attempt).
+
+The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_API_BASE_URL` in `artifacts/trynex-storefront/src/lib/utils.ts`), so it works even if `VITE_API_BASE_URL` is not set in Cloudflare Pages env. Local dev (`localhost`, `*.replit.dev`) still uses same-origin requests.
+
+### Google sign-in setup (one-time, optional)
+1. In Google Cloud Console, create an OAuth 2.0 Client ID (type: Web application).
+2. Under "Authorized JavaScript origins" add: `https://trynexshop.com`
+3. Copy the Client ID and paste it into Admin Settings → "Google Client ID".
+
+### Facebook sign-in setup (one-time, optional)
+1. At developers.facebook.com create an App (type: Consumer) and add the "Facebook Login" product.
+2. Under Facebook Login → Settings → "Valid OAuth Redirect URIs" add: `https://trynexshop.com/`
+3. Under App Settings → Basic, add `trynexshop.com` to "App Domains".
+4. Copy the App ID and paste it into Admin Settings → "Facebook App ID".
+
+If those fields are blank in Admin Settings, the social buttons simply hide on the login/signup pages — the rest of the site still works.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
