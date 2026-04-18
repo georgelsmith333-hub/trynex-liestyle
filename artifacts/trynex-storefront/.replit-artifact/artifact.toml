@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "TryNex Lifestyle"
+version = "1.0.0"
+id = "artifacts/trynex-storefront"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 8081
+
+[services.development]
+run = "pnpm --filter @workspace/trynex-storefront run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trynex-storefront", "run", "build" ]
+publicDir = "artifacts/trynex-storefront/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "8081"
+BASE_PATH = "/"

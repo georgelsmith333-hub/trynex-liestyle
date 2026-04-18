@@ -1,0 +1,614 @@
+import { Router, type IRouter } from "express";
+import { db, ordersTable, productsTable, settingsTable, promoCodesTable, referralsTable } from "@workspace/db";
+import { eq, and, desc, sql, inArray, lte } from "drizzle-orm";
+import { requireAdmin } from "../middlewares/adminAuth";
+import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
+import { logger } from "../lib/logger";
+
+const router: IRouter = Router();
+
+async function migrateOrdersTable() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS utm_source TEXT,
+        ADD COLUMN IF NOT EXISTS utm_medium TEXT,
+        ADD COLUMN IF NOT EXISTS utm_campaign TEXT
+    `);
+  } catch {}
+}
+migrateOrdersTable();
+
+async function sendMetaCAPIEvent(event: {
+  eventName: string;
+  orderId: string;
+  total: number;
+  currency: string;
+  items: { id: string | number; name: string; price: number; quantity: number }[];
+  email?: string;
+  phone?: string;
+  sourceUrl?: string;
+}) {
+  try {
+    const [tokenRow] = await db.select().from(settingsTable).where(eq(settingsTable.key, "metaCapiToken"));
+    const [pixelRow] = await db.select().from(settingsTable).where(eq(settingsTable.key, "facebookPixelId"));
+    const capiToken = tokenRow?.value?.trim();
+    const pixelId = pixelRow?.value?.trim();
+    if (!capiToken || !pixelId) return;
+
+    const sha256 = (input: string): string => {
+      const { createHash } = require("crypto");
+      return createHash("sha256").update(input).digest("hex");
+    };
+
+    const hashedEmail = event.email
+      ? sha256(event.email.toLowerCase().trim())
+      : undefined;
+    const hashedPhone = event.phone
+      ? sha256(event.phone.replace(/\D/g, ""))
+      : undefined;
+
+    const payload = {
+      data: [{
+        event_name: event.eventName,
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: event.orderId,
+        action_source: "website",
+        event_source_url: event.sourceUrl || "https://trynex.com.bd/checkout",
+        user_data: {
+          em: hashedEmail ? [hashedEmail] : undefined,
+          ph: hashedPhone ? [hashedPhone] : undefined,
+        },
+        custom_data: {
+          currency: event.currency,
+          value: event.total,
+          content_ids: event.items.map(i => String(i.id)),
+          content_type: "product",
+          num_items: event.items.length,
+        },
+      }],
+    };
+
+    await fetch(
+      `https://graph.facebook.com/v20.0/${pixelId}/events?access_token=${capiToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+  } catch (err) {
+    logger.error({ err }, "Meta CAPI event failed (non-blocking)");
+  }
+}
+
+async function sendWhatsAppNotification(orderData: any) {
+  const phone = process.env.CALLMEBOT_PHONE;
+  const apiKey = process.env.CALLMEBOT_APIKEY;
+  if (!phone || !apiKey) return;
+
+  const itemsList = (orderData.items || [])
+    .map((i: any) => `${i.productName} x${i.quantity}`)
+    .join(", ");
+
+  const advance = Math.ceil(orderData.total * 0.15);
+  const message = [
+    `🛒 *NEW ORDER!* #${orderData.orderNumber}`,
+    `━━━━━━━━━━━━━━━`,
+    `👤 *Customer:* ${orderData.customerName}`,
+    `📱 *Phone:* ${orderData.customerPhone}`,
+    `📧 *Email:* ${orderData.customerEmail || 'N/A'}`,
+    `📍 *Location:* ${orderData.shippingDistrict}${orderData.shippingCity ? ` (${orderData.shippingCity})` : ''}`,
+    `🏠 *Address:* ${orderData.shippingAddress}`,
+    `━━━━━━━━━━━━━━━`,
+    `🛍️ *Items:* ${itemsList}`,
+    `💰 *Total:* ৳${orderData.total}`,
+    `💳 *Payment:* ${orderData.paymentMethod?.toUpperCase()}`,
+    `🏷️ *Advance (15%):* ৳${advance}`,
+    orderData.promoCode ? `🎟️ *Promo:* ${orderData.promoCode} (-৳${orderData.promoDiscount})` : '',
+    orderData.notes ? `📝 *Notes:* ${orderData.notes}` : '',
+    `━━━━━━━━━━━━━━━`,
+    `⏰ ${new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' })}`,
+  ].filter(Boolean).join("\n");
+
+  try {
+    await fetch(
+      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`
+    );
+  } catch (err) {
+    logger.error({ err }, "WhatsApp notification failed (non-blocking)");
+  }
+}
+
+async function checkLowStock() {
+  const phone = process.env.CALLMEBOT_PHONE;
+  const apiKey = process.env.CALLMEBOT_APIKEY;
+  if (!phone || !apiKey) return;
+
+  try {
+    const lowStock = await db.select({ id: productsTable.id, name: productsTable.name, stock: productsTable.stock })
+      .from(productsTable).where(lte(productsTable.stock, 3));
+
+    if (lowStock.length === 0) return;
+
+    const list = lowStock.map(p => `⚠️ ${p.name}: ${p.stock} left`).join("\n");
+    const message = `🚨 *Low Stock Alert*\n${list}`;
+
+    await fetch(
+      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`
+    );
+  } catch (err) {
+    logger.error({ err }, "Low stock notification failed (non-blocking)");
+  }
+}
+
+function generateOrderNumber(): string {
+  const date = new Date();
+  const dateStr = date.getFullYear().toString().slice(2) +
+    String(date.getMonth() + 1).padStart(2, "0") +
+    String(date.getDate()).padStart(2, "0");
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  return `TN${dateStr}${random}`;
+}
+
+function mapOrder(o: any) {
+  return {
+    id: o.id,
+    orderNumber: o.orderNumber,
+    customerName: o.customerName,
+    customerEmail: o.customerEmail,
+    customerPhone: o.customerPhone,
+    shippingAddress: o.shippingAddress,
+    shippingCity: o.shippingCity,
+    shippingDistrict: o.shippingDistrict,
+    paymentMethod: o.paymentMethod,
+    paymentStatus: o.paymentStatus,
+    status: o.status,
+    items: (o.items ?? []).map((item: any, idx: number) => ({ id: idx + 1, ...item })),
+    subtotal: parseFloat(o.subtotal),
+    shippingCost: parseFloat(o.shippingCost ?? "0"),
+    promoCode: o.promoCode || null,
+    promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) : 0,
+    total: parseFloat(o.total),
+    notes: o.notes,
+    utmSource: o.utmSource || null,
+    utmMedium: o.utmMedium || null,
+    utmCampaign: o.utmCampaign || null,
+    createdAt: o.createdAt?.toISOString(),
+    updatedAt: o.updatedAt?.toISOString(),
+  };
+}
+
+router.get("/orders/my", async (req, res) => {
+  try {
+    const token = extractCustomerToken(req as any);
+    if (!token) {
+      res.status(401).json({ error: "unauthorized", message: "Not authenticated" });
+      return;
+    }
+    const decoded = verifyCustomerToken(token);
+    if (!decoded) {
+      res.status(401).json({ error: "unauthorized", message: "Invalid or expired token" });
+      return;
+    }
+    const orders = await db.select().from(ordersTable)
+      .where(eq(ordersTable.customerEmail, decoded.email.toLowerCase()))
+      .orderBy(desc(ordersTable.createdAt));
+    res.json({ orders: orders.map(mapOrder) });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get customer orders");
+    res.status(500).json({ error: "internal_error", message: "Failed to get orders" });
+  }
+});
+
+router.get("/orders", requireAdmin, async (req, res) => {
+  try {
+    const { status, page = "1", limit = "20" } = req.query;
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    const conditions: any[] = [];
+    if (status) conditions.push(eq(ordersTable.status, status as string));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [orders, countResult] = await Promise.all([
+      db.select().from(ordersTable).where(where).orderBy(desc(ordersTable.createdAt)).limit(limitNum).offset(offset),
+      db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(where),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    res.json({
+      orders: orders.map(mapOrder),
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list orders");
+    res.status(500).json({ error: "internal_error", message: "Failed to list orders" });
+  }
+});
+
+router.post("/orders/track", async (req, res) => {
+  try {
+    const { orderNumber, email } = req.body;
+    if (!orderNumber || !email) {
+      res.status(400).json({ error: "validation_error", message: "orderNumber and email are required" });
+      return;
+    }
+    const [order] = await db.select().from(ordersTable).where(
+      and(eq(ordersTable.orderNumber, orderNumber), eq(ordersTable.customerEmail, email))
+    );
+    if (!order) {
+      res.status(404).json({ error: "not_found", message: "Order not found" });
+      return;
+    }
+    res.json(mapOrder(order));
+  } catch (err) {
+    req.log.error({ err }, "Failed to track order");
+    res.status(500).json({ error: "internal_error", message: "Failed to track order" });
+  }
+});
+
+router.get("/orders/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    if (!order) {
+      res.status(404).json({ error: "not_found", message: "Order not found" });
+      return;
+    }
+    res.json(mapOrder(order));
+  } catch (err) {
+    req.log.error({ err }, "Failed to get order");
+    res.status(500).json({ error: "internal_error", message: "Failed to get order" });
+  }
+});
+
+router.post("/orders", async (req, res) => {
+  try {
+    const { customerName, customerEmail, customerPhone, shippingAddress, shippingCity, shippingDistrict, paymentMethod, items, notes, promoCode, utmSource, utmMedium, utmCampaign } = req.body;
+    const customerEmailLower = customerEmail ? customerEmail.toLowerCase().trim() : null;
+
+    if (!customerName || !customerEmail || !customerPhone || !shippingAddress || !paymentMethod || !items?.length) {
+      res.status(400).json({ error: "validation_error", message: "Missing required fields" });
+      return;
+    }
+
+    for (const item of items) {
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
+        res.status(400).json({ error: "validation_error", message: "Quantity must be a positive integer (1-100)" });
+        return;
+      }
+      if (item.customImages && (!Array.isArray(item.customImages) || item.customImages.length > 10)) {
+        res.status(400).json({ error: "validation_error", message: "Maximum 10 custom images per item" });
+        return;
+      }
+    }
+
+    // Separate studio design items (productId: 0 + customNote.studioDesign === true)
+    // from regular catalog items so each can be handled appropriately.
+    const isStudioItem = (item: any): boolean => {
+      if (Number(item.productId) !== 0) return false;
+      try { return !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch { return false; }
+    };
+
+    const catalogItems = items.filter((i: any) => !isStudioItem(i));
+    const studioItems = items.filter((i: any) => isStudioItem(i));
+
+    // Fetch studio prices from server-side settings (never trust client price)
+    let studioTshirtPrice = 1099;
+    let studioMugPrice = 799;
+    try {
+      const allSettings = await db.select().from(settingsTable);
+      const settingsMap = Object.fromEntries(allSettings.map((s: any) => [s.key, s.value]));
+      if (settingsMap.studioTshirtPrice) studioTshirtPrice = parseFloat(settingsMap.studioTshirtPrice) || 1099;
+      if (settingsMap.studioMugPrice) studioMugPrice = parseFloat(settingsMap.studioMugPrice) || 799;
+    } catch {}
+
+    const productIds = catalogItems.map((i: any) => Number(i.productId));
+
+    const products = await Promise.all(
+      productIds.map(async (id: number) => {
+        const [p] = await db.select().from(productsTable).where(eq(productsTable.id, id));
+        return p;
+      })
+    );
+
+    const productMap = Object.fromEntries(products.map(p => [p.id, p]));
+
+    const catalogOrderItems = catalogItems.map((item: any) => {
+      const product = productMap[item.productId];
+      if (!product) throw new Error(`Product ${item.productId} not found`);
+      const price = product.discountPrice ? parseFloat(product.discountPrice) : parseFloat(product.price);
+      return {
+        productId: item.productId,
+        productName: product.name,
+        productImage: product.imageUrl,
+        quantity: Math.max(1, Math.floor(Number(item.quantity))),
+        size: item.size,
+        color: item.color,
+        price,
+        customNote: item.customNote,
+        customImages: item.customImages || [],
+        isStudio: false,
+      };
+    });
+
+    // Studio items: price is derived server-side from settings; client price is ignored
+    const studioOrderItems = studioItems.map((item: any) => {
+      let note: any = {};
+      try { note = JSON.parse(item.customNote ?? "{}"); } catch {}
+      // Determine product type from the studio note to apply the correct price
+      const isMug = (note.product ?? "").toLowerCase().includes("mug");
+      const serverPrice = isMug ? studioMugPrice : studioTshirtPrice;
+      return {
+        productId: 0,
+        productName: item.name || (isMug ? "Custom Studio Mug" : "Custom Studio T-Shirt"),
+        productImage: item.imageUrl || null,
+        quantity: Math.max(1, Math.floor(Number(item.quantity))),
+        size: item.size,
+        color: item.color,
+        price: serverPrice,
+        customNote: item.customNote,
+        customImages: item.customImages || [],
+        isStudio: true,
+      };
+    });
+
+    const orderItems = [...catalogOrderItems, ...studioOrderItems];
+
+    const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+
+    let freeThreshold = 1500;
+    let shipCost = 100;
+    try {
+      const settings = await db.select().from(settingsTable);
+      const settingsMap = Object.fromEntries(settings.map(s => [s.key, s.value]));
+      if (settingsMap.freeShippingThreshold) freeThreshold = Number(settingsMap.freeShippingThreshold) || 1500;
+      if (settingsMap.shippingCost) shipCost = Number(settingsMap.shippingCost) || 100;
+    } catch {}
+    const shippingCost = subtotal >= freeThreshold ? 0 : shipCost;
+
+    const wantsPromo = promoCode && typeof promoCode === "string" && promoCode.trim().length > 0;
+    const promoCodeNormalized = wantsPromo ? promoCode.trim().toUpperCase() : null;
+
+    const order = await db.transaction(async (tx) => {
+      for (const item of orderItems) {
+        // Studio design items have no catalog product — skip stock check and decrement
+        if ((item as any).isStudio) continue;
+
+        const [prod] = await tx.select({ stock: productsTable.stock }).from(productsTable).where(eq(productsTable.id, item.productId));
+        if (!prod || prod.stock < item.quantity) {
+          throw new Error(`Insufficient stock for product ${item.productName}`);
+        }
+        await tx.execute(
+          sql`UPDATE products SET stock = stock - ${item.quantity} WHERE id = ${item.productId}`
+        );
+      }
+
+      let validatedPromoCode: string | null = null;
+      let validatedPromoDiscount = 0;
+
+      if (promoCodeNormalized) {
+        const [promo] = await tx
+          .select()
+          .from(promoCodesTable)
+          .where(eq(promoCodesTable.code, promoCodeNormalized));
+
+        if (promo) {
+          if (
+            !promo.active ||
+            (promo.expiresAt && new Date(promo.expiresAt) <= new Date()) ||
+            (promo.maxUses && promo.maxUses > 0 && (promo.usedCount ?? 0) >= promo.maxUses) ||
+            (promo.minOrderAmount && subtotal < parseFloat(promo.minOrderAmount))
+          ) {
+            throw new Error("PROMO_INVALID");
+          }
+
+          await tx
+            .update(promoCodesTable)
+            .set({ usedCount: sql`COALESCE(${promoCodesTable.usedCount}, 0) + 1` })
+            .where(eq(promoCodesTable.id, promo.id));
+
+          validatedPromoCode = promo.code;
+          if (promo.discountType === "percentage") {
+            validatedPromoDiscount = Math.round(subtotal * parseFloat(promo.discountValue) / 100);
+          } else {
+            validatedPromoDiscount = parseFloat(promo.discountValue);
+          }
+        } else {
+          const [referral] = await tx
+            .select()
+            .from(referralsTable)
+            .where(eq(referralsTable.code, promoCodeNormalized));
+
+          if (
+            !referral ||
+            !referral.active ||
+            (referral.maxUses && referral.maxUses > 0 && (referral.totalUses ?? 0) >= referral.maxUses)
+          ) {
+            throw new Error("PROMO_INVALID");
+          }
+
+          if (customerEmailLower && referral.ownerEmail && customerEmailLower === referral.ownerEmail.toLowerCase().trim()) {
+            throw new Error("SELF_REFERRAL");
+          }
+
+          const discountPct = referral.discountPercent || 10;
+          validatedPromoDiscount = Math.round(subtotal * discountPct / 100);
+          validatedPromoCode = referral.code;
+
+          await tx
+            .update(referralsTable)
+            .set({
+              totalUses: sql`COALESCE(total_uses, 0) + 1`,
+              totalEarnings: sql`COALESCE(total_earnings, 0) + ${Math.round(subtotal * 0.10)}`,
+            })
+            .where(eq(referralsTable.code, referral.code));
+        }
+
+        validatedPromoDiscount = Math.min(validatedPromoDiscount, subtotal + shippingCost);
+      }
+
+      const total = Math.max(0, subtotal + shippingCost - validatedPromoDiscount);
+
+      const [created] = await tx.insert(ordersTable).values({
+        orderNumber: generateOrderNumber(),
+        customerName,
+        customerEmail,
+        customerPhone,
+        shippingAddress,
+        shippingCity,
+        shippingDistrict,
+        paymentMethod,
+        items: orderItems,
+        subtotal: subtotal.toString(),
+        shippingCost: shippingCost.toString(),
+        promoCode: validatedPromoCode,
+        promoDiscount: validatedPromoDiscount > 0 ? validatedPromoDiscount.toString() : null,
+        total: total.toString(),
+        notes,
+        utmSource: utmSource || null,
+        utmMedium: utmMedium || null,
+        utmCampaign: utmCampaign || null,
+      }).returning();
+      return created;
+    });
+
+    const mapped = mapOrder(order);
+    res.status(201).json(mapped);
+
+    sendWhatsAppNotification(mapped).catch(() => {});
+    checkLowStock().catch(() => {});
+    sendMetaCAPIEvent({
+      eventName: "Purchase",
+      orderId: mapped.orderNumber,
+      total: mapped.total,
+      currency: "BDT",
+      items: (mapped.items || []).map((i: any) => ({
+        id: i.productId,
+        name: i.productName,
+        price: i.price,
+        quantity: i.quantity,
+      })),
+      email: mapped.customerEmail,
+      phone: mapped.customerPhone,
+    }).catch(() => {});
+  } catch (err: any) {
+    if (err?.message === "PROMO_INVALID") {
+      res.status(400).json({ error: "promo_invalid", message: "Promo code is invalid, expired, or has reached its usage limit" });
+      return;
+    }
+    if (err?.message === "SELF_REFERRAL") {
+      res.status(400).json({ error: "self_referral", message: "You cannot use your own referral code" });
+      return;
+    }
+    req.log.error({ err }, "Failed to create order");
+    res.status(500).json({ error: "internal_error", message: "Failed to create order" });
+  }
+});
+
+async function sendStatusUpdateNotification(orderData: any, newStatus: string) {
+  const phone = process.env.CALLMEBOT_PHONE;
+  const apiKey = process.env.CALLMEBOT_APIKEY;
+  if (!phone || !apiKey) return;
+
+  const statusEmojis: Record<string, string> = {
+    processing: "⚙️",
+    confirmed: "✅",
+    shipped: "🚚",
+    delivered: "📦",
+    cancelled: "❌",
+  };
+
+  const emoji = statusEmojis[newStatus] || "📋";
+  const message = [
+    `${emoji} *Order Status Updated*`,
+    `📝 #${orderData.orderNumber}`,
+    `👤 ${orderData.customerName}`,
+    `📱 ${orderData.customerPhone}`,
+    `📊 Status: *${newStatus.toUpperCase()}*`,
+    `💰 Total: ৳${orderData.total}`,
+  ].join("\n");
+
+  try {
+    await fetch(
+      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(message)}&apikey=${apiKey}`
+    );
+  } catch (err) {
+    logger.error({ err }, "Status update WhatsApp notification failed (non-blocking)");
+  }
+}
+
+router.put("/orders/:id/status", requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const { status } = req.body;
+    if (!status) {
+      res.status(400).json({ error: "validation_error", message: "status is required" });
+      return;
+    }
+    const [order] = await db.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+    if (!order) {
+      res.status(404).json({ error: "not_found", message: "Order not found" });
+      return;
+    }
+    const mapped = mapOrder(order);
+    res.json(mapped);
+
+    sendStatusUpdateNotification(mapped, status).catch(() => {});
+  } catch (err) {
+    req.log.error({ err }, "Failed to update order status");
+    res.status(500).json({ error: "internal_error", message: "Failed to update order status" });
+  }
+});
+
+router.put("/orders/:id/payment-status", requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const { paymentStatus } = req.body;
+    if (!paymentStatus) {
+      res.status(400).json({ error: "validation_error", message: "paymentStatus is required" });
+      return;
+    }
+    const [order] = await db.update(ordersTable).set({ paymentStatus, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+    if (!order) {
+      res.status(404).json({ error: "not_found", message: "Order not found" });
+      return;
+    }
+    res.json(mapOrder(order));
+  } catch (err) {
+    req.log.error({ err }, "Failed to update payment status");
+    res.status(500).json({ error: "internal_error", message: "Failed to update payment status" });
+  }
+});
+
+router.put("/orders/:id/payment-info", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string, 10);
+    const { lastFourDigits, promoCode } = req.body;
+    const notes = [
+      lastFourDigits ? `Payment last 4 digits: ${lastFourDigits}` : null,
+      promoCode ? `Promo code: ${promoCode}` : null,
+    ].filter(Boolean).join(" | ");
+
+    const [order] = await db.update(ordersTable)
+      .set({ paymentStatus: "submitted", notes, updatedAt: new Date() })
+      .where(eq(ordersTable.id, id))
+      .returning();
+    if (!order) {
+      res.status(404).json({ error: "not_found", message: "Order not found" });
+      return;
+    }
+    res.json(mapOrder(order));
+  } catch (err) {
+    req.log.error({ err }, "Failed to update payment info");
+    res.status(500).json({ error: "internal_error", message: "Failed to update payment info" });
+  }
+});
+
+export default router;

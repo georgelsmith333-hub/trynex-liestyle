@@ -1,8 +1,42 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import categoriesRouter from "./categories";
+import productsRouter from "./products";
+import ordersRouter from "./orders";
+import settingsRouter from "./settings";
+import adminRouter from "./admin";
+import authRouter from "./auth";
+import blogRouter from "./blog";
+import storageRouter from "./storage";
+import backupRouter from "./backup";
+import facebookRouter from "./facebook";
+import promoCodesRouter from "./promoCodes";
+import reviewsRouter from "./reviews";
+import referralsRouter from "./referrals";
+import sitemapRouter from "./sitemap";
+import publicStatsRouter from "./publicStats";
+import removeBgRouter from "./removeBg";
+import testimonialsRouter from "./testimonials";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(categoriesRouter);
+router.use(productsRouter);
+router.use(ordersRouter);
+router.use(settingsRouter);
+router.use(adminRouter);
+router.use(authRouter);
+router.use(blogRouter);
+router.use(storageRouter);
+router.use(backupRouter);
+router.use(facebookRouter);
+router.use(promoCodesRouter);
+router.use(reviewsRouter);
+router.use(referralsRouter);
+router.use(sitemapRouter);
+router.use(publicStatsRouter);
+router.use(removeBgRouter);
+router.use(testimonialsRouter);
 
 export default router;
