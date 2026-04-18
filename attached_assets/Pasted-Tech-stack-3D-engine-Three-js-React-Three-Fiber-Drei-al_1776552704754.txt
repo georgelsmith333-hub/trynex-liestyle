@@ -1,0 +1,45 @@
+Tech stack
+3D engine: Three.js + React Three Fiber + Drei (already widely used in your codebase patterns)
+Models: glTF 2.0 with PBR materials, one per product family — T-shirt (front+back), Hoodie (front+back+hood), Mug (cylindrical wrap), Cap (curved bill + crown), Tote, Polo
+Texture compositing: HTML5 Canvas → THREE.CanvasTexture, redrawn on every layer change at 2K resolution
+Print zones: UV-mapped decals per garment area (chest, back, sleeve, etc.) with safe-zone bounds
+Fabric simulation: simple normal map + roughness for cotton/polyester realism. Skip cloth physics (overkill, kills mobile perf)
+Feature checklist
+Realtime canvas overlay
+Drag/resize/rotate logos, photos, text
+Layers panel (reorder, lock, hide, duplicate, delete)
+Snap-to-center, snap-to-edges, smart guides
+Undo/redo (50-step history)
+Text tool
+Bengali + Latin font picker (Outfit, Hind Siliguri, Noto Sans Bengali pre-bundled)
+Color, stroke, shadow, curved text, vertical text
+Live spell-check optional
+Image upload
+PNG/JPG/SVG, drag-and-drop, paste-from-clipboard, max 25MB
+Auto-background-removal (uses your existing remove-image-background capability)
+DPI warning if image will print < 150 DPI at chosen size
+AI-generated artwork (one-tap with prompt → calls your AI integration)
+Realtime 3D preview
+Orbit controls (mouse + touch), pinch-zoom, double-tap to reset
+Color-of-garment swatches change material color in real time
+Switch front/back/sleeve view, full 360° rotation, AR mode (WebXR fallback for iOS Quick Look via USDZ)
+Lighting: 3-point soft studio lighting + env map for realism
+Mobile-first UX
+Bottom-sheet design panel that collapses for full 3D view
+Tap-and-hold to grab elements, two-finger rotate, etc.
+WebGL fallback to high-quality 2D mockup for old devices
+Save / share / order
+"Save design" → user account, returns a shareable link with thumbnail
+"Add to cart" → POST design payload + render a 2K PNG mockup for the order
+Admin order page shows the mockup, the print-ready PDF (vector where possible), and per-zone DPI report
+Phased delivery (so you see progress quickly)
+Phase 1 (3–4 days): glTF T-shirt model + color + 2D overlay tools (text, image, drag/resize) → real 3D preview, but only T-shirt
+Phase 2 (2–3 days): Hoodie + Mug models, layers panel, undo/redo, mobile gestures
+Phase 3 (2–3 days): Background removal, AI art, font catalog, save-design account flow
+Phase 4 (2–3 days): Cap + Polo + Tote, AR Quick Look (USDZ), DPI warnings, admin print-ready PDF
+Phase 5 (2 days): Performance pass — texture pooling, lazy model loading, perf budget for mobile, error states
+What I need from you to start Phase 1
+glTF models — do you already have 3D models of your tees/hoodies/mugs, or should I source/buy royalty-free ones (Sketchfab, CGTrader) and adapt them? Budget rough estimate: $0–$200 for a full set if we need to buy.
+Print zones per product — which areas should be customizable? (e.g. T-shirt: chest, full-front, back, left-sleeve, right-sleeve)
+AR support — do you want AR-on-phone (try-on-your-desk preview), or just orbital 3D? AR adds ~3 days and needs USDZ exports.
+Account-required to save? — should designs auto-save anonymously to localStorage, require account to save remotely, or both?
