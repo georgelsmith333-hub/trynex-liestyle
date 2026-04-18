@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: trynex-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install -g pnpm@9 && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: false
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trynex-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+databases:
+  - name: trynex-db
+    databaseName: trynex
+    user: trynex
+    region: singapore
+    plan: free

@@ -29,14 +29,27 @@ app.use(
     },
   }),
 );
-app.use(cors({
-  credentials: true,
-  origin: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : null;
+
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (!allowedOrigins) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
 app.use(cookieParser());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 const authLimiter = rateLimit({
@@ -79,14 +92,25 @@ app.use("/api", (_req, res, next) => {
   }
 
   if (_req.method === "GET") {
-    if (url.includes("/products") || url.includes("/categories") || url.includes("/blog") || url.includes("/testimonials") || url.includes("/settings")) {
+    if (
+      url.includes("/products") ||
+      url.includes("/categories") ||
+      url.includes("/blog") ||
+      url.includes("/testimonials") ||
+      url.includes("/settings")
+    ) {
       res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
     } else {
       res.setHeader("Cache-Control", "private, no-cache");
     }
   }
 
-  if (_req.method === "POST" || _req.method === "PUT" || _req.method === "PATCH" || _req.method === "DELETE") {
+  if (
+    _req.method === "POST" ||
+    _req.method === "PUT" ||
+    _req.method === "PATCH" ||
+    _req.method === "DELETE"
+  ) {
     res.setHeader("Cache-Control", "no-store");
   }
 
