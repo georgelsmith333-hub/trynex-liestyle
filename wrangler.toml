@@ -1,5 +1,2 @@
 name = "trynex-lifestyle-shop"
 pages_build_output_dir = "artifacts/trynex-storefront/dist"
-
-[build]
-command = "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/trynex-storefront run build"
