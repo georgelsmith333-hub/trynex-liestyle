@@ -9,6 +9,7 @@ Full-stack e-commerce platform for TryNex Lifestyle, a premium custom apparel br
 - **Storefront** (Cloudflare Pages): `https://trynexshop.com`
 - **API server** (Render): `https://trynex-api.onrender.com`
 - **Admin panel**: `https://trynexshop.com/admin/login` — default password `Admins@Trynex` (overridable by setting `ADMIN_PASSWORD` env var on Render; the password auto-syncs to the env value on every login attempt).
+- **Push to GitHub from Admin** → `Admin → Deployment`. Save your GitHub owner/repo/branch + a fine-grained PAT (Contents: Read & Write). The token is stored in the `settings` table and never echoed back to the browser. Hitting "Push to GitHub Now" stages all changes in the workspace, commits with your message, and pushes — Cloudflare Pages and Render then auto-deploy. The push command uses `execFile` (no shell), strict allowlist regexes for owner/repo/branch/email/token, and scrubs the PAT from any returned error/log output.
 
 The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_API_BASE_URL` in `artifacts/trynex-storefront/src/lib/utils.ts`), so it works even if `VITE_API_BASE_URL` is not set in Cloudflare Pages env. Local dev (`localhost`, `*.replit.dev`) still uses same-origin requests.
 

@@ -173,12 +173,14 @@ import { useLocation } from "wouter";
                   src={product.imageUrl}
                   alt={product.name}
                   onLoad={() => setImgLoaded(true)}
-                  className={cn(
-                    "w-full h-full object-cover transition-all duration-700",
-                    imgLoaded ? "opacity-100" : "opacity-0"
-                  )}
-                  style={{ transform: hovered ? 'scale(1.06)' : 'scale(1)', transition: imgLoaded ? 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease' : 'opacity 0.4s ease' }}
+                  className="w-full h-full object-cover"
+                  style={{
+                    opacity: imgLoaded ? 1 : 0,
+                    transform: hovered ? 'scale(1.06)' : 'scale(1)',
+                    transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.25s ease',
+                  }}
                   loading="lazy"
+                  decoding="async"
                   width="400"
                   height="500"
                 />

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X, FileText, Users, HardDrive, Sparkles, Star, Code2, BookOpen, Paintbrush } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, Menu, X, FileText, Users, HardDrive, Sparkles, Star, Code2, BookOpen, Paintbrush, GitBranch } from "lucide-react";
 import { useAdminLogout, useAdminMe } from "@workspace/api-client-react";
 import { useEffect, useState } from "react";
 import { Loader } from "@/components/ui/Loader";
@@ -17,6 +17,7 @@ const MENU = [
   { name: "Backup", href: "/admin/backup", icon: HardDrive },
   { name: "FB Import Guide", href: "/admin/facebook-guide", icon: BookOpen },
   { name: "Tech Stack", href: "/admin/tech-stack", icon: Code2 },
+  { name: "Deployment", href: "/admin/deployment", icon: GitBranch },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

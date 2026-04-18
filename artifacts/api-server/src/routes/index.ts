@@ -17,6 +17,7 @@ import sitemapRouter from "./sitemap";
 import publicStatsRouter from "./publicStats";
 import removeBgRouter from "./removeBg";
 import testimonialsRouter from "./testimonials";
+import deploymentRouter from "./deployment";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(sitemapRouter);
 router.use(publicStatsRouter);
 router.use(removeBgRouter);
 router.use(testimonialsRouter);
+router.use(deploymentRouter);
 
 export default router;

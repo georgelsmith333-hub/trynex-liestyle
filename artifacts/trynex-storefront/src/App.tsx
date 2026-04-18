@@ -55,6 +55,7 @@ const AdminReviews = lazy(() => import("./pages/admin/AdminReviews"));
 const AdminTechStack = lazy(() => import("./pages/admin/AdminTechStack"));
 const AdminDesigner = lazy(() => import("./pages/admin/AdminDesigner"));
 const AdminFacebookGuide = lazy(() => import("./pages/admin/AdminFacebookGuide"));
+const AdminDeployment = lazy(() => import("./pages/admin/AdminDeployment"));
 const Referral = lazy(() => import("./pages/Referral"));
 const DesignStudio = lazy(() => import("./pages/DesignStudio"));
 const SalePage = lazy(() => import("./pages/SalePage"));
@@ -112,6 +113,7 @@ function Router() {
       <Route path="/admin/tech-stack" component={AdminTechStack} />
       <Route path="/admin/facebook-guide" component={AdminFacebookGuide} />
       <Route path="/admin/designer" component={AdminDesigner} />
+      <Route path="/admin/deployment" component={AdminDeployment} />
 
       <Route component={NotFound} />
     </Switch>

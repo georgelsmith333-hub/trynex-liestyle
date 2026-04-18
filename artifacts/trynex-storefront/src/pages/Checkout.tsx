@@ -281,8 +281,13 @@ export default function Checkout() {
   const displayTotal = step === 'form' ? total : snapshotRef.current.total;
   const displayAdvance = step === 'form' ? advanceAmount : snapshotRef.current.advance;
 
+  useEffect(() => {
+    if (items.length === 0 && step === 'form') {
+      setLocation("/cart");
+    }
+  }, [items.length, step, setLocation]);
+
   if (items.length === 0 && step === 'form') {
-    setLocation("/cart");
     return null;
   }
 

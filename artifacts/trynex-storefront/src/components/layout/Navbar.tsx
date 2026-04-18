@@ -105,6 +105,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/products", label: "Shop", dropdown: true },
+    { href: "/design-studio", label: "Customize", badge: "NEW" as const },
     { href: "/blog", label: "Blog" },
     { href: "/track", label: "Track Order" },
   ];
@@ -197,13 +198,21 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "px-4 py-2 rounded-full font-semibold text-[0.8125rem] transition-all",
+                    "relative px-4 py-2 rounded-full font-semibold text-[0.8125rem] transition-all inline-flex items-center gap-1.5",
                     location === link.href
                       ? "text-orange-600 bg-orange-50"
                       : "text-gray-600 hover:text-orange-600 hover:bg-orange-50/60"
                   )}
                 >
                   {link.label}
+                  {link.badge && (
+                    <span
+                      className="text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-full text-white"
+                      style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}
+                    >
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               )
             )}
@@ -378,13 +387,21 @@ export function Navbar() {
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center px-4 py-3.5 rounded-2xl font-semibold text-[0.9375rem] transition-all",
+                    "flex items-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-[0.9375rem] transition-all",
                     location === link.href
                       ? "text-orange-600 bg-orange-50"
                       : "text-gray-700 hover:text-orange-600 hover:bg-orange-50"
                   )}
                 >
                   {link.label}
+                  {link.badge && (
+                    <span
+                      className="text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-full text-white"
+                      style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}
+                    >
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
               <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
