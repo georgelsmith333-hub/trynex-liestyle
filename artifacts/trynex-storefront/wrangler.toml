@@ -1,0 +1,5 @@
+name = "trynex-liestyle"
+pages_build_output_dir = "dist"
+
+[env.production]
+name = "trynex-liestyle"
