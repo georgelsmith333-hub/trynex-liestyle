@@ -106,6 +106,7 @@ export function Navbar() {
     { href: "/", label: "Home" },
     { href: "/products", label: "Shop", dropdown: true },
     { href: "/design-studio", label: "Customize", badge: "NEW" as const },
+    { href: "/hampers", label: "Gift Hampers" },
     { href: "/blog", label: "Blog" },
     { href: "/track", label: "Track Order" },
   ];

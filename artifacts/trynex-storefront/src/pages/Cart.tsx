@@ -5,8 +5,83 @@ import { SEOHead } from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
-import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { useState as useCartState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; updateQuantity: (id: string, q: number) => void; removeFromCart: (id: string) => void }) {
+  const [open, setOpen] = useCartState(false);
+  const h = item.hamperPayload;
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -30, height: 0 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%)', border: '1px solid #FED7AA', boxShadow: '0 1px 4px rgba(232,93,4,0.08)' }}
+    >
+      <div className="flex gap-5 p-4">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
+          {item.imageUrl
+            ? <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+            : <Gift className="w-10 h-10 text-white" />}
+        </div>
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          <div className="flex justify-between items-start gap-3">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest text-white mb-1.5"
+                style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
+                <Gift className="w-2.5 h-2.5" /> Gift Hamper
+              </span>
+              <p className="font-bold text-base leading-tight text-gray-900 truncate">{h.hamperName}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{h.items.length} item{h.items.length === 1 ? '' : 's'} included</p>
+              {h.recipientName && (
+                <p className="text-xs text-gray-600 mt-1.5 italic flex items-center gap-1">
+                  <Heart className="w-3 h-3 text-orange-400" /> For: <strong>{h.recipientName}</strong>
+                </p>
+              )}
+            </div>
+            <button onClick={() => removeFromCart(item.id)} className="p-2 rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center rounded-xl border border-orange-200 overflow-hidden bg-white">
+              <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Minus className="w-3.5 h-3.5" /></button>
+              <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
+              <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Plus className="w-3.5 h-3.5" /></button>
+            </div>
+            <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
+          </div>
+        </div>
+      </div>
+      <button onClick={() => setOpen(!open)}
+        className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-orange-700 border-t border-orange-100 hover:bg-orange-50 transition-colors">
+        <span>{open ? 'Hide' : 'View'} hamper contents</span>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-2 space-y-1.5 bg-white/60 border-t border-orange-100">
+          {h.items.map((it: any, idx: number) => (
+            <div key={idx} className="flex items-center gap-2 text-xs text-gray-700">
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+              <span className="font-semibold flex-1">{it.name}</span>
+              {it.quantity > 1 && <span className="text-gray-400">× {it.quantity}</span>}
+            </div>
+          ))}
+          {h.giftMessage && (
+            <div className="mt-3 p-2.5 rounded-lg bg-orange-50 border border-orange-100">
+              <p className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1">Gift Message</p>
+              <p className="text-xs text-gray-700 italic">"{h.giftMessage}"</p>
+            </div>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 export default function Cart() {
   const { items, updateQuantity, removeFromCart, clearCart, subtotal } = useCart();
@@ -81,6 +156,9 @@ export default function Cart() {
                 </div>
                 <AnimatePresence>
                   {items.map((item) => (
+                    item.hamperPayload ? (
+                      <HamperCartLine key={item.id} item={item} updateQuantity={updateQuantity} removeFromCart={removeFromCart} />
+                    ) : (
                     <motion.div
                       key={item.id}
                       layout
@@ -161,6 +239,7 @@ export default function Cart() {
                         </div>
                       </div>
                     </motion.div>
+                    )
                   ))}
                 </AnimatePresence>
               </div>

@@ -144,6 +144,68 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hamper_packages (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        name_bn TEXT,
+        description TEXT,
+        description_bn TEXT,
+        category TEXT NOT NULL DEFAULT 'general',
+        occasion TEXT,
+        image_url TEXT,
+        images JSONB DEFAULT '[]',
+        base_price NUMERIC(10,2) NOT NULL,
+        discount_price NUMERIC(10,2),
+        items JSONB NOT NULL DEFAULT '[]',
+        is_customizable BOOLEAN DEFAULT false,
+        active BOOLEAN DEFAULT true,
+        featured BOOLEAN DEFAULT false,
+        sort_order INTEGER DEFAULT 0,
+        stock INTEGER DEFAULT 100,
+        tags JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+
+    // Seed demo gift hampers (idempotent — only inserts if hamper_packages is empty)
+    try {
+      const existing = await db.execute(sql`SELECT COUNT(*)::int AS c FROM hamper_packages`);
+      const count = (existing as any).rows?.[0]?.c ?? 0;
+      if (count === 0) {
+        await db.execute(sql`
+          INSERT INTO hamper_packages (slug, name, name_bn, description, category, occasion, image_url, base_price, discount_price, items, featured, sort_order, stock) VALUES
+          ('birthday-classic', 'Birthday Classic Hamper', 'জন্মদিনের ক্লাসিক হ্যাম্পার',
+           'Curated birthday surprise — premium mug, custom t-shirt, and a handwritten card.',
+           'celebration', 'Birthday',
+           'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=800&q=80',
+           1799, 1499,
+           '[{"name":"Premium Ceramic Mug","quantity":1},{"name":"Custom Birthday T-Shirt","quantity":1},{"name":"Handwritten Birthday Card","quantity":1},{"name":"Chocolate Bar","quantity":2}]'::jsonb,
+           true, 1, 50),
+          ('anniversary-romance', 'Anniversary Romance Hamper', 'বিবাহবার্ষিকীর রোমান্স হ্যাম্পার',
+           'Celebrate love with a curated keepsake bundle — engraved mug, photo frame, and roses.',
+           'celebration', 'Anniversary',
+           'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=80',
+           2499, 1999,
+           '[{"name":"Engraved Couple Mug Set","quantity":1},{"name":"Wooden Photo Frame","quantity":1},{"name":"Velvet Rose Bouquet","quantity":1},{"name":"Personalized Card","quantity":1}]'::jsonb,
+           true, 2, 40),
+          ('corporate-premium', 'Corporate Premium Hamper', 'কর্পোরেট প্রিমিয়াম হ্যাম্পার',
+           'Impress clients and team — branded notebook, premium pen, mug, and gourmet snacks.',
+           'corporate', 'Corporate',
+           'https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&q=80',
+           3499, 2999,
+           '[{"name":"Branded Leather Notebook","quantity":1},{"name":"Premium Metal Pen","quantity":1},{"name":"Corporate Logo Mug","quantity":1},{"name":"Gourmet Snack Box","quantity":1},{"name":"Thank-You Card","quantity":1}]'::jsonb,
+           true, 3, 100)
+          ON CONFLICT (slug) DO NOTHING
+        `);
+        logger.info("Seeded 3 demo gift hampers");
+      }
+    } catch (err) {
+      logger.error({ err }, "Hamper seed failed — continuing startup anyway");
+    }
+
     logger.info("Database migrations complete");
   } catch (err) {
     logger.error({ err }, "Migration failed — continuing startup anyway");

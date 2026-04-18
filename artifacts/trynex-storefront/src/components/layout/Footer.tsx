@@ -182,6 +182,7 @@ export function Footer() {
                 { label: "Caps", href: "/products?category=caps" },
                 { label: "Mugs", href: "/products?category=mugs" },
                 { label: "Custom Order", href: "/design-studio" },
+                { label: "Gift Hampers", href: "/hampers" },
               ].map(({ label, href }) => (
                 <li key={label}>
                   <Link href={href}

@@ -140,6 +140,30 @@ export const reviewsTable = pgTable("reviews", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const hamperPackagesTable = pgTable("hamper_packages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  nameBn: text("name_bn"),
+  description: text("description"),
+  descriptionBn: text("description_bn"),
+  category: text("category").notNull().default("general"),
+  occasion: text("occasion"),
+  imageUrl: text("image_url"),
+  images: jsonb("images").default([]),
+  basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
+  discountPrice: numeric("discount_price", { precision: 10, scale: 2 }),
+  items: jsonb("items").notNull().default([]),
+  isCustomizable: boolean("is_customizable").default(false),
+  active: boolean("active").default(true),
+  featured: boolean("featured").default(false),
+  sortOrder: integer("sort_order").default(0),
+  stock: integer("stock").default(100),
+  tags: jsonb("tags").default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const referralsTable = pgTable("referrals", {
   id: serial("id").primaryKey(),
   ownerName: text("owner_name").notNull(),
@@ -170,3 +194,5 @@ export type InsertTestimonial = typeof testimonialsTable.$inferInsert;
 export type PromoCode = typeof promoCodesTable.$inferSelect;
 export type Review = typeof reviewsTable.$inferSelect;
 export type Referral = typeof referralsTable.$inferSelect;
+export type HamperPackage = typeof hamperPackagesTable.$inferSelect;
+export type InsertHamperPackage = typeof hamperPackagesTable.$inferInsert;

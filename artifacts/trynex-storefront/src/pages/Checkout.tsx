@@ -326,7 +326,9 @@ export default function Checkout() {
             size: i.size,
             color: i.color,
             imageUrl: i.imageUrl,
-            customNote: i.customNote,
+            customNote: i.hamperPayload
+              ? JSON.stringify({ hamper: i.hamperPayload, unitPrice: i.price })
+              : i.customNote,
             customImages: i.customImages,
           })),
           ...(promoApplied ? { promoCode: promoApplied } : {}),

@@ -7,7 +7,7 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { OrderSkeleton } from "@/components/ui/skeleton";
 import {
   Package, Search, Clock, CheckCircle2, Truck, MapPin,
-  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2
+  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2, Gift, Heart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
@@ -374,7 +374,49 @@ export default function TrackOrder() {
                   <div className="px-6 sm:px-8 py-5 border-t border-gray-100">
                     <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">Items Ordered</p>
                     <div className="space-y-3">
-                      {(displayOrder.items as Array<Record<string, unknown>>).map((item: any, idx: number) => (
+                      {(displayOrder.items as Array<Record<string, unknown>>).map((item: any, idx: number) => {
+                        let hamper: any = null;
+                        try { hamper = JSON.parse(item.customNote ?? "{}").hamper; } catch {}
+                        if (hamper) {
+                          return (
+                            <div key={idx} className="py-3 border-b border-gray-100 last:border-0">
+                              <div className="flex items-start gap-4">
+                                <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                                  style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
+                                  <Gift className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest text-white mb-1"
+                                    style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
+                                    <Gift className="w-2 h-2" /> Gift Hamper
+                                  </span>
+                                  <p className="font-bold text-sm text-gray-800">{hamper.hamperName || item.productName}</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity as number} · {(hamper.items || []).length} items inside</p>
+                                  {hamper.recipientName && (
+                                    <p className="text-xs text-gray-600 mt-1 italic flex items-center gap-1">
+                                      <Heart className="w-3 h-3 text-orange-400" /> For: <strong>{hamper.recipientName}</strong>
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="font-bold text-orange-600 text-sm shrink-0">{formatPrice((item.price as number) * (item.quantity as number))}</span>
+                              </div>
+                              <div className="mt-2 ml-[4.5rem] pl-3 border-l-2 border-orange-100 space-y-0.5">
+                                {(hamper.items || []).map((it: any, i: number) => (
+                                  <div key={i} className="text-xs text-gray-600">
+                                    • {it.name}{it.quantity > 1 ? ` × ${it.quantity}` : ''}
+                                  </div>
+                                ))}
+                                {hamper.giftMessage && (
+                                  <div className="mt-2 p-2 rounded-lg bg-orange-50 border border-orange-100">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Gift Message</p>
+                                    <p className="text-xs text-gray-700 italic mt-0.5">"{hamper.giftMessage}"</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
                         <div key={idx} className="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
                           <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0"
                             style={{ background: '#f3f4f6' }}>
@@ -392,7 +434,8 @@ export default function TrackOrder() {
                           </div>
                           <span className="font-bold text-orange-600 text-sm shrink-0">{formatPrice((item.price as number) * (item.quantity as number))}</span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">

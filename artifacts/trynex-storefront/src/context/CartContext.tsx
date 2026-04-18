@@ -1,6 +1,23 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { trackAddToCart } from '@/lib/tracking';
 
+export interface HamperLineItem {
+  productId?: number;
+  name: string;
+  quantity: number;
+  imageUrl?: string;
+}
+
+export interface HamperPayload {
+  hamperId: number;
+  hamperSlug: string;
+  hamperName: string;
+  items: HamperLineItem[];
+  giftMessage?: string;
+  recipientName?: string;
+  isCustom?: boolean;
+}
+
 export interface CartItem {
   id: string;
   productId: number;
@@ -12,6 +29,7 @@ export interface CartItem {
   color?: string;
   customNote?: string;
   customImages?: string[];
+  hamperPayload?: HamperPayload;
 }
 
 interface CartContextType {
@@ -50,6 +68,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (isStudioDesign) {
         const id = `studio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        return [...prev, { ...newItem, id }];
+      }
+
+      // Hamper line items are always unique (gift message / contents differ)
+      if (newItem.hamperPayload) {
+        const id = `hamper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         return [...prev, { ...newItem, id }];
       }
 

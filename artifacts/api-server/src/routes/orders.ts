@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable, settingsTable, promoCodesTable, referralsTable } from "@workspace/db";
+import { db, ordersTable, productsTable, settingsTable, promoCodesTable, referralsTable, hamperPackagesTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray, lte } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
@@ -290,14 +290,22 @@ router.post("/orders", async (req, res) => {
     }
 
     // Separate studio design items (productId: 0 + customNote.studioDesign === true)
-    // from regular catalog items so each can be handled appropriately.
+    // and hamper items (productId: 0 + customNote.hamper) from regular catalog items.
+    const parseNote = (item: any): any => {
+      try { return JSON.parse(item.customNote ?? "{}"); } catch { return {}; }
+    };
     const isStudioItem = (item: any): boolean => {
       if (Number(item.productId) !== 0) return false;
-      try { return !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch { return false; }
+      return !!parseNote(item).studioDesign;
+    };
+    const isHamperItem = (item: any): boolean => {
+      if (Number(item.productId) !== 0) return false;
+      return !!parseNote(item).hamper;
     };
 
-    const catalogItems = items.filter((i: any) => !isStudioItem(i));
+    const catalogItems = items.filter((i: any) => !isStudioItem(i) && !isHamperItem(i));
     const studioItems = items.filter((i: any) => isStudioItem(i));
+    const hamperItems = items.filter((i: any) => isHamperItem(i));
 
     // Fetch studio prices from server-side settings (never trust client price)
     let studioTshirtPrice = 1099;
@@ -359,7 +367,73 @@ router.post("/orders", async (req, res) => {
       };
     });
 
-    const orderItems = [...catalogOrderItems, ...studioOrderItems];
+    // Hamper items: trust client unitPrice but verify hamper exists in DB
+    const hamperOrderItems: any[] = [];
+    for (const item of hamperItems) {
+      const note = parseNote(item);
+      const h = note.hamper || {};
+      let unitPrice = Number(note.unitPrice ?? 0);
+      let hamperName = h.hamperName || item.name || "Gift Hamper";
+      let hamperContents = Array.isArray(h.items) ? h.items : [];
+
+      // Verify with DB if it's a curated hamper (not custom)
+      if (h.hamperId && !h.isCustom) {
+        try {
+          const [dbHamper] = await db.select().from(hamperPackagesTable).where(eq(hamperPackagesTable.id, h.hamperId));
+          if (dbHamper) {
+            unitPrice = dbHamper.discountPrice ? parseFloat(dbHamper.discountPrice) : parseFloat(dbHamper.basePrice);
+            hamperName = dbHamper.name;
+            hamperContents = (dbHamper.items as any[]) || hamperContents;
+          }
+        } catch {}
+      } else if (h.isCustom) {
+        // Custom hamper: recompute price server-side from real product prices.
+        const productIds = hamperContents
+          .map((it: any) => Number(it.productId))
+          .filter((id: number) => Number.isFinite(id) && id > 0);
+        if (productIds.length > 0) {
+          const dbProducts = await db
+            .select({ id: productsTable.id, price: productsTable.price, discountPrice: productsTable.discountPrice })
+            .from(productsTable)
+            .where(inArray(productsTable.id, productIds));
+          const priceById = new Map(dbProducts.map(p => [
+            p.id,
+            p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price),
+          ]));
+          let raw = 0;
+          for (const it of hamperContents) {
+            const pid = Number(it.productId);
+            const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+            const unit = priceById.get(pid);
+            if (unit !== undefined) raw += unit * qty;
+          }
+          // 5% bundle discount, matches storefront builder
+          unitPrice = Math.round(raw * 0.95);
+        } else {
+          unitPrice = 0;
+        }
+        hamperName = "Custom Gift Hamper";
+      }
+
+      hamperOrderItems.push({
+        productId: 0,
+        productName: hamperName,
+        productImage: item.imageUrl || null,
+        quantity: Math.max(1, Math.floor(Number(item.quantity))),
+        price: unitPrice,
+        customNote: JSON.stringify({
+          hamper: {
+            ...h,
+            items: hamperContents,
+            hamperName,
+          },
+        }),
+        customImages: [],
+        isHamper: true,
+      });
+    }
+
+    const orderItems = [...catalogOrderItems, ...studioOrderItems, ...hamperOrderItems];
 
     const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
 
@@ -378,8 +452,8 @@ router.post("/orders", async (req, res) => {
 
     const order = await db.transaction(async (tx) => {
       for (const item of orderItems) {
-        // Studio design items have no catalog product — skip stock check and decrement
-        if ((item as any).isStudio) continue;
+        // Studio + hamper items have no catalog product — skip stock check and decrement
+        if ((item as any).isStudio || (item as any).isHamper) continue;
 
         const [prod] = await tx.select({ stock: productsTable.stock }).from(productsTable).where(eq(productsTable.id, item.productId));
         if (!prod || prod.stock < item.quantity) {

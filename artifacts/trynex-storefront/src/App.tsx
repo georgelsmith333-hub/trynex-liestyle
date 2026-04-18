@@ -57,6 +57,10 @@ const AdminTechStack = lazy(() => import("./pages/admin/AdminTechStack"));
 const AdminDesigner = lazy(() => import("./pages/admin/AdminDesigner"));
 const AdminFacebookGuide = lazy(() => import("./pages/admin/AdminFacebookGuide"));
 const AdminDeployment = lazy(() => import("./pages/admin/AdminDeployment"));
+const AdminHampers = lazy(() => import("./pages/admin/AdminHampers"));
+const Hampers = lazy(() => import("./pages/Hampers"));
+const HamperDetail = lazy(() => import("./pages/HamperDetail"));
+const HamperBuilder = lazy(() => import("./pages/HamperBuilder"));
 const Referral = lazy(() => import("./pages/Referral"));
 const DesignStudio = lazy(() => import("./pages/DesignStudio"));
 const SalePage = lazy(() => import("./pages/SalePage"));
@@ -93,6 +97,9 @@ function Router() {
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/referral" component={Referral} />
       <Route path="/design-studio" component={DesignStudio} />
+      <Route path="/hampers" component={Hampers} />
+      <Route path="/hampers/build" component={HamperBuilder} />
+      <Route path="/hampers/:slug" component={HamperDetail} />
       <Route path="/sale" component={SalePage} />
       <Route path="/faq" component={FAQ} />
       <Route path="/about" component={About} />
@@ -115,6 +122,7 @@ function Router() {
       <Route path="/admin/facebook-guide" component={AdminFacebookGuide} />
       <Route path="/admin/designer" component={AdminDesigner} />
       <Route path="/admin/deployment" component={AdminDeployment} />
+      <Route path="/admin/hampers" component={AdminHampers} />
 
       <Route component={NotFound} />
     </Switch>
