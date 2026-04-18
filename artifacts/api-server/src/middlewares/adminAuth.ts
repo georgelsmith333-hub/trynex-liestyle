@@ -46,9 +46,9 @@ export function validateToken(token: string): boolean {
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  const token =
-    req.headers.authorization?.replace("Bearer ", "") ??
-    req.cookies?.admin_token;
+  const bearer = req.headers.authorization?.replace("Bearer ", "");
+  const cookieToken = req.cookies?.admin_token;
+  const token = bearer ?? cookieToken;
   if (!token) {
     res.status(401).json({ error: "unauthorized", message: "Admin authentication required" });
     return;
@@ -58,5 +58,39 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     res.status(401).json({ error: "unauthorized", message: "Admin authentication required" });
     return;
   }
+
+  // CSRF defense for cookie-only authenticated mutations. Cookies are
+  // attached automatically by the browser on cross-origin POSTs, so a
+  // malicious page could trigger admin actions purely with the user's
+  // cookie. Bearer-token auth is immune (an attacker cannot read the
+  // token from another origin), so we only enforce on cookie-only
+  // requests. Mutations require an explicit Origin/Referer match against
+  // the configured ALLOWED_ORIGINS list (or any origin if the list is
+  // unset, matching the CORS policy).
+  const isMutation =
+    req.method === "POST" ||
+    req.method === "PUT" ||
+    req.method === "PATCH" ||
+    req.method === "DELETE";
+  const cookieOnly = !bearer && !!cookieToken;
+  if (isMutation && cookieOnly) {
+    const origin = req.headers.origin || "";
+    const referer = req.headers.referer || "";
+    const allowedRaw = process.env.ALLOWED_ORIGINS;
+    if (allowedRaw) {
+      const allowed = allowedRaw.split(",").map((o) => o.trim()).filter(Boolean);
+      const refererOrigin = referer
+        ? (() => { try { return new URL(referer).origin; } catch { return ""; } })()
+        : "";
+      const ok =
+        (origin && allowed.includes(origin)) ||
+        (refererOrigin && allowed.includes(refererOrigin));
+      if (!ok) {
+        res.status(403).json({ error: "csrf_blocked", message: "Cross-site request blocked" });
+        return;
+      }
+    }
+  }
+
   next();
 }

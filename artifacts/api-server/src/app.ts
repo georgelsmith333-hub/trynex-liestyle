@@ -60,6 +60,18 @@ const authLimiter = rateLimit({
   message: { error: "rate_limited", message: "Too many requests, please try again later" },
 });
 
+// Aggressive rate limit for the admin login endpoint specifically. The
+// admin password is a single shared secret, so brute-forcing it is the
+// realistic attack. 8 attempts per IP per 15 minutes is more than enough
+// for a legitimate operator who fat-fingered their password.
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", message: "Too many login attempts, please try again in 15 minutes" },
+});
+
 const orderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -80,6 +92,8 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
 app.use("/api/auth/facebook", authLimiter);
+app.use("/api/admin/login", adminLoginLimiter);
+app.use("/api/admin/reset-password", adminLoginLimiter);
 app.post("/api/orders", orderLimiter);
 app.use("/api/promo-codes/validate", promoLimiter);
 app.use("/api/promo-codes/exit-intent", promoLimiter);
