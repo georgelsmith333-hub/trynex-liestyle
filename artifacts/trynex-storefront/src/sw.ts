@@ -7,8 +7,30 @@ import { ExpirationPlugin } from "workbox-expiration";
 
 declare let self: ServiceWorkerGlobalScope;
 
+// Take over from any older SW immediately so users don't have to refresh
+// twice to pick up new code. Pairs with autoUpdate in vite.config.
+self.skipWaiting();
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+
+// One-time cleanup of the api-cache that older SW versions populated. It
+// stored cross-origin and error responses that broke admin login for
+// returning visitors.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k === "api-cache" || k === "navigation-cache")
+          .map((k) => caches.delete(k))
+      )
+    )
+  );
+});
 
 registerRoute(
   /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -42,20 +64,15 @@ registerRoute(
   })
 );
 
-registerRoute(
-  /\/api\/.*/i,
-  new NetworkFirst({
-    cacheName: "api-cache",
-    networkTimeoutSeconds: 10,
-    plugins: [
-      new CacheableResponsePlugin({ statuses: [200] }),
-      new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 60 * 5 }),
-    ],
-  })
-);
+// IMPORTANT: never intercept API traffic. The previous version of this file
+// matched any URL whose path contained "/api/" — that included the
+// cross-origin Render backend (https://trynex-api.onrender.com/api/...) and
+// caused stale 4xx responses to be replayed as "Incorrect password". All API
+// calls must hit the network directly, with the browser's normal CORS and
+// credentials handling.
 
 const navigationHandler = new NetworkFirst({
-  cacheName: "navigation-cache",
+  cacheName: "navigation-cache-v2",
   networkTimeoutSeconds: 5,
   plugins: [new CacheableResponsePlugin({ statuses: [200] })],
 });
@@ -69,7 +86,9 @@ registerRoute(
       return offlinePage || Response.error();
     }
   }, {
-    denylist: [/^\/api\//, /^\/sw\.js$/, /^\/manifest\.json$/],
+    // Skip API, SW, manifest, and admin routes entirely so the SW never
+    // returns cached HTML for them.
+    denylist: [/^\/api\//, /^\/sw\.js$/, /^\/manifest\.json$/, /^\/admin/],
   })
 );
 
