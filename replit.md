@@ -11,7 +11,14 @@ Full-stack e-commerce platform for TryNex Lifestyle, a premium custom apparel br
 - **Admin panel**: `https://trynexshop.com/admin/login` — default password `Admins@Trynex` (overridable by setting `ADMIN_PASSWORD` env var on Render; the password auto-syncs to the env value on every login attempt).
 - **Push to GitHub from Admin** → `Admin → Deployment`. Save your GitHub owner/repo/branch + a fine-grained PAT (Contents: Read & Write). The token is stored in the `settings` table and never echoed back to the browser. Hitting "Push to GitHub Now" stages all changes in the workspace, commits with your message, and pushes — Cloudflare Pages and Render then auto-deploy. The push command uses `execFile` (no shell), strict allowlist regexes for owner/repo/branch/email/token, and scrubs the PAT from any returned error/log output.
 
-The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_API_BASE_URL` in `artifacts/trynex-storefront/src/lib/utils.ts`), so it works even if `VITE_API_BASE_URL` is not set in Cloudflare Pages env. Local dev (`localhost`, `*.replit.dev`) still uses same-origin requests.
+The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_API_BASE_URL` in `artifacts/trynex-storefront/src/lib/utils.ts`), so it works even if `VITE_API_BASE_URL` is not set in Cloudflare Pages env. Only `localhost`/`127.0.0.1` use same-origin requests; every other host (including Cloudflare Pages preview URLs) hits the Render API directly. **Production has zero dependencies on any `*.replit.dev`, `*.repl.co`, or other Replit-hosted infrastructure.**
+
+### Allowed production hosts (post Task #20 sweep)
+- **Frontend origin**: `https://trynexshop.com` (Cloudflare Pages)
+- **Backend origin**: `https://trynex-api.onrender.com` (Render)
+- **API CORS allowlist**: controlled by the `ALLOWED_ORIGINS` env var on Render (comma-separated). Set this to `https://trynexshop.com` plus any Cloudflare Pages preview origin you want to enable. There are no Replit entries hardcoded in `artifacts/api-server/src/app.ts`.
+- **Cloudflare Pages `_redirects`**: only `/api/* → https://trynex-api.onrender.com/api/:splat` (proxy) + SPA fallback. No Replit hosts.
+- The storefront `getApiBaseUrl()` no longer special-cases `.replit.dev`. The Replit dev environment, when used, just talks to the Render API like any other non-localhost host.
 
 ### Google sign-in setup (one-time, optional)
 1. In Google Cloud Console, create an OAuth 2.0 Client ID (type: Web application).

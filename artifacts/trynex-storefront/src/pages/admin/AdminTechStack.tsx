@@ -38,7 +38,7 @@ const STACK_SECTIONS = [
     icon: Database,
     color: "bg-purple-50 text-purple-600",
     items: [
-      { name: "PostgreSQL", desc: "Relational database (Neon/Replit hosted)" },
+      { name: "PostgreSQL", desc: "Relational database (Neon, hosted via Render)" },
       { name: "Drizzle ORM", desc: "Type-safe SQL ORM with zero overhead" },
       { name: "Drizzle Zod", desc: "Schema validation from DB types" },
     ],
@@ -86,7 +86,7 @@ const STACK_SECTIONS = [
     color: "bg-indigo-50 text-indigo-600",
     items: [
       { name: "pnpm Monorepo", desc: "Workspace with shared packages" },
-      { name: "Replit", desc: "Development environment" },
+      { name: "Cloudflare Pages + Render", desc: "Production hosting (frontend + backend)" },
       { name: "Render", desc: "API server hosting (free tier)" },
       { name: "Cloudflare Pages", desc: "Frontend static hosting (free tier)" },
       { name: "GitHub", desc: "Source code repository" },

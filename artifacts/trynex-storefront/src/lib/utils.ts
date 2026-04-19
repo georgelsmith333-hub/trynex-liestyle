@@ -30,8 +30,12 @@ export function getApiBaseUrl(): string {
   if (fromEnv) return fromEnv;
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    // Use same-origin in local dev only; everywhere else hit the live API.
-    if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.replit.dev')) {
+    // Local dev only uses same-origin (Vite proxy → API on localhost).
+    // Every other host — including Cloudflare Pages preview deploys —
+    // hits the production Render API directly. We deliberately do NOT
+    // special-case any Replit host here; production must be provably
+    // independent of Replit infrastructure.
+    if (host === 'localhost' || host === '127.0.0.1') {
       return '';
     }
   }
