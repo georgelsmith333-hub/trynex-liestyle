@@ -144,7 +144,7 @@ export default function Hampers() {
                           {h.imageUrl ? (
                             <img src={h.imageUrl} alt={`${h.name} gift hamper`}
                               width={600} height={450}
-                              loading={idx < 3 ? "eager" : "lazy"}
+                              loading="lazy"
                               decoding="async"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (

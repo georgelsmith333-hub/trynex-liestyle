@@ -174,7 +174,7 @@ export default function HamperDetail() {
                     className="w-full h-full object-cover"
                     width={800}
                     height={800}
-                    {...({ fetchpriority: 'high' } as any)}
+                    fetchPriority="high"
                     decoding="async"
                   />
                 ) : (

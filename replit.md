@@ -193,8 +193,9 @@ Home, Products, ProductDetail, Hampers, HamperDetail, HamperBuilder, DesignStudi
 - Global `<img>` tags across product cards already use `loading="lazy"`/`decoding="async"`/explicit dimensions (verified during the Cart / Products audit in Task #21).
 
 ### Sitemap + robots
-- `public/sitemap.xml` regenerated with all current routes: home, products (+ 4 category filter URLs), hampers, hampers/build, design-studio, sale, blog, about, faq, track, size-guide, referral, and the 4 policy pages. Lastmod set to 2026-04-19.
-- `public/robots.txt` corrected to point at `https://trynexshop.com/sitemap.xml`, explicitly disallows `/admin/`, `/api/`, `/cart`, `/checkout`, `/wishlist`, `/account`, `?search=`, `?sort=`, and explicitly allows Googlebot, Bingbot, and facebookexternalhit.
+- **Dynamic sitemap**: `https://trynexshop.com/sitemap.xml` and `/robots.txt` are now proxied by Cloudflare Pages (`public/_redirects`) directly to the API server's DB-backed endpoints (`artifacts/api-server/src/routes/sitemap.ts`). Every product, hamper, blog post, and category appears in the sitemap as soon as it is published — no manual regeneration required.
+- **Static fallback**: `public/sitemap.xml` and `public/robots.txt` remain in the repo as a safety net for the (rare) case where the API is unreachable. Both list the canonical static routes (home, products + 4 category filter URLs, hampers, hampers/build, design-studio, sale, blog, about, faq, track, size-guide, referral, 4 policy pages). Lastmod 2026-04-19.
+- robots.txt explicitly disallows `/admin/`, `/api/`, `/cart`, `/checkout`, `/wishlist`, `/account`, `?search=`, `?sort=`, and explicitly allows Googlebot, Bingbot, and facebookexternalhit.
 
 ### Measurement
-Lighthouse mobile audit must be re-run against the live Cloudflare Pages URL after deploy (Task #23 covers pre-launch verification). Baseline targets: ≥85 Performance, ≥95 SEO, ≥95 Best Practices on a Slow 4G + 4× CPU profile, with LCP < 2.5s, CLS < 0.1, INP < 200ms on Home and ProductDetail.
+Lighthouse mobile audit must be run against the live Cloudflare Pages URL (`https://trynexshop.com`) — the dev environment's localhost cannot produce representative CWV numbers because it bypasses the CDN, real network latency, and the production-built bundle. Task #23 (pre-launch deploy verification) executes this measurement against the live build and records before/after deltas. Baseline targets: ≥85 Performance, ≥95 SEO, ≥95 Best Practices on a Slow 4G + 4× CPU profile, with LCP < 2.5s, CLS < 0.1, INP < 200ms on Home and ProductDetail.

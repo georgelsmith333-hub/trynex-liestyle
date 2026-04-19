@@ -562,7 +562,7 @@ export default function ProductDetail() {
                     className="w-full h-full object-cover transition-transform duration-300"
                     width={800}
                     height={800}
-                    {...({ fetchpriority: 'high' } as any)}
+                    fetchPriority="high"
                     decoding="async"
                     style={zoomActive ? {
                       transform: 'scale(2)',
