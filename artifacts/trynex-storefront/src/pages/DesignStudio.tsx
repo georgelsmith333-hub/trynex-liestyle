@@ -135,7 +135,9 @@ const TEMPLATES: Template[] = [
 type RightTab = "upload" | "text" | "layers" | "templates";
 
 const DRAFT_STORAGE_KEY = "trynex-design-draft-v1";
-const DRAFT_VERSION = 1;
+// Bumped to v2 when garment coordinate space changed from per-product viewBoxes
+// to a unified 1000x1000 space (photographic mockups). Old drafts are dropped.
+const DRAFT_VERSION = 2;
 type SaveStatus = "idle" | "saving" | "saved";
 interface DraftPayload {
   version: number;
@@ -577,12 +579,16 @@ export default function DesignStudio() {
     setIsAddingToCart(true);
     try {
       // Compose snapshot using the shared composer (front face by default).
+      // Always use the FRONT print-zone here — `pz` is face-aware in the editor and
+      // would otherwise leak the back zone into the front snapshot.
+      const frontPZ = selectedProduct.printZone;
+      const backPZ = selectedProduct.printZoneBack ?? selectedProduct.printZone;
       const frontLayers = layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[];
       const canvas = document.createElement("canvas");
       await composeLayers({
         canvas,
         baseHeight: selectedProduct.baseHeight,
-        printZone: pz,
+        printZone: frontPZ,
         layers: frontLayers,
         garmentColor: selectedColor.hex,
         outW: 600,
@@ -622,7 +628,7 @@ export default function DesignStudio() {
         await composeLayers({
           canvas: backCanvas,
           baseHeight: selectedProduct.baseHeight,
-          printZone: pz,
+          printZone: backPZ,
           layers: backLayers,
           garmentColor: selectedColor.hex,
           outW: 600,
@@ -933,12 +939,12 @@ export default function DesignStudio() {
                         garmentColor={selectedColor.hex}
                         front={{
                           layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
-                          printZone: pz,
+                          printZone: selectedProduct.printZone,
                           baseHeight: selectedProduct.baseHeight,
                         }}
                         back={supportsBack ? {
                           layers: layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[],
-                          printZone: pz,
+                          printZone: selectedProduct.printZoneBack ?? selectedProduct.printZone,
                           baseHeight: selectedProduct.baseHeight,
                         } : undefined}
                         activeFace={activeFace}
