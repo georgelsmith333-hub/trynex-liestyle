@@ -20,6 +20,12 @@ The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_A
 - **Cloudflare Pages `_redirects`**: only `/api/* → https://trynex-api.onrender.com/api/:splat` (proxy) + SPA fallback. No Replit hosts.
 - The storefront `getApiBaseUrl()` no longer special-cases `.replit.dev`. The Replit dev environment, when used, just talks to the Render API like any other non-localhost host.
 
+### Keep-alive monitor (Render cold-start mitigation)
+Render free-tier services sleep after 15 minutes of inactivity, which gives the first paying visitor of the hour a 30–50 second cold start. Mitigation:
+- An external HTTP keep-alive monitor (UptimeRobot or equivalent) hits `https://trynex-api.onrender.com/api/healthz` every **5 minutes**, with a 30-second monitor timeout.
+- The storefront also fires a warm-up `GET /api/healthz` 300ms after app mount (with a one-time retry after 2s if the first attempt fails) — see `useWarmUpApi` in `artifacts/trynex-storefront/src/App.tsx`.
+- Render's `healthCheckPath` in `render.yaml` is also set to `/api/healthz`. If you change one, change the other — a mismatch will mark the service unhealthy and Render will refuse to promote new deploys.
+
 ### Google sign-in setup (one-time, optional)
 1. In Google Cloud Console, create an OAuth 2.0 Client ID (type: Web application).
 2. Under "Authorized JavaScript origins" add: `https://trynexshop.com`
