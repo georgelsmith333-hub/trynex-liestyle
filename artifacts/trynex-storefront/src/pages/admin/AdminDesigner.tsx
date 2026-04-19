@@ -467,7 +467,10 @@ export default function AdminDesigner() {
 
               {/* Announcement Bar */}
               <SectionCard icon={Megaphone} title="Announcement Bar" iconColor="#9333ea" collapsible>
-                <ToggleField label="Show Announcement Bar" desc="Display the scrolling ticker bar at the top of the page" value={sections.announcementEnabled} onChange={v => { setSections(s => ({ ...s, announcementEnabled: v })); setSectionsChanged(true); }} />
+                <div className="space-y-3">
+                  <ToggleField label="Show Announcement Bar" desc="Display the scrolling ticker bar at the top of the page" value={sections.announcementEnabled} onChange={v => { setSections(s => ({ ...s, announcementEnabled: v })); setSectionsChanged(true); }} />
+                  <ToggleField label="Auto-Hide After 6 Seconds" desc="Slide the bar out automatically. Off by default — bar stays until visitor closes it." value={(watch("announcementAutoHide") as boolean) ?? false} onChange={v => { setValue("announcementAutoHide", v, { shouldDirty: true }); }} />
+                </div>
                 <Field label="Announcement Messages" full>
                   <textarea {...reg("announcementBar")} className={inputClass} style={inputStyle} rows={3} placeholder="🚚 Free delivery on orders above ৳1,500! | COD available | WhatsApp: 01700-000000" />
                   <p className="text-xs text-gray-400 mt-1.5">Separate messages with <code>|</code>. Each becomes a ticker item.</p>

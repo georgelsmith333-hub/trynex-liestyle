@@ -11,36 +11,46 @@ const DEFAULT_ANNOUNCEMENTS = [
 ];
 
 export function AnnouncementBar() {
-  const [visible, setVisible] = useState(true);
-  const barRef = useRef<HTMLDivElement>(null);
   const settings = useSiteSettings();
+  const enabled = settings.announcementEnabled !== false;
+  const autoHide = settings.announcementAutoHide === true;
   const barColor = settings.announcementColor || "#E85D04";
 
-  if (settings.announcementEnabled === false) return null;
+  const [visible, setVisible] = useState(true);
+  const barRef = useRef<HTMLDivElement>(null);
 
-  const announcements = settings.announcementBar
-    ? settings.announcementBar.split('|').map(t => t.trim()).filter(Boolean)
-    : DEFAULT_ANNOUNCEMENTS;
+  // Reset visibility whenever the bar is re-enabled or messages change so admin toggles take effect.
+  useEffect(() => {
+    setVisible(enabled);
+  }, [enabled, settings.announcementBar]);
 
+  // Keep the CSS layout variable in sync with whether the bar is showing.
   useEffect(() => {
     const updateHeight = () => {
-      const h = visible && barRef.current ? barRef.current.offsetHeight : 0;
+      const showing = enabled && visible;
+      const h = showing && barRef.current ? barRef.current.offsetHeight : 0;
       document.documentElement.style.setProperty('--announcement-height', `${h}px`);
     };
     updateHeight();
     window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
-  }, [visible]);
+  }, [visible, enabled]);
 
-  // Auto-hide after 6 seconds for a cleaner viewing experience
+  // Optional auto-hide (admin-configurable, default OFF).
   useEffect(() => {
-    if (!visible) return;
+    if (!enabled || !autoHide || !visible) return;
     const t = setTimeout(() => {
       setVisible(false);
       document.documentElement.style.setProperty('--announcement-height', '0px');
     }, 6000);
     return () => clearTimeout(t);
-  }, [visible]);
+  }, [visible, enabled, autoHide]);
+
+  if (!enabled) return null;
+
+  const announcements = settings.announcementBar
+    ? settings.announcementBar.split('|').map(t => t.trim()).filter(Boolean)
+    : DEFAULT_ANNOUNCEMENTS;
 
   const handleClose = () => {
     setVisible(false);

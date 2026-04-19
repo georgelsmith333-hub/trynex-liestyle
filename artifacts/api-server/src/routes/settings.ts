@@ -34,8 +34,8 @@ const SETTINGS_KEYS = [
   "categoryCapsEnabled", "categoryMugsEnabled", "categoryCustomEnabled",
   // Trust badge icons
   "trustBadge1Icon", "trustBadge2Icon", "trustBadge3Icon", "trustBadge4Icon",
-  // Announcement bar toggle
-  "announcementEnabled",
+  // Announcement bar toggle + auto-hide
+  "announcementEnabled", "announcementAutoHide",
   // Facebook Ads Conversion Suite (Task #9)
   "flashSaleEnabled", "flashSaleEndTime", "flashSaleMessage",
   "scarcityThreshold", "metaCapiToken",
@@ -112,6 +112,7 @@ async function buildSettings(map: Record<string, string | null>) {
     trustBadge3Icon: map["trustBadge3Icon"] ?? "award",
     trustBadge4Icon: map["trustBadge4Icon"] ?? "users",
     announcementEnabled: (map["announcementEnabled"] ?? "true") !== "false",
+    announcementAutoHide: (map["announcementAutoHide"] ?? "false") === "true",
     // Facebook Ads Conversion Suite (Task #9)
     flashSaleEnabled: (map["flashSaleEnabled"] ?? "false") !== "false",
     flashSaleEndTime: map["flashSaleEndTime"] ?? "",
@@ -232,6 +233,7 @@ router.get("/admin/designer-settings", requireAdmin, async (req, res) => {
       categoryMugsEnabled: s["categoryMugsEnabled"] ?? true,
       categoryCustomEnabled: s["categoryCustomEnabled"] ?? true,
       announcementEnabled: s["announcementEnabled"] ?? true,
+      announcementAutoHide: s["announcementAutoHide"] ?? false,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get designer settings");
@@ -254,7 +256,7 @@ router.patch("/admin/designer-settings", requireAdmin, async (req, res) => {
     "sectionFlashSaleEnabled", "sectionTestimonialsEnabled", "sectionStatsEnabled",
     "categoryTshirtsEnabled", "categoryHoodiesEnabled",
     "categoryCapsEnabled", "categoryMugsEnabled", "categoryCustomEnabled",
-    "announcementEnabled",
+    "announcementEnabled", "announcementAutoHide",
   ];
   try {
     for (const key of DESIGNER_KEYS) {

@@ -64,6 +64,7 @@ interface SiteSettings {
   trustBadge3Icon: string;
   trustBadge4Icon: string;
   announcementEnabled: boolean;
+  announcementAutoHide: boolean;
   flashSaleEnabled: boolean;
   flashSaleEndTime: string;
   flashSaleMessage: string;
@@ -155,6 +156,7 @@ const defaults: SiteSettings = {
   trustBadge3Icon: c("trustBadge3Icon") || "award",
   trustBadge4Icon: c("trustBadge4Icon") || "users",
   announcementEnabled: c("announcementEnabled") ?? true,
+  announcementAutoHide: c("announcementAutoHide") ?? false,
   flashSaleEnabled: c("flashSaleEnabled") ?? false,
   flashSaleEndTime: c("flashSaleEndTime") || "",
   flashSaleMessage: c("flashSaleMessage") || "⚡ FLASH SALE — Limited Stock!",

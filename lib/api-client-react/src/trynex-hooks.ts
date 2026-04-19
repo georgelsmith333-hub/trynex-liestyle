@@ -262,6 +262,7 @@ export interface DesignerSettings {
   categoryMugsEnabled?: boolean | string;
   categoryCustomEnabled?: boolean | string;
   announcementEnabled?: boolean | string;
+  announcementAutoHide?: boolean | string;
   [key: string]: unknown;
 }
 
@@ -297,24 +298,29 @@ export interface FetchSocialUrl200Post {
 
 // ─── Settings Hooks ──────────────────────────────────────────────────────────
 
-export const useGetSettings = () => {
+export const useGetSettings = (_opts?: ReqOpts) => {
   return useQuery({
     queryKey: ["/api/settings"],
-    queryFn: () => customFetch<{ settings: Record<string, string> }>("/api/settings"),
-    staleTime: 5 * 60 * 1000,
+    queryFn: () => customFetch<Record<string, unknown>>("/api/settings"),
+    staleTime: 30 * 1000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 };
 
-export const useUpdateSettings = () => {
+export const useUpdateSettings = (opts?: ReqOpts) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, string>) =>
-      customFetch<{ settings: Record<string, string> }>("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+    mutationFn: (args: { data: Record<string, unknown> }) =>
+      customFetch<Record<string, unknown>>("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(args.data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/settings"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/settings"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/designer-settings"] });
+    },
   });
 };
 

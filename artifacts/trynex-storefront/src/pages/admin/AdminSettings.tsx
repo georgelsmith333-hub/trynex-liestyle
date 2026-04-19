@@ -224,6 +224,20 @@ export default function AdminSettings() {
           </Field>
           <Field label="Announcement Bar Text" full>
             <input {...register("announcementBar")} className={inputClass} style={inputStyle} placeholder="🚚 Free delivery on orders above ৳1,500!" />
+            <p className="text-xs text-gray-400 mt-1">Separate multiple messages with <code>|</code> — each becomes a ticker item.</p>
+          </Field>
+          <Field label="Show Announcement Bar" full>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" {...register("announcementEnabled")} className="w-5 h-5 rounded accent-orange-500" />
+              <span className="text-sm font-medium text-gray-700">Display the scrolling ticker bar at the top of every page</span>
+            </label>
+            <p className="text-xs text-gray-400 mt-1">Same setting as Designer → Announcement Bar. Toggling here also updates that page.</p>
+          </Field>
+          <Field label="Auto-Hide After 6 Seconds" full>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" {...register("announcementAutoHide")} className="w-5 h-5 rounded accent-orange-500" />
+              <span className="text-sm font-medium text-gray-700">Slide the bar out automatically (default off — bar stays until visitor closes it)</span>
+            </label>
           </Field>
         </SectionCard>
 
