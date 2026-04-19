@@ -28,11 +28,16 @@ import { getApiUrl } from "@/lib/utils";
 
 // Warm up the Render free-tier API on app mount so checkout doesn't pay
 // the 30-50s cold-start penalty when the visitor finally clicks "Place Order".
-// Fire-and-forget; the response is ignored.
-if (typeof window !== "undefined") {
-  setTimeout(() => {
-    try { fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" }).catch(() => {}); } catch {}
-  }, 300);
+// Fire-and-forget; the response is ignored. Implemented as a hook below.
+function useWarmUpApi() {
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" }).catch(() => {});
+      } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, []);
 }
 
 const Home = lazy(() => import("./pages/Home"));
@@ -158,6 +163,7 @@ function CaptureReferralCode() {
 function AppInner() {
   useLenis();
   useUtmCapture();
+  useWarmUpApi();
   return null;
 }
 

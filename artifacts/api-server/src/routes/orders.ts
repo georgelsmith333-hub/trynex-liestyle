@@ -344,7 +344,12 @@ router.post("/orders", async (req, res) => {
       })
     );
 
-    const productMap = Object.fromEntries(products.map(p => [p.id, p]));
+    // `products` may contain `undefined` slots for deleted product IDs — filter
+     // those out before building the map, otherwise `p.id` throws and the
+     // request 500s instead of returning a structured `product_missing` error.
+    const productMap = Object.fromEntries(
+      products.filter((p): p is NonNullable<typeof p> => !!p).map(p => [p.id, p])
+    );
 
     const missingProduct = catalogItems.find((item: any) => !productMap[item.productId]);
     if (missingProduct) {
