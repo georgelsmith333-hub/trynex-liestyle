@@ -24,6 +24,16 @@ import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { useUtmCapture } from "@/hooks/useUtm";
 import { Loader } from "@/components/ui/Loader";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { getApiUrl } from "@/lib/utils";
+
+// Warm up the Render free-tier API on app mount so checkout doesn't pay
+// the 30-50s cold-start penalty when the visitor finally clicks "Place Order".
+// Fire-and-forget; the response is ignored.
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    try { fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" }).catch(() => {}); } catch {}
+  }, 300);
+}
 
 const Home = lazy(() => import("./pages/Home"));
 const Products = lazy(() => import("./pages/Products"));

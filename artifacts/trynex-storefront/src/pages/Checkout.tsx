@@ -76,7 +76,9 @@ export default function Checkout() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [isReferralCode, setIsReferralCode] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [serverWaking, setServerWaking] = useState(false);
   const refAppliedRef = useRef(false);
+  const wakingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const snapshotRef = useRef({ total: 0, advance: 0, shipping: 0 });
 
@@ -312,6 +314,9 @@ export default function Checkout() {
     if (shippingPostCode) addressParts.push(`PO: ${shippingPostCode}`);
     rest.shippingAddress = addressParts.join(", ");
 
+    if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+    wakingTimerRef.current = setTimeout(() => setServerWaking(true), 4000);
+
     try {
       const utm = getStoredUtm();
       const order = await createOrder({
@@ -360,15 +365,69 @@ export default function Checkout() {
         localStorage.removeItem("trynex_ref_code");
       }
 
+      if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
+      setServerWaking(false);
       clearCart();
       setStep(paymentMethod === 'card' ? 'success' : 'gateway');
     } catch (err: any) {
-      const errBody = err?.body || err?.data;
-      if (errBody?.error === "promo_invalid") {
+      if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
+      setServerWaking(false);
+      const errBody = err?.data || err?.body || {};
+      const code = errBody?.error;
+      const serverMessage = errBody?.message;
+
+      if (code === "promo_invalid") {
         removePromo();
-        toast({ title: "Promo code is no longer valid", description: "It may have expired or reached its limit. Your order total has been updated.", variant: "destructive" });
+        toast({
+          title: "Promo code is no longer valid",
+          description: "It may have expired or reached its limit. Your order total has been updated — please try again.",
+          variant: "destructive",
+        });
+      } else if (code === "self_referral") {
+        removePromo();
+        toast({
+          title: "You can't use your own referral code",
+          description: "Try a different code or remove it to continue.",
+          variant: "destructive",
+        });
+      } else if (code === "stock_out") {
+        toast({
+          title: "Out of stock",
+          description: serverMessage || "One of your items is out of stock. Please update your cart.",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/cart"), 2500);
+      } else if (code === "product_missing") {
+        toast({
+          title: "Item no longer available",
+          description: serverMessage || "An item in your cart has been removed by the store. Please update your cart.",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/cart"), 2500);
+      } else if (code === "Invalid hamper" || code === "Invalid hamper price") {
+        toast({
+          title: "Gift hamper issue",
+          description: serverMessage || "One of your gift hampers is no longer valid. Please rebuild it from the Hampers page.",
+          variant: "destructive",
+        });
+      } else if (code === "validation_error") {
+        toast({
+          title: "Please check your details",
+          description: serverMessage || "Some fields look incorrect. Review and try again.",
+          variant: "destructive",
+        });
+      } else if (err?.status === 0 || err?.name === "TypeError" || /network|fetch/i.test(err?.message ?? "")) {
+        toast({
+          title: "Connection lost",
+          description: "We couldn't reach the server. Check your internet and try again — or message us on WhatsApp.",
+          variant: "destructive",
+        });
       } else {
-        toast({ title: "Failed to place order", description: "Please check your details and try again.", variant: "destructive" });
+        toast({
+          title: "Failed to place order",
+          description: serverMessage || "Please try again in a moment, or message us on WhatsApp for help.",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -1198,7 +1257,7 @@ export default function Checkout() {
                   style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 6px 24px rgba(232,93,4,0.35)' }}
                 >
                   {isPending ? (
-                    <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Placing Order...</>
+                    <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {serverWaking ? "Waking up server…" : "Placing Order..."}</>
                   ) : paymentMethod === 'cod' ? (
                     <>Proceed to Pay Advance <ArrowRight className="w-5 h-5" /></>
                   ) : paymentMethod === 'card' ? (
@@ -1207,6 +1266,14 @@ export default function Checkout() {
                     <>Proceed to {paymentMethod === 'bkash' ? 'bKash' : paymentMethod === 'nagad' ? 'Nagad' : 'Rocket'} Payment <ArrowRight className="w-5 h-5" /></>
                   )}
                 </button>
+
+                {serverWaking && isPending && (
+                  <div className="mt-3 p-3 rounded-xl text-xs font-semibold text-amber-700 flex items-start gap-2"
+                    style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                    <Loader2 className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin" />
+                    <span>Our server is waking up — this can take 30–50 seconds on the first request after a quiet period. Please don't close the page.</span>
+                  </div>
+                )}
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
                   <ShieldCheck className="w-3.5 h-3.5 text-primary/50" />

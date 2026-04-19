@@ -328,9 +328,19 @@ router.post("/orders", async (req, res) => {
 
     const productMap = Object.fromEntries(products.map(p => [p.id, p]));
 
+    const missingProduct = catalogItems.find((item: any) => !productMap[item.productId]);
+    if (missingProduct) {
+      res.status(400).json({
+        error: "product_missing",
+        message: `One of the products in your cart is no longer available. Please remove it and try again.`,
+        productId: missingProduct.productId,
+        productName: missingProduct.name || null,
+      });
+      return;
+    }
+
     const catalogOrderItems = catalogItems.map((item: any) => {
       const product = productMap[item.productId];
-      if (!product) throw new Error(`Product ${item.productId} not found`);
       const price = product.discountPrice ? parseFloat(product.discountPrice) : parseFloat(product.price);
       return {
         productId: item.productId,
@@ -484,8 +494,17 @@ router.post("/orders", async (req, res) => {
           const constituents = ((item as any).constituentProducts || []) as Array<{ productId: number; quantity: number }>;
           for (const c of constituents) {
             const [prod] = await tx.select({ stock: productsTable.stock, name: productsTable.name }).from(productsTable).where(eq(productsTable.id, c.productId));
-            if (!prod || prod.stock < c.quantity) {
-              throw new Error(`Insufficient stock for hamper item ${prod?.name ?? c.productId}`);
+            if (!prod) {
+              const e: any = new Error("PRODUCT_MISSING");
+              e.productName = `Hamper item #${c.productId}`;
+              throw e;
+            }
+            if (prod.stock < c.quantity) {
+              const e: any = new Error("STOCK_OUT");
+              e.productName = `${prod.name} (in hamper)`;
+              e.available = prod.stock;
+              e.requested = c.quantity;
+              throw e;
             }
             await tx.update(productsTable).set({ stock: prod.stock - c.quantity }).where(eq(productsTable.id, c.productId));
           }
@@ -493,8 +512,17 @@ router.post("/orders", async (req, res) => {
         }
 
         const [prod] = await tx.select({ stock: productsTable.stock }).from(productsTable).where(eq(productsTable.id, item.productId));
-        if (!prod || prod.stock < item.quantity) {
-          throw new Error(`Insufficient stock for product ${item.productName}`);
+        if (!prod) {
+          const e: any = new Error("PRODUCT_MISSING");
+          e.productName = item.productName;
+          throw e;
+        }
+        if (prod.stock < item.quantity) {
+          const e: any = new Error("STOCK_OUT");
+          e.productName = item.productName;
+          e.available = prod.stock;
+          e.requested = item.quantity;
+          throw e;
         }
         await tx.execute(
           sql`UPDATE products SET stock = stock - ${item.quantity} WHERE id = ${item.productId}`
@@ -618,8 +646,26 @@ router.post("/orders", async (req, res) => {
       res.status(400).json({ error: "self_referral", message: "You cannot use your own referral code" });
       return;
     }
+    if (err?.message === "STOCK_OUT") {
+      res.status(409).json({
+        error: "stock_out",
+        message: `Sorry, "${err.productName}" only has ${err.available} in stock — you requested ${err.requested}. Please reduce the quantity or remove this item.`,
+        productName: err.productName,
+        available: err.available,
+        requested: err.requested,
+      });
+      return;
+    }
+    if (err?.message === "PRODUCT_MISSING") {
+      res.status(400).json({
+        error: "product_missing",
+        message: `"${err.productName}" is no longer available. Please remove it from your cart.`,
+        productName: err.productName,
+      });
+      return;
+    }
     req.log.error({ err }, "Failed to create order");
-    res.status(500).json({ error: "internal_error", message: "Failed to create order" });
+    res.status(500).json({ error: "internal_error", message: "Something went wrong on our end. Please try again, or contact us on WhatsApp if the issue persists." });
   }
 });
 
