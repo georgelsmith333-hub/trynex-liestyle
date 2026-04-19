@@ -428,7 +428,24 @@ export default function AdminOrders() {
                               {item.size ? ` · Size: ${item.size}` : ''}
                               {item.color ? ` · ${item.color}` : ''}
                             </p>
-                            {item.customNote && <p className="text-xs text-primary/70 mt-1">"{item.customNote}"</p>}
+                            {(() => {
+                              if (!item.customNote) return null;
+                              let parsed: any = null;
+                              try { parsed = JSON.parse(item.customNote); } catch {}
+                              if (parsed && typeof parsed === "object" && parsed.studioDesign) {
+                                const layers = Number(parsed.layerCount) || 0;
+                                const front = Number(parsed.frontLayerCount) || 0;
+                                const back = Number(parsed.backLayerCount) || 0;
+                                return (
+                                  <p className="text-xs text-primary/70 mt-1">
+                                    Custom studio design · {layers} layer{layers === 1 ? '' : 's'}
+                                    {(front || back) ? ` (${front} front, ${back} back)` : ''}
+                                  </p>
+                                );
+                              }
+                              if (parsed && typeof parsed === "object" && parsed.hamper) return null;
+                              return <p className="text-xs text-primary/70 mt-1">"{item.customNote}"</p>;
+                            })()}
                           </div>
                           <p className="font-black text-primary text-sm">{formatPrice(item.price * item.quantity)}</p>
                         </div>

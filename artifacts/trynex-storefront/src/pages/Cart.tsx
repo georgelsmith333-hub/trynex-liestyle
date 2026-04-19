@@ -5,7 +5,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useCartState, useCartActions, type CartItem } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
-import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
 import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -126,11 +126,26 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
                 </span>
               )}
             </div>
-            {item.customNote && (
-              <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
-                "{item.customNote}"
-              </p>
-            )}
+            {(() => {
+              if (!item.customNote) return null;
+              let parsed: any = null;
+              try { parsed = JSON.parse(item.customNote); } catch {}
+              if (parsed && typeof parsed === "object" && parsed.studioDesign) {
+                const layers = Number(parsed.layerCount) || 0;
+                return (
+                  <p className="text-xs mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-orange-700 bg-orange-50">
+                    <Sparkles className="w-3 h-3" />
+                    Custom design{layers ? ` · ${layers} layer${layers === 1 ? '' : 's'}` : ''}
+                  </p>
+                );
+              }
+              if (parsed && typeof parsed === "object") return null;
+              return (
+                <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
+                  "{item.customNote}"
+                </p>
+              );
+            })()}
             {item.customImages && item.customImages.length > 0 && (
               <div className="flex items-center gap-1.5 mt-2">
                 <ImageIcon className="w-3 h-3 text-orange-400 shrink-0" />
