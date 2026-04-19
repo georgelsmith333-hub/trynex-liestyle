@@ -31,12 +31,17 @@ import { getApiUrl } from "@/lib/utils";
 // Fire-and-forget; the response is ignored. Implemented as a hook below.
 function useWarmUpApi() {
   useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" }).catch(() => {});
-      } catch {}
-    }, 300);
-    return () => clearTimeout(t);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const ping = () =>
+      fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" });
+    timers.push(setTimeout(() => {
+      ping().catch(() => {
+        // First attempt failed (likely cold dyno still booting); retry once
+        // after 2s so the eventual checkout call lands on a warm server.
+        timers.push(setTimeout(() => { ping().catch(() => {}); }, 2000));
+      });
+    }, 300));
+    return () => { timers.forEach(clearTimeout); };
   }, []);
 }
 
