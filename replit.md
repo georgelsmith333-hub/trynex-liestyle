@@ -135,7 +135,7 @@ lib/
 The cart context (`artifacts/trynex-storefront/src/context/CartContext.tsx`) is split into two contexts to minimize re-renders:
 
 - `CartStateContext` — `{ items, subtotal, itemCount }`. Subtotal and itemCount are computed in a single pass and memoized on `items`. Updates only when the cart actually changes.
-- `CartActionsContext` — `{ addToCart, removeFromCart, updateQuantity, clearCart }`. Actions are wrapped in `useCallback` with the functional `setItems` form, so they keep referential equality across renders.
+- `CartActionsContext` — `{ addToCart, removeFromCart, updateQuantity, changeQuantity, clearCart }`. Actions are wrapped in `useCallback` with the functional `setItems` form, so they keep referential equality across renders. Cart line +/- buttons call `changeQuantity(id, ±1)` (delta-based, atomic inside `setItems`) so rapid mobile taps can't read stale quantities.
 - `useCart()` is a backwards-compat combined hook. **Action-only consumers (ProductCard, ProductDetail, DesignStudio, HamperDetail, HamperBuilder, Wishlist) use `useCartActions()` instead** so they don't re-render when items change.
 - `localStorage` writes are debounced 250ms and flushed on `visibilitychange`/`beforeunload` so rapid +/- clicks don't jank the main thread.
 - `updateQuantity` returns the previous array reference if nothing actually changed, avoiding spurious renders.
