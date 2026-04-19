@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
+  STICKERS,
 } from "./design-studio/mockups";
 import { composeLayers, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
 
@@ -1426,10 +1427,61 @@ export default function DesignStudio() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Stickers subsection */}
+                    <div className="mt-5 pt-4 border-t border-gray-100" data-testid="sticker-section">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500">Stickers</h3>
+                        <span className="text-[10px] text-gray-400 font-semibold">{STICKERS.length} shapes</span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mb-3">Tap to drop a vector sticker — drag, pinch & rotate just like an image.</p>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {STICKERS.map(s => (
+                          <button key={s.id}
+                            data-testid={`sticker-${s.id}`}
+                            title={s.name}
+                            onClick={() => {
+                              const img = new Image();
+                              const finish = (w: number, h: number) => {
+                                addLayer({
+                                  id: uid(),
+                                  name: s.name,
+                                  type: "image",
+                                  visible: true,
+                                  locked: false,
+                                  transform: { ...ZERO_TRANSFORM, scale: 0.4 },
+                                  src: s.dataUrl,
+                                  naturalW: w,
+                                  naturalH: h,
+                                });
+                                setActiveTab("layers");
+                              };
+                              img.onload = () => finish(img.naturalWidth || 100, img.naturalHeight || 100);
+                              // Defensive fallback: if the data URL fails to decode for any reason,
+                              // still drop a layer at the SVG's known 100×100 viewBox dimensions
+                              // and let the user know the preview thumbnail may be missing.
+                              img.onerror = () => {
+                                finish(100, 100);
+                                toast({
+                                  title: "Sticker added",
+                                  description: "Couldn't render a preview, but the shape was placed.",
+                                });
+                              };
+                              img.src = s.dataUrl;
+                            }}
+                            className="aspect-square rounded-lg flex items-center justify-center p-1.5 border transition-all hover:border-orange-300 hover:shadow-sm hover:bg-orange-50/30"
+                            style={{ background: "white", borderColor: "#eee" }}
+                          >
+                            <img src={s.dataUrl} alt={s.name} className="w-full h-full object-contain pointer-events-none" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="mt-4 p-3 rounded-xl text-xs text-gray-500 flex items-start gap-2"
                       style={{ background: "#fff4ee", border: "1px solid #fdd5b4" }}>
                       <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-orange-500" />
-                      <span>Tap a template, then customize the text/font in the Text tab.</span>
+                      <span>Tap a template or sticker, then customize from the Layers tab.</span>
                     </div>
                   </motion.div>
                 )}
