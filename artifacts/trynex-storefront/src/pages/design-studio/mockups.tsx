@@ -42,14 +42,20 @@ export interface DesignProduct {
   backSrc?: string;
 }
 
-// Print zones widened for a more realistic / usable design area.
+// Print zones — UNIFIED per garment so flipping front↔back keeps the same
+// design at the same apparent size and position. Each garment uses ONE
+// zone for both faces; the front-only fields below are the source of
+// truth and `printZoneBack` is no longer set per product.
+//
+// Sizes were averaged from the previous front/back values and re-centred
+// so a 200×200 logo lands in the same spot on both sides.
+//   tshirt        →  360 × 430   (was 350×400 / 370×460)
+//   longsleeve    →  340 × 410   (was 330×380 / 350×440)
+//   hoodie        →  330 × 380   (was 310×320 / 350×440 — chest pocket aware)
 // Coordinates live in the unified 1000×1000 viewBox.
-export const TSHIRT_PZ: PrintZone        = { x: 325, y: 280, w: 350, h: 400 };
-export const TSHIRT_PZ_BACK: PrintZone   = { x: 315, y: 250, w: 370, h: 460 };
-export const LONGSLEEVE_PZ: PrintZone    = { x: 335, y: 295, w: 330, h: 380 };
-export const LONGSLEEVE_PZ_BACK: PrintZone = { x: 325, y: 270, w: 350, h: 440 };
-export const HOODIE_PZ: PrintZone        = { x: 345, y: 320, w: 310, h: 320 };
-export const HOODIE_PZ_BACK: PrintZone   = { x: 325, y: 280, w: 350, h: 440 };
+export const TSHIRT_PZ: PrintZone        = { x: 320, y: 270, w: 360, h: 430 };
+export const LONGSLEEVE_PZ: PrintZone    = { x: 330, y: 285, w: 340, h: 410 };
+export const HOODIE_PZ: PrintZone        = { x: 335, y: 305, w: 330, h: 380 };
 export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
 export const MUG_PZ: PrintZone           = { x: 250, y: 305, w: 400, h: 410 };
 
@@ -60,23 +66,23 @@ const BASE = 1000;
 export const PRODUCTS: DesignProduct[] = [
   { id: "white-tshirt",     name: "White T-Shirt",     category: "tshirt",     garmentColor: "#F5F5F3",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: TSHIRT_PZ, printZoneBack: TSHIRT_PZ_BACK,
+    printZone: TSHIRT_PZ,
     frontSrc: "/mockups/white-tshirt-front.png", backSrc: "/mockups/white-tshirt-back.png" },
   { id: "black-tshirt",     name: "Black T-Shirt",     category: "tshirt",     garmentColor: "#1a1a1a",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: TSHIRT_PZ, printZoneBack: TSHIRT_PZ_BACK,
+    printZone: TSHIRT_PZ,
     frontSrc: "/mockups/black-tshirt-front.png", backSrc: "/mockups/black-tshirt-back.png" },
   { id: "white-longsleeve", name: "White Long Sleeve", category: "longsleeve", garmentColor: "#F5F5F3",
     description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: LONGSLEEVE_PZ, printZoneBack: LONGSLEEVE_PZ_BACK,
+    printZone: LONGSLEEVE_PZ,
     frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
   { id: "white-hoodie",     name: "White Hoodie",      category: "hoodie",     garmentColor: "#F2EFE9",
     description: "320GSM Fleece",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: HOODIE_PZ, printZoneBack: HOODIE_PZ_BACK,
+    printZone: HOODIE_PZ,
     frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
   { id: "black-hoodie",     name: "Black Hoodie",      category: "hoodie",     garmentColor: "#161616",
     description: "320GSM Fleece",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: HOODIE_PZ, printZoneBack: HOODIE_PZ_BACK,
+    printZone: HOODIE_PZ,
     frontSrc: "/mockups/black-hoodie-front.png", backSrc: "/mockups/black-hoodie-back.png" },
   { id: "white-cap",        name: "White Cap",         category: "cap",        garmentColor: "#F5F2EC",
     description: "Cotton Twill",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,

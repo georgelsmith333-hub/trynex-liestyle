@@ -212,20 +212,37 @@ function GarmentPanel({
   }, [width, height]);
 
   const geo = useMemo(() => {
-    const g = new THREE.ShapeGeometry(shape, 12);
-    // Map UVs from shape bbox so [printZone] maps correctly
+    // Higher curve segments → smoother UV mapping AND smoother displacement.
+    const g = new THREE.ShapeGeometry(shape, 24);
     g.computeBoundingBox();
     const bbox = g.boundingBox!;
     const sizeX = bbox.max.x - bbox.min.x;
     const sizeY = bbox.max.y - bbox.min.y;
     const uvAttr = g.attributes.uv as THREE.BufferAttribute;
     const posAttr = g.attributes.position as THREE.BufferAttribute;
+    // Subtle barrel curvature: push the centre of the body outward (toward
+    // the viewer for the front face) so the garment reads as a 3D form
+    // rather than a flat plane. Magnitude is intentionally small so the
+    // print stays readable. Falls off near the silhouette edges and the
+    // sleeves so the shoulder line doesn't bulge.
+    const curveDepth = sizeX * 0.06;
     for (let i = 0; i < posAttr.count; i++) {
       const x = posAttr.getX(i);
       const y = posAttr.getY(i);
-      uvAttr.setXY(i, (x - bbox.min.x) / sizeX, (y - bbox.min.y) / sizeY);
+      const u = (x - bbox.min.x) / sizeX;          // 0..1 across width
+      const v = (y - bbox.min.y) / sizeY;          // 0..1 up the height
+      uvAttr.setXY(i, u, v);
+      // Cosine bulge across X, dampened toward sleeves (|x| > body width)
+      // and toward the very top/bottom of the body.
+      const bodyRadius = sizeX * 0.32;             // matches `bodyEdgeX` in shape
+      const sleeveDamp = Math.max(0, 1 - Math.max(0, Math.abs(x) - bodyRadius) / (sizeX * 0.18));
+      const verticalDamp = Math.sin(Math.PI * v);  // 0 at top/bottom, 1 mid
+      const z = curveDepth * Math.cos((Math.PI * (x - bbox.min.x)) / sizeX - Math.PI / 2)
+              * sleeveDamp * verticalDamp;
+      posAttr.setZ(i, z);
     }
     uvAttr.needsUpdate = true;
+    posAttr.needsUpdate = true;
     g.computeVertexNormals();
     return g;
   }, [shape]);

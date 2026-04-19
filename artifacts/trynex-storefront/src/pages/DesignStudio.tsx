@@ -306,6 +306,10 @@ export default function DesignStudio() {
   const fileInputAddRef = useRef<HTMLInputElement>(null);
 
   // Print zone is face-aware: products may have a different rectangle for the back panel.
+  // Front and back share the same print zone per garment, so flipping
+  // faces preserves a design's apparent size and position. The
+  // `printZoneBack` field is kept on the type for backward compatibility
+  // but is no longer set by any product — the fallback always wins.
   const pz = useMemo(
     () => (activeFace === "back" && selectedProduct.printZoneBack) ? selectedProduct.printZoneBack : selectedProduct.printZone,
     [activeFace, selectedProduct]
@@ -794,9 +798,9 @@ export default function DesignStudio() {
               style={{ background: "#f3f4f6" }} title="Redo (Ctrl+Y)">
               <Redo2 className="w-4 h-4" />
             </button>
-            {/* 2D / 3D toggle */}
+            {/* 2D / 3D toggle (visible on mobile too — it's a hero feature) */}
             {supports3D && (
-              <div className="hidden sm:flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
+              <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
                 <button
                   onClick={() => setViewMode("2d")}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
@@ -957,11 +961,35 @@ export default function DesignStudio() {
                   </div>
                 ) : (
                 <>
-                <svg
+                {/* Floating face label inside the canvas — gives a clear, premium
+                    "you are looking at the FRONT" indicator and animates between
+                    faces. Doesn't affect interaction (pointer-events: none). */}
+                {supportsBack && (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeFace}
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.18 }}
+                      className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest pointer-events-none z-10"
+                      style={{ background: "rgba(17,24,39,0.85)", color: "white", letterSpacing: "0.12em", backdropFilter: "blur(4px)" }}
+                    >
+                      {activeFace}
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+                <AnimatePresence mode="wait" initial={false}>
+                <motion.svg
+                  key={`${selectedProduct.id}-${activeFace}`}
                   ref={svgRef}
                   viewBox={selectedProduct.viewBox}
                   className="absolute inset-0 w-full h-full"
                   style={{ touchAction: "none", userSelect: "none" }}
+                  initial={{ opacity: 0, rotateY: activeFace === "back" ? -12 : 12 }}
+                  animate={{ opacity: 1, rotateY: 0 }}
+                  exit={{ opacity: 0, rotateY: activeFace === "back" ? 12 : -12 }}
+                  transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                   onPointerDown={onSvgPointerDown}
                   onPointerMove={onSvgPointerMove}
                   onPointerUp={endGesture}
@@ -1038,7 +1066,8 @@ export default function DesignStudio() {
                     <line x1={pz.x - 8} y1={pz.y + pz.h / 2} x2={pz.x + pz.w + 8} y2={pz.y + pz.h / 2}
                       stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
                   )}
-                </svg>
+                </motion.svg>
+                </AnimatePresence>
 
                 {/* Empty state */}
                 {layers.length === 0 && (
