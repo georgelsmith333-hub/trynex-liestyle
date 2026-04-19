@@ -126,6 +126,13 @@ curl -s https://trynexshop.com/sitemap.xml | head -40
 curl -s https://trynexshop.com/robots.txt
 ```
 
+## A-to-Z site sweep
+
+Manual phone + laptop walkthrough of every storefront and admin page lives in
+[`docs/site-sweep-results.md`](./site-sweep-results.md). Two API-side bugs
+(blog list 500, admin reviews 500) were caught and fixed during that sweep —
+make sure the API is redeployed so those fixes ship before launch.
+
 ## What to do if something fails
 
 - **Header missing** → edit `artifacts/trynex-storefront/public/_headers`, push, redeploy.

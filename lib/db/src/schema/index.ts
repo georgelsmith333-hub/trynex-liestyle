@@ -78,8 +78,13 @@ export const blogPostsTable = pgTable("blog_posts", {
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   author: text("author").default("TryNex Team"),
+  authorBio: text("author_bio"),
+  authorAvatarUrl: text("author_avatar_url"),
+  category: text("category").default("General"),
   tags: text("tags").array().default([]),
   published: boolean("published").default(false),
+  featured: boolean("featured").default(false),
+  readingTimeOverride: integer("reading_time_override"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

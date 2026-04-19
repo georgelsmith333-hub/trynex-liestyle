@@ -206,6 +206,23 @@ export async function runMigrations(): Promise<void> {
       logger.error({ err }, "Hamper seed failed — continuing startup anyway");
     }
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL,
+        customer_id INTEGER,
+        customer_name TEXT NOT NULL,
+        customer_email TEXT,
+        rating INTEGER NOT NULL,
+        title TEXT,
+        body TEXT NOT NULL,
+        approved BOOLEAN DEFAULT false,
+        order_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+
     logger.info("Database migrations complete");
   } catch (err) {
     logger.error({ err }, "Migration failed — continuing startup anyway");
