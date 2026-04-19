@@ -694,7 +694,7 @@ export const useDeleteReview = (_opts?: ReqOpts) => {
 
 export const useListBlogPosts = (
   params?: { limit?: string | number; page?: string | number; published?: boolean; category?: string },
-  _opts?: ReqOpts,
+  opts?: ReqOpts,
 ) => {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set("limit", String(params.limit));
@@ -703,9 +703,13 @@ export const useListBlogPosts = (
   if (params?.category) searchParams.set("category", params.category);
   const qs = searchParams.toString();
   const url = `/api/blog${qs ? `?${qs}` : ""}`;
+  const headers = opts?.request?.headers ?? {};
+  const authKey = headers["Authorization"] ?? headers["authorization"] ?? "";
   return useQuery({
-    queryKey: ["/api/blog", params],
-    queryFn: () => customFetch<{ posts: BlogPost[]; total: number; page: number; limit: number }>(url),
+    queryKey: ["/api/blog", params, authKey ? "auth" : "anon"],
+    queryFn: () => customFetch<{ posts: BlogPost[]; total: number; page: number; limit: number }>(url, {
+      headers,
+    }),
     staleTime: 60 * 1000,
   });
 };

@@ -98,6 +98,9 @@
 @layer utilities {
   .font-display { font-family: 'Outfit', sans-serif; }
 
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
   .pt-header {
     padding-top: calc(var(--announcement-height, 0px) + 4rem);
   }

@@ -244,3 +244,36 @@ The Realtime Design Studio now uses photographic mockup templates instead of inl
 
 ### Mobile product card consistency
 - `ProductCard.tsx` is now `h-full flex flex-col` with the price+CTA row anchored via `mt-auto`, so every card in a grid lines up at the bottom regardless of title length, colour-swatch presence, or savings badge. Verified on a 390-wide viewport: Add to Bag and the WhatsApp button both sit above the fold.
+
+## Data preservation policy (April 2026)
+
+User-facing data is **never** auto-reset, replaced, or seeded by code deployments. The following live in the database and persist across every Cloudflare Pages and Render deploy:
+
+- Blog posts (`blog_posts`)
+- Reviews / testimonials (`reviews`, `testimonials`)
+- Orders (`orders`, `order_items`)
+- Customers / customer accounts (`customers`, `users`)
+- Site settings (`settings` — admin-edited values like hero copy, hours, payment toggles)
+- Hampers and hamper items
+- Admins (`admins`)
+
+Mechanisms in place:
+- `runMigrations()` (`artifacts/api-server/src/lib/autoSeed.ts`) only issues `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. It never `DROP`s, `TRUNCATE`s, or `DELETE`s rows.
+- `autoSeedIfEmpty()` is a true no-op when `productsTable` already has at least one row. It only ever fires on a brand-new empty database (first cold boot), and even then only inserts default categories / sample products / a default admin — it does not touch blogs, reviews, orders, customers, or settings.
+- `pnpm --filter db push` (the post-merge step) uses `drizzle-kit push` in non-destructive mode. Schema additions are applied; column drops or type changes that would lose data require explicit confirmation and are blocked by the `--force` flag absence.
+- No cron job or background worker truncates user data.
+
+If you ever want to reset content, do it from the admin panel or by an explicit one-off SQL run — never by re-deploying.
+
+## Hero performance (April 2026)
+
+The home hero now dynamically gates GPU-heavy effects to large screens to keep mid-range Android devices smooth:
+
+- `ParticleCanvas` (15–35 animated particles) renders only on `lg:` and up.
+- The three large animated background blobs (`blur-[60–90px]` + infinite scale/opacity loops) are also `lg:`-only. Mobile gets two small static blurred gradients (`blur-[40px]`, ~280px) instead — same visual mood, no GPU compositing churn.
+- Feature mini-badges drop their `backdrop-filter: blur(10px)` on mobile (4 stacked blur layers were a major frame-drop source) and use a near-opaque `bg-white/90` instead.
+- The animated payment ribbon was repacked into a single `overflow-x-auto` flex row with `flex-nowrap` and a hidden scrollbar, so all five methods (bKash, Nagad, Rocket, COD, VISA) plus the “100% Secure” badge are visible side-by-side on any phone width.
+
+## Admin blog drafts visibility fix
+
+`useListBlogPosts` previously accepted an `_opts` parameter but discarded it, so the admin's `Authorization: Bearer …` header never reached `/api/blog`. That made the API treat admin requests as anonymous and filter out unpublished drafts — admins saw zero posts even after creating them. Fixed in `lib/api-client-react/src/trynex-hooks.ts` by forwarding `opts.request.headers` to `customFetch` and including the auth state in the React Query cache key.

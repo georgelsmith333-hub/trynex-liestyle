@@ -737,27 +737,39 @@ export default function Home() {
                 : 'linear-gradient(145deg, #FFFCF8 0%, #FFF6ED 35%, #FFEEDE 65%, #FFF2E4 100%)',
           }} />
 
-        {/* Particle field */}
-        <ParticleCanvas />
+        {/* Particle field — desktop only (mobile keeps GPU free for scrolling) */}
+        <div className="absolute inset-0 hidden lg:block pointer-events-none">
+          <ParticleCanvas />
+        </div>
 
-        {/* Layered ambient glow blobs */}
+        {/* Layered ambient glow blobs — animated on desktop, static on mobile to avoid frame drops */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Mobile: static, smaller, lighter blur */}
+          <div
+            className="absolute -top-24 -right-24 w-[280px] h-[280px] rounded-full blur-[40px] opacity-25 lg:hidden"
+            style={{ background: 'radial-gradient(circle, rgba(251,133,0,0.55), transparent)' }}
+          />
+          <div
+            className="absolute -bottom-24 -left-20 w-[260px] h-[260px] rounded-full blur-[40px] opacity-20 lg:hidden"
+            style={{ background: 'radial-gradient(circle, rgba(232,93,4,0.45), transparent)' }}
+          />
+          {/* Desktop: full animated blobs */}
           <motion.div
             animate={{ scale: [1, 1.12, 1], opacity: [0.18, 0.32, 0.18] }}
             transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full blur-[80px]"
+            className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full blur-[80px] hidden lg:block"
             style={{ background: 'radial-gradient(circle, rgba(251,133,0,0.55), transparent)' }}
           />
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [0.12, 0.22, 0.12] }}
             transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-            className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full blur-[60px]"
+            className="absolute bottom-0 -left-24 w-[400px] h-[400px] rounded-full blur-[60px] hidden lg:block"
             style={{ background: 'radial-gradient(circle, rgba(232,93,4,0.45), transparent)' }}
           />
           <motion.div
             animate={{ opacity: [0.05, 0.11, 0.05] }}
             transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-            className="absolute top-1/3 right-1/4 w-[500px] h-[500px] rounded-full blur-[90px]"
+            className="absolute top-1/3 right-1/4 w-[500px] h-[500px] rounded-full blur-[90px] hidden lg:block"
             style={{ background: 'radial-gradient(circle, rgba(251,180,80,0.5), transparent)' }}
           />
         </div>
@@ -966,10 +978,8 @@ export default function Home() {
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + i * 0.07 }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/90 lg:bg-white/75 lg:backdrop-blur-md"
                     style={{
-                      background: 'rgba(255,255,255,0.75)',
-                      backdropFilter: 'blur(10px)',
                       border: '1px solid rgba(232,93,4,0.18)',
                       color: '#444',
                     }}
@@ -1160,37 +1170,40 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center gap-3"
           >
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 shrink-0">Accepted Payments:</p>
-              {PAYMENT_METHODS.map((pm, i) => (
-                <motion.div
-                  key={pm.name}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.06, duration: 0.35 }}
-                  whileHover={{ y: -3, scale: 1.06 }}
-                  className="cursor-default"
-                  title={pm.name}
-                  style={{ willChange: 'transform' }}
-                >
-                  <div
-                    className="px-4 py-2 rounded-xl text-xs text-white flex items-center gap-1.5 shadow-sm"
-                    style={{
-                      background: pm.bg,
-                      boxShadow: `0 2px 8px ${pm.color}30`,
-                    }}
+            <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 text-center">
+              Accepted Payments
+            </p>
+            <div className="w-full overflow-x-auto no-scrollbar">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 min-w-max mx-auto px-2">
+                {PAYMENT_METHODS.map((pm, i) => (
+                  <motion.div
+                    key={pm.name}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    whileHover={{ y: -2, scale: 1.05 }}
+                    className="cursor-default shrink-0"
+                    title={pm.name}
                   >
-                    <span style={{ ...pm.labelStyle, color: pm.textColor, fontSize: '11px' }}>
-                      {pm.shortName}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-              <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 px-3 py-2 rounded-xl"
-                style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
-                <ShieldCheck className="w-3.5 h-3.5" /> 100% Secure
-              </span>
+                    <div
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs text-white flex items-center shadow-sm"
+                      style={{
+                        background: pm.bg,
+                        boxShadow: `0 2px 8px ${pm.color}30`,
+                      }}
+                    >
+                      <span style={{ ...pm.labelStyle, color: pm.textColor, fontSize: '11px' }}>
+                        {pm.shortName}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+                <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shrink-0"
+                  style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                  <ShieldCheck className="w-3.5 h-3.5" /> 100% Secure
+                </span>
+              </div>
             </div>
             <LiveSocialProof stats={publicStats} primaryColor="var(--color-primary)" />
           </motion.div>
