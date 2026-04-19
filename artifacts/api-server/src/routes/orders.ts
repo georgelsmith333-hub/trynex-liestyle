@@ -289,30 +289,30 @@ router.get("/orders/:id", requireAdmin, async (req, res) => {
 
 router.post("/orders", async (req, res) => {
   try {
-    const { customerName, customerEmail, customerPhone, shippingAddress, shippingCity, shippingDistrict, paymentMethod, items, notes, promoCode, utmSource, utmMedium, utmCampaign } = req.body;
+    const body = req.body ?? {};
+    // Accept either combined customerName OR separate firstName+lastName
+    const customerName: string = body.customerName?.trim() ||
+      [body.firstName, body.lastName].filter(Boolean).join(" ").trim();
+    const customerEmail: string = body.customerEmail;
+    const customerPhone: string = body.customerPhone;
+    const shippingAddress: string = body.shippingAddress;
+    const shippingCity: string = body.shippingCity;
+    const shippingDistrict: string = body.shippingDistrict;
+    // Default payment method to COD so missing/empty values don't block orders
+    const paymentMethod: string = body.paymentMethod || "cod";
+    const { items, notes, promoCode, utmSource, utmMedium, utmCampaign } = body;
     const customerEmailLower = customerEmail ? customerEmail.toLowerCase().trim() : null;
 
     const missing: string[] = [];
-    if (!customerName) missing.push("customerName");
-    if (!customerEmail) missing.push("customerEmail");
-    if (!customerPhone) missing.push("customerPhone");
-    if (!shippingAddress) missing.push("shippingAddress");
-    if (!paymentMethod) missing.push("paymentMethod");
-    if (!items?.length) missing.push("items");
+    if (!customerName) missing.push("Full name");
+    if (!customerEmail) missing.push("Email");
+    if (!customerPhone) missing.push("Phone number");
+    if (!shippingAddress) missing.push("Street address");
+    if (!items?.length) missing.push("Cart items");
     if (missing.length > 0) {
-      const fieldLabels: Record<string, string> = {
-        customerName: "Full name",
-        customerEmail: "Email",
-        customerPhone: "Phone",
-        shippingAddress: "Street address",
-        paymentMethod: "Payment method",
-        items: "Cart items",
-      };
-      const friendly = missing.map((f) => fieldLabels[f] ?? f).join(", ");
       res.status(400).json({
         error: "validation_error",
-        message: `Please fill in: ${friendly}`,
-        missingFields: missing,
+        message: `Please fill in: ${missing.join(", ")}`,
       });
       return;
     }
