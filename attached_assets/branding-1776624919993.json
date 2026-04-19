@@ -1,0 +1,151 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Lato",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#2DAAEF",
+    "secondary": "#677886",
+    "accent": "#4AB742",
+    "background": "#FFFFFF",
+    "textPrimary": "#2B3033",
+    "link": "#337AB7"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Lato",
+      "heading": "Lato"
+    },
+    "fontStacks": {
+      "heading": [
+        "Lato",
+        "Helvetica Neue",
+        "Helvetica",
+        "Arial",
+        "sans-serif"
+      ],
+      "body": [
+        "Lato",
+        "Helvetica Neue",
+        "Helvetica",
+        "Arial",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Lato",
+        "Helvetica Neue",
+        "Helvetica",
+        "Arial",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "36px",
+      "h2": "36px",
+      "body": "14px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {
+    "input": {
+      "background": "#FFFFFF",
+      "textColor": "#555555",
+      "borderColor": "#CCCCCC",
+      "borderRadius": "4px",
+      "borderRadiusCorners": {
+        "topLeft": "4px",
+        "topRight": "4px",
+        "bottomRight": "4px",
+        "bottomLeft": "4px"
+      },
+      "shadow": "rgba(0, 0, 0, 0.075) 0px 1px 1px 0px inset"
+    },
+    "buttonPrimary": {
+      "background": "#4AB742",
+      "textColor": "#FFFFFF",
+      "borderColor": "#33802E",
+      "borderRadius": "4px",
+      "borderRadiusCorners": {
+        "topLeft": "4px",
+        "topRight": "4px",
+        "bottomRight": "4px",
+        "bottomLeft": "4px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "#FFFFFF",
+      "textColor": "#2B3033",
+      "borderColor": "#CCCCCC",
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.png",
+    "favicon": "File saved at: attached_assets/favicon.ico",
+    "ogImage": "https://banksy.gearint.com/socialshare?overlayPath=https%3A%2F%2Fgearlaunch-product-images-secure.imgix.net%2Fimg%2Fproduct%2FUnisexCrew_FRONT_46be88da32.png%3Fs%3Dee3f718bfc5eaff980ebecc934b29856&artPath=https%3A%2F%2Fgearlaunch-prod-imgix-secure.imgix.net%2F69185636-f4e6-409e-a452-541bd48828c8%3Ffit%3Dclamp%26ixlib%3Djava-1.1.0%26s%3D91ab000c00b6dadd5a290362f802815a&offsetX=211&offsetY=98&imageWidth=294&bgColor=4B256E&mockupWidth=700&socialshareWidth=1415&socialshareHeight=741&socialshareOffset=357&allowOverflow=false",
+    "logoHref": "https://customdesignstores.com/"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand inferred from the URL and page title.",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 0,
+      "text": "Add to cart",
+      "reasoning": "The 'Add to cart' button is the primary CTA due to its vibrant green color, which stands out and is action-oriented, encouraging users to make a purchase."
+    },
+    "secondary": {
+      "index": 4,
+      "text": "Product Details",
+      "reasoning": "The 'Product Details' button serves as a secondary action with a neutral white background, providing additional information without competing with the primary CTA."
+    },
+    "confidence": 0.95
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "Expectant mothers looking for custom apparel"
+  },
+  "designSystem": {
+    "framework": "bootstrap",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.95,
+    "colors": 0.9,
+    "overall": 0.925
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand inferred from the URL and page title.",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
