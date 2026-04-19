@@ -292,8 +292,28 @@ router.post("/orders", async (req, res) => {
     const { customerName, customerEmail, customerPhone, shippingAddress, shippingCity, shippingDistrict, paymentMethod, items, notes, promoCode, utmSource, utmMedium, utmCampaign } = req.body;
     const customerEmailLower = customerEmail ? customerEmail.toLowerCase().trim() : null;
 
-    if (!customerName || !customerEmail || !customerPhone || !shippingAddress || !paymentMethod || !items?.length) {
-      res.status(400).json({ error: "validation_error", message: "Missing required fields" });
+    const missing: string[] = [];
+    if (!customerName) missing.push("customerName");
+    if (!customerEmail) missing.push("customerEmail");
+    if (!customerPhone) missing.push("customerPhone");
+    if (!shippingAddress) missing.push("shippingAddress");
+    if (!paymentMethod) missing.push("paymentMethod");
+    if (!items?.length) missing.push("items");
+    if (missing.length > 0) {
+      const fieldLabels: Record<string, string> = {
+        customerName: "Full name",
+        customerEmail: "Email",
+        customerPhone: "Phone",
+        shippingAddress: "Street address",
+        paymentMethod: "Payment method",
+        items: "Cart items",
+      };
+      const friendly = missing.map((f) => fieldLabels[f] ?? f).join(", ");
+      res.status(400).json({
+        error: "validation_error",
+        message: `Please fill in: ${friendly}`,
+        missingFields: missing,
+      });
       return;
     }
 
