@@ -890,6 +890,64 @@ export default function Home() {
                 </MagneticButton>
               </motion.div>
 
+              {/* Mobile-only compact product visual */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="lg:hidden mx-auto mb-6 w-full max-w-[360px]"
+                aria-hidden="true"
+              >
+                <div
+                  className="relative flex items-center gap-3 rounded-2xl overflow-hidden p-3"
+                  style={{
+                    height: '96px',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #fff8f2 100%)',
+                    boxShadow: '0 12px 28px rgba(232,93,4,0.14), 0 2px 8px rgba(0,0,0,0.05)',
+                    border: '1px solid rgba(232,93,4,0.14)',
+                  }}
+                >
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[3px]"
+                    style={{ background: 'linear-gradient(90deg, #E85D04, #FB8500, #fbd580)' }}
+                  />
+                  <div
+                    className="relative flex-shrink-0 flex items-center justify-center rounded-xl"
+                    style={{
+                      width: '72px',
+                      height: '72px',
+                      background: 'linear-gradient(145deg, #fff4ee, #ffe8d4)',
+                      border: '1px solid rgba(232,93,4,0.12)',
+                    }}
+                  >
+                    <svg width="56" height="56" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M60 50 L30 90 L55 100 L55 185 L165 185 L165 100 L190 90 L160 50 C155 55 140 65 110 65 C80 65 65 55 60 50Z" fill="#F97316" opacity="0.95" />
+                      <path d="M80 55 Q110 75 140 55 Q130 62 110 65 Q90 62 80 55Z" fill="#EA580C" />
+                      <path d="M75 70 Q110 68 145 70 L148 185 L72 185Z" fill="rgba(255,255,255,0.08)" />
+                      <text x="110" y="135" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="22" fill="white" opacity="0.95">TN</text>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black text-white"
+                        style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}
+                      >
+                        <Star className="w-2.5 h-2.5 fill-white" />
+                        4.9
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">
+                        Bestseller
+                      </span>
+                    </div>
+                    <p className="text-sm font-black text-gray-900 truncate">Premium Custom Tee</p>
+                    <p className="text-[11px] font-bold mt-0.5" style={{ color: 'var(--color-primary)' }}>
+                      Starting ৳599
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+
               {/* Feature mini-badges */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
