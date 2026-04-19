@@ -223,3 +223,24 @@ Every HTML response from Cloudflare Pages now ships with:
 
 ### What "done" means for Task #23
 Checklist sections 1–7 in `docs/launch-checklist.md` all pass against `https://trynexshop.com` after the next deploy. The infrastructure prerequisites that this codebase controls (security headers, CORS lockdown, dynamic sitemap, no Replit hosts) are all in place; only the live-site walkthrough remains, and that is the operator's responsibility.
+
+## Design Studio overhaul (April 2026)
+
+The Realtime Design Studio now uses photographic mockup templates instead of inline SVG illustrations.
+
+### Mockup pipeline
+- 14 AI-generated PNG mockups live in `artifacts/trynex-storefront/public/mockups/<id>-<face>.png` (front + back for tshirt / longsleeve / hoodie; front-only for cap and mug). All ~1024×1024 with a soft drop shadow on a white studio background.
+- `mockups.tsx` collapsed from per-product inline SVG components into a single `GarmentSVG` that embeds the PNG via SVG `<image>` and overlays a labelled dashed "Print Area" outline.
+- All products now share a unified `1000×1000` viewBox. Each product carries its own front `printZone` (and optional `printZoneBack`) calibrated to the chest / back / wraparound area of its photograph.
+
+### Face awareness
+- `DesignStudio.tsx` derives `pz` from `activeFace` for the editor.
+- `ProductViewer3D` and the cart `composeLayers` calls always pass the *explicit* front zone for the front payload and `printZoneBack ?? printZone` for the back payload — they never use the editor's face-aware `pz` (would otherwise leak the back zone into the front snapshot).
+- The Front/Back face switcher only renders when `supportsBack` is true (cap + mug hide it).
+- Print-area outline auto-hides once the active face has at least one layer placed (`effectiveShowPrintZone`).
+
+### Draft storage version
+- `DRAFT_VERSION` was bumped from `1` → `2`. Old drafts saved in the previous ~400-wide coordinate system are dropped on load, so nobody opens the studio to a misplaced/oversized restored design.
+
+### Mobile product card consistency
+- `ProductCard.tsx` is now `h-full flex flex-col` with the price+CTA row anchored via `mt-auto`, so every card in a grid lines up at the bottom regardless of title length, colour-swatch presence, or savings badge. Verified on a 390-wide viewport: Add to Bag and the WhatsApp button both sit above the fold.
