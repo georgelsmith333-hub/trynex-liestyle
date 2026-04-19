@@ -134,6 +134,11 @@ export default function Login() {
                   <input
                     id="login-email"
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="next"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: undefined })); }}
                     placeholder="your@email.com"
@@ -153,6 +158,7 @@ export default function Login() {
                   <input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
+                    enterKeyHint="go"
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: undefined })); }}
                     placeholder="Enter your password"

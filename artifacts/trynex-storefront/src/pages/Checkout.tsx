@@ -789,6 +789,10 @@ export default function Checkout() {
                       <label htmlFor="co-firstName" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">First Name *</label>
                       <input
                         id="co-firstName"
+                        type="text"
+                        inputMode="text"
+                        autoCapitalize="words"
+                        enterKeyHint="next"
                         {...register("firstName")}
                         className={inputClass}
                         style={{ ...inputStyle, borderColor: errors.firstName ? '#f87171' : undefined }}
@@ -803,6 +807,10 @@ export default function Checkout() {
                       <label htmlFor="co-lastName" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Last Name *</label>
                       <input
                         id="co-lastName"
+                        type="text"
+                        inputMode="text"
+                        autoCapitalize="words"
+                        enterKeyHint="next"
                         {...register("lastName")}
                         className={inputClass}
                         style={{ ...inputStyle, borderColor: errors.lastName ? '#f87171' : undefined }}
@@ -818,6 +826,11 @@ export default function Checkout() {
                       <input
                         id="co-email"
                         type="email"
+                        inputMode="email"
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        enterKeyHint="next"
                         {...register("customerEmail")}
                         className={inputClass}
                         style={{ ...inputStyle, borderColor: errors.customerEmail ? '#f87171' : undefined }}
@@ -832,6 +845,9 @@ export default function Checkout() {
                       <label htmlFor="co-phone" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Phone *</label>
                       <input
                         id="co-phone"
+                        type="tel"
+                        inputMode="tel"
+                        enterKeyHint="next"
                         {...register("customerPhone")}
                         className={inputClass}
                         style={{ ...inputStyle, borderColor: errors.customerPhone ? '#f87171' : undefined }}
@@ -846,6 +862,8 @@ export default function Checkout() {
                       <label htmlFor="co-address" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Street Address *</label>
                       <textarea
                         id="co-address"
+                        autoCapitalize="words"
+                        enterKeyHint="next"
                         {...register("shippingAddress")}
                         rows={3}
                         className={`${inputClass} resize-none`}
@@ -888,6 +906,10 @@ export default function Checkout() {
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Post Code</label>
                           <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            enterKeyHint="done"
                             {...register("shippingPostCode")}
                             className={inputClass}
                             style={inputStyle}

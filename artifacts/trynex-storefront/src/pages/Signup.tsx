@@ -182,6 +182,9 @@ export default function Signup() {
                   <input
                     id="signup-name"
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="words"
+                    enterKeyHint="next"
                     value={name}
                     onChange={(e) => { setName(e.target.value); if (fieldErrors.name) setFieldErrors(p => ({ ...p, name: undefined })); }}
                     placeholder="Your full name"
@@ -201,6 +204,11 @@ export default function Signup() {
                   <input
                     id="signup-email"
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="next"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: undefined })); }}
                     placeholder="your@gmail.com"
@@ -220,10 +228,12 @@ export default function Signup() {
                   <input
                     id="signup-phone"
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    enterKeyHint="next"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="01XXXXXXXXX"
-                    autoComplete="tel"
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-sm"
                   />
                 </div>
@@ -236,6 +246,7 @@ export default function Signup() {
                   <input
                     id="signup-password"
                     type={showPassword ? "text" : "password"}
+                    enterKeyHint="next"
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: undefined })); }}
                     placeholder="Min 6 characters"
@@ -276,6 +287,7 @@ export default function Signup() {
                   <input
                     id="signup-confirm-password"
                     type={showPassword ? "text" : "password"}
+                    enterKeyHint="go"
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors(p => ({ ...p, confirmPassword: undefined })); }}
                     placeholder="Re-enter password"
