@@ -305,7 +305,6 @@ router.post("/orders", async (req, res) => {
 
     const missing: string[] = [];
     if (!customerName) missing.push("Full name");
-    if (!customerEmail) missing.push("Email");
     if (!customerPhone) missing.push("Phone number");
     if (!shippingAddress) missing.push("Street address");
     if (!items?.length) missing.push("Cart items");
