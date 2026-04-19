@@ -5,6 +5,24 @@ import { requireAdmin } from "../middlewares/adminAuth";
 import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
 import { logger } from "../lib/logger";
 
+class StockOutError extends Error {
+  constructor(
+    public readonly productName: string,
+    public readonly available: number,
+    public readonly requested: number,
+  ) {
+    super("STOCK_OUT");
+    this.name = "StockOutError";
+  }
+}
+
+class ProductMissingError extends Error {
+  constructor(public readonly productName: string) {
+    super("PRODUCT_MISSING");
+    this.name = "ProductMissingError";
+  }
+}
+
 const router: IRouter = Router();
 
 async function migrateOrdersTable() {
@@ -495,16 +513,10 @@ router.post("/orders", async (req, res) => {
           for (const c of constituents) {
             const [prod] = await tx.select({ stock: productsTable.stock, name: productsTable.name }).from(productsTable).where(eq(productsTable.id, c.productId));
             if (!prod) {
-              const e: any = new Error("PRODUCT_MISSING");
-              e.productName = `Hamper item #${c.productId}`;
-              throw e;
+              throw new ProductMissingError(`Hamper item #${c.productId}`);
             }
             if (prod.stock < c.quantity) {
-              const e: any = new Error("STOCK_OUT");
-              e.productName = `${prod.name} (in hamper)`;
-              e.available = prod.stock;
-              e.requested = c.quantity;
-              throw e;
+              throw new StockOutError(`${prod.name} (in hamper)`, prod.stock, c.quantity);
             }
             await tx.update(productsTable).set({ stock: prod.stock - c.quantity }).where(eq(productsTable.id, c.productId));
           }
@@ -513,16 +525,10 @@ router.post("/orders", async (req, res) => {
 
         const [prod] = await tx.select({ stock: productsTable.stock }).from(productsTable).where(eq(productsTable.id, item.productId));
         if (!prod) {
-          const e: any = new Error("PRODUCT_MISSING");
-          e.productName = item.productName;
-          throw e;
+          throw new ProductMissingError(item.productName);
         }
         if (prod.stock < item.quantity) {
-          const e: any = new Error("STOCK_OUT");
-          e.productName = item.productName;
-          e.available = prod.stock;
-          e.requested = item.quantity;
-          throw e;
+          throw new StockOutError(item.productName, prod.stock, item.quantity);
         }
         await tx.execute(
           sql`UPDATE products SET stock = stock - ${item.quantity} WHERE id = ${item.productId}`
@@ -646,7 +652,7 @@ router.post("/orders", async (req, res) => {
       res.status(400).json({ error: "self_referral", message: "You cannot use your own referral code" });
       return;
     }
-    if (err?.message === "STOCK_OUT") {
+    if (err instanceof StockOutError) {
       res.status(409).json({
         error: "stock_out",
         message: `Sorry, "${err.productName}" only has ${err.available} in stock — you requested ${err.requested}. Please reduce the quantity or remove this item.`,
@@ -656,7 +662,7 @@ router.post("/orders", async (req, res) => {
       });
       return;
     }
-    if (err?.message === "PRODUCT_MISSING") {
+    if (err instanceof ProductMissingError) {
       res.status(400).json({
         error: "product_missing",
         message: `"${err.productName}" is no longer available. Please remove it from your cart.`,

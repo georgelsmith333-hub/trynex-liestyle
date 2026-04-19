@@ -321,33 +321,50 @@ export default function Checkout() {
     rest.shippingAddress = addressParts.join(", ");
 
     if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-    wakingTimerRef.current = setTimeout(() => setServerWaking(true), 4000);
+    wakingTimerRef.current = setTimeout(() => setServerWaking(true), 8000);
+
+    const utm = getStoredUtm();
+    const orderPayload = {
+      ...rest,
+      customerName,
+      paymentMethod,
+      items: items.map(i => ({
+        productId: i.productId,
+        name: i.name,
+        quantity: i.quantity,
+        size: i.size,
+        color: i.color,
+        imageUrl: i.imageUrl,
+        customNote: i.hamperPayload
+          ? JSON.stringify({ hamper: i.hamperPayload, unitPrice: i.price })
+          : i.customNote,
+        customImages: i.customImages,
+      })),
+      ...(promoApplied ? { promoCode: promoApplied } : {}),
+      ...(utm.utmSource ? { utmSource: utm.utmSource } : {}),
+      ...(utm.utmMedium ? { utmMedium: utm.utmMedium } : {}),
+      ...(utm.utmCampaign ? { utmCampaign: utm.utmCampaign } : {}),
+    };
+
+    // Retry once after 2s on transient errors (network blips, cold-start
+    // gateway timeouts) before surfacing a failure to the user. Validation
+    // / business errors (4xx with structured `error` code) are NOT retried.
+    const isTransient = (err: unknown): boolean => {
+      const e = err as { status?: number; data?: { error?: unknown } } | undefined;
+      const status = e?.status;
+      if (status && status >= 400 && status < 500) return false;
+      return true;
+    };
 
     try {
-      const utm = getStoredUtm();
-      const order = await createOrder({
-        data: {
-          ...rest,
-          customerName,
-          paymentMethod,
-          items: items.map(i => ({
-            productId: i.productId,
-            name: i.name,
-            quantity: i.quantity,
-            size: i.size,
-            color: i.color,
-            imageUrl: i.imageUrl,
-            customNote: i.hamperPayload
-              ? JSON.stringify({ hamper: i.hamperPayload, unitPrice: i.price })
-              : i.customNote,
-            customImages: i.customImages,
-          })),
-          ...(promoApplied ? { promoCode: promoApplied } : {}),
-          ...(utm.utmSource ? { utmSource: utm.utmSource } : {}),
-          ...(utm.utmMedium ? { utmMedium: utm.utmMedium } : {}),
-          ...(utm.utmCampaign ? { utmCampaign: utm.utmCampaign } : {}),
-        }
-      });
+      let order: unknown;
+      try {
+        order = await createOrder({ data: orderPayload });
+      } catch (firstErr) {
+        if (!isTransient(firstErr)) throw firstErr;
+        await new Promise(r => setTimeout(r, 2000));
+        order = await createOrder({ data: orderPayload });
+      }
 
       const orderData = order as unknown as Record<string, unknown>;
       setCreatedOrder(orderData);
