@@ -30,16 +30,45 @@ app.use(
   }),
 );
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : null;
+// CORS allowlist resolution.
+//
+// Priority:
+//   1. `ALLOWED_ORIGINS` env var (comma-separated) — the operator's
+//      explicit list, used in production.
+//   2. A built-in safe default that contains ONLY the production
+//      storefront origin and explicit local-dev origins. Critically,
+//      the default contains NO Replit-hosted origins — production must
+//      stay independent of any *.replit.dev / *.repl.co host.
+//
+// In production (`NODE_ENV === "production"`) we additionally require
+// `ALLOWED_ORIGINS` to be configured so a misconfigured deploy can't
+// silently fall back to a permissive policy.
+const DEFAULT_DEV_ORIGINS = [
+  "https://trynexshop.com",
+  "http://localhost:5173",
+  "http://localhost:8081",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:8081",
+];
+
+const allowedOrigins: string[] = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+  : DEFAULT_DEV_ORIGINS;
+
+if (process.env.NODE_ENV === "production" && !process.env.ALLOWED_ORIGINS) {
+  logger.error(
+    "ALLOWED_ORIGINS env var is not set in production. Refusing to start with a permissive CORS fallback.",
+  );
+  throw new Error("ALLOWED_ORIGINS must be configured in production");
+}
 
 app.use(
   cors({
     credentials: true,
     origin: (origin, callback) => {
+      // Same-origin / non-browser requests (curl, server-to-server)
+      // have no Origin header — allow them.
       if (!origin) return callback(null, true);
-      if (!allowedOrigins) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error(`CORS: origin ${origin} not allowed`));
     },

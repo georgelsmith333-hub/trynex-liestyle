@@ -16,7 +16,7 @@ The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_A
 ### Allowed production hosts (post Task #20 sweep)
 - **Frontend origin**: `https://trynexshop.com` (Cloudflare Pages)
 - **Backend origin**: `https://trynex-api.onrender.com` (Render)
-- **API CORS allowlist**: controlled by the `ALLOWED_ORIGINS` env var on Render (comma-separated). Set this to `https://trynexshop.com` plus any Cloudflare Pages preview origin you want to enable. There are no Replit entries hardcoded in `artifacts/api-server/src/app.ts`.
+- **API CORS allowlist**: controlled by the `ALLOWED_ORIGINS` env var on Render (comma-separated). Set this to `https://trynexshop.com` plus any Cloudflare Pages preview origin you want to enable. There are no Replit entries hardcoded in `artifacts/api-server/src/app.ts`. **In production (`NODE_ENV=production`) the API server refuses to start if `ALLOWED_ORIGINS` is unset** — this guarantees a misconfigured deploy can never silently fall back to a permissive `allow-all` CORS policy. In dev, a built-in default allowlist is used (`https://trynexshop.com` + localhost dev ports).
 - **Cloudflare Pages `_redirects`**: only `/api/* → https://trynex-api.onrender.com/api/:splat` (proxy) + SPA fallback. No Replit hosts.
 - The storefront `getApiBaseUrl()` no longer special-cases `.replit.dev`. The Replit dev environment, when used, just talks to the Render API like any other non-localhost host.
 
