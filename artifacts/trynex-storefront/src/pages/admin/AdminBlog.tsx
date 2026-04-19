@@ -294,7 +294,7 @@ export default function AdminBlog() {
               </div>
 
               {/* Form */}
-              <div className="p-6 space-y-5 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <div className="p-6 space-y-5 max-h-[calc(100dvh-200px)] overflow-y-auto">
 
                 {/* Title */}
                 <div>

@@ -61,8 +61,9 @@ export function AbandonedCartPopup() {
             <div className="relative p-6 text-center"
               style={{ background: "linear-gradient(135deg, #FFF4EE, #FFF8F0)" }}>
               <button onClick={handleDismiss}
-                className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-white/50">
-                <X className="w-4 h-4" />
+                aria-label="Close cart reminder"
+                className="absolute top-2 right-2 touch-target text-gray-400 hover:text-gray-600 rounded-xl hover:bg-white/50">
+                <X className="w-5 h-5" />
               </button>
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
                 style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}>

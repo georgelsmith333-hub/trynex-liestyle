@@ -65,10 +65,10 @@ export function FlashSaleBar() {
       )}
       <button
         onClick={() => setDismissed(true)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+        className="absolute right-1 top-1/2 -translate-y-1/2 touch-target rounded-full hover:bg-white/20 transition-colors"
         aria-label="Dismiss flash sale bar"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
       <style>{`
         @keyframes flashGradient {

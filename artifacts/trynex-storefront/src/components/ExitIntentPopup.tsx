@@ -124,9 +124,10 @@ export function ExitIntentPopup() {
           >
             <button
               onClick={handleDismiss}
-              className="absolute top-3 right-3 z-10 p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              aria-label="Close offer"
+              className="absolute top-2 right-2 z-10 touch-target rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
 
             <div
