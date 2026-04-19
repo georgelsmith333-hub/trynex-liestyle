@@ -130,6 +130,7 @@ import { useLocation } from "wouter";
         viewport={{ once: true, amount: 0.1, margin: "0px 0px -10% 0px" }}
         transition={{ duration: 0.35, delay: Math.min(index, 6) * 0.04, ease: [0.22, 1, 0.36, 1] }}
         style={{ perspective: '800px' }}
+        className="h-full"
       >
         <div
           ref={cardRef}
@@ -137,7 +138,7 @@ import { useLocation } from "wouter";
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onClick={goToDetail}
-          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative"
+          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col"
           style={{
             border: hovered ? '1.5px solid #fbd5b4' : '1.5px solid #f0e8e0',
             boxShadow: hovered
@@ -254,7 +255,7 @@ import { useLocation } from "wouter";
           </div>
 
           {/* Product Info */}
-          <div className="p-3 sm:p-4">
+          <div className="p-3 sm:p-4 flex-1 flex flex-col">
             {/* Rating */}
             <div className="flex items-center gap-1 mb-1.5">
               {Array.from({ length: 5 }).map((_, j) => (
@@ -292,8 +293,8 @@ import { useLocation } from "wouter";
               </div>
             )}
 
-            {/* Price + Cart */}
-            <div className="flex items-center justify-between gap-2">
+            {/* Price + Cart — anchored to bottom so all cards in a row line up */}
+            <div className="flex items-center justify-between gap-2 mt-auto">
               <div className="flex items-baseline gap-1.5 min-w-0">
                 {product.discountPrice ? (
                   <>

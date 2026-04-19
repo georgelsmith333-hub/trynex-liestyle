@@ -1,5 +1,88 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "xorItRTHgW9UjfYGepohl"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-tshirt-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1BrHJrORrBE8t-oZnasLB"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-tshirt-back.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MjE1OhH7RjIxoILAOlF2P"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-tshirt-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "UhgpVk02nAKORvVRa2JZz"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-tshirt-back.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JR-04SjuJHPYTEzbUFy37"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-longsleeve-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Hc0bMyKytyyU2H3mMnNMB"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-longsleeve-back.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "uNldbLHqm98kN8CnAQeBv"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-hoodie-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Ci0dVnm0ZJG0ldL0vjx0L"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-hoodie-back.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3a7X1VjvTAdzRh5qyfmSB"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-hoodie-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5bX7fmFqI6o5VjU9w139j"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-hoodie-back.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8PXTogbCaQrx0SHOYT8LR"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-cap-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Kc12qYOCQ3GI43np0ddB8"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-cap-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "RuzDEeaSbv68EZe0NnfyB"
+uri = "file://artifacts/trynex-storefront/public/mockups/white-mug-front.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4sIYB-YBUeYjXik3REAIf"
+uri = "file://artifacts/trynex-storefront/public/mockups/black-mug-front.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "tCytvaUKpj7oEILkFIdkO"

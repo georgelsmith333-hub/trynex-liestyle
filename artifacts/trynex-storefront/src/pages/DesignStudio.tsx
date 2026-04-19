@@ -303,7 +303,11 @@ export default function DesignStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputAddRef = useRef<HTMLInputElement>(null);
 
-  const pz = selectedProduct.printZone;
+  // Print zone is face-aware: products may have a different rectangle for the back panel.
+  const pz = useMemo(
+    () => (activeFace === "back" && selectedProduct.printZoneBack) ? selectedProduct.printZoneBack : selectedProduct.printZone,
+    [activeFace, selectedProduct]
+  );
   const isMug = selectedProduct.category === "mug";
   const isCap = selectedProduct.category === "cap";
 
@@ -318,6 +322,10 @@ export default function DesignStudio() {
     [layers, activeFace]
   );
   const otherFaceCount = layers.length - currentFaceLayers.length;
+
+  // Auto-hide the print-zone outline once a layer exists on the active face,
+  // unless the user has explicitly toggled it on. The outline is only useful as a guide.
+  const effectiveShowPrintZone = showPrintZone && currentFaceLayers.length === 0;
 
   /* ── Coord helpers ─────────────────────────────────── */
   const clientToSVG = useCallback((clientX: number, clientY: number) => {
@@ -953,7 +961,7 @@ export default function DesignStudio() {
                   onPointerUp={endGesture}
                   onPointerCancel={endGesture}
                 >
-                  <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={showPrintZone} />
+                  <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
 
                   {/* Layers (clipped to print zone) */}
                   <defs>
