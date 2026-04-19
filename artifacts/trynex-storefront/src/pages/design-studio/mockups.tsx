@@ -3,6 +3,7 @@
    All products use a unified 1000×1000 coordinate space.
    The mockup PNGs live in /public/mockups/<id>-<face>.png
 ════════════════════════════════════════════════════════ */
+import { useMemo } from "react";
 
 export type ProductType =
   | "white-tshirt"
@@ -41,14 +42,16 @@ export interface DesignProduct {
   backSrc?: string;
 }
 
-export const TSHIRT_PZ: PrintZone        = { x: 380, y: 290, w: 240, h: 300 };
-export const TSHIRT_PZ_BACK: PrintZone   = { x: 380, y: 270, w: 240, h: 360 };
-export const LONGSLEEVE_PZ: PrintZone    = { x: 390, y: 310, w: 220, h: 280 };
-export const LONGSLEEVE_PZ_BACK: PrintZone = { x: 390, y: 290, w: 220, h: 340 };
-export const HOODIE_PZ: PrintZone        = { x: 400, y: 320, w: 200, h: 240 };
-export const HOODIE_PZ_BACK: PrintZone   = { x: 380, y: 290, w: 240, h: 360 };
-export const CAP_PZ: PrintZone           = { x: 380, y: 380, w: 240, h: 180 };
-export const MUG_PZ: PrintZone           = { x: 270, y: 320, w: 360, h: 380 };
+// Print zones widened for a more realistic / usable design area.
+// Coordinates live in the unified 1000×1000 viewBox.
+export const TSHIRT_PZ: PrintZone        = { x: 325, y: 280, w: 350, h: 400 };
+export const TSHIRT_PZ_BACK: PrintZone   = { x: 315, y: 250, w: 370, h: 460 };
+export const LONGSLEEVE_PZ: PrintZone    = { x: 335, y: 295, w: 330, h: 380 };
+export const LONGSLEEVE_PZ_BACK: PrintZone = { x: 325, y: 270, w: 350, h: 440 };
+export const HOODIE_PZ: PrintZone        = { x: 345, y: 320, w: 310, h: 320 };
+export const HOODIE_PZ_BACK: PrintZone   = { x: 325, y: 280, w: 350, h: 440 };
+export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
+export const MUG_PZ: PrintZone           = { x: 250, y: 305, w: 400, h: 410 };
 
 const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
@@ -96,28 +99,85 @@ export const PRODUCTS: DesignProduct[] = [
 /* ═══════════════════════════════════════════════════════
    GARMENT RENDERER — embeds the mockup PNG inside the
    parent <svg viewBox="0 0 1000 1000"> as an SVG <image>.
-   Optionally outlines the print zone with a dashed rect.
+   For tintable categories (tshirt / longsleeve / hoodie / mug)
+   we always render the WHITE base photo and multiply-tint it
+   with the selected garment color so all 11 colour swatches
+   work on a single, consistently-framed mockup. Caps and the
+   black-only variants without a white counterpart fall back
+   to their bundled PNG.
 ════════════════════════════════════════════════════════ */
+
+// Per-category base PNGs (white versions) — these have the
+// best framing / lighting and are tintable via multiply blend.
+const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
+  tshirt:     { front: "/mockups/white-tshirt-front.png",     back: "/mockups/white-tshirt-back.png" },
+  longsleeve: { front: "/mockups/white-longsleeve-front.png", back: "/mockups/white-longsleeve-back.png" },
+  hoodie:     { front: "/mockups/white-hoodie-front.png",     back: "/mockups/white-hoodie-back.png" },
+  mug:        { front: "/mockups/white-mug-front.png" },
+  cap:        undefined,
+};
+
+// Generate a stable, unique filter id per render so multiple
+// GarmentSVGs on the same page don't collide.
+let _filterUid = 0;
+function nextFilterId() { _filterUid = (_filterUid + 1) % 1_000_000; return `tint-${_filterUid}`; }
+
+function isLightTint(hex: string): boolean {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return true;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  // Perceived luminance — anything brighter than ~92% is treated
+  // as "white-ish" and we skip the tint to avoid a faint grey wash.
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.92;
+}
+
 export function GarmentSVG({
   product,
+  color,
   showPrintZone,
   face = "front",
 }: {
   product: DesignProduct;
-  /** legacy prop (color) is ignored — colour is baked into the photograph */
+  /** Selected garment colour. For tintable categories the white
+   *  base PNG is multiplied by this hex so all colours work on
+   *  a single, consistently-framed mockup. */
   color?: string;
   showPrintZone: boolean;
   face?: Face;
 }) {
-  const src = face === "back" && product.backSrc ? product.backSrc : product.frontSrc;
+  const base = BASE_BY_CATEGORY[product.category];
+  const useBase = !!base;
+  const src = useBase
+    ? (face === "back" && base!.back ? base!.back : base!.front)
+    : (face === "back" && product.backSrc ? product.backSrc : product.frontSrc);
   const pz = face === "back" && product.printZoneBack ? product.printZoneBack : product.printZone;
+
+  const tintHex = color || product.garmentColor;
+  const applyTint = useBase && !!tintHex && !isLightTint(tintHex);
+  const filterId = useMemo(() => nextFilterId(), [product.id, face, tintHex]);
 
   return (
     <>
+      {applyTint && (
+        <defs>
+          {/* Multiply-tint filter: paints the source with the tint hex
+              wherever the garment has opacity, then multiplies the
+              result with the original photograph to preserve fabric
+              shading, folds and shadows. */}
+          <filter id={filterId} x="0" y="0" width="1" height="1" colorInterpolationFilters="sRGB">
+            <feFlood floodColor={tintHex} result="flood" />
+            <feComposite in="flood" in2="SourceAlpha" operator="in" result="tinted" />
+            <feBlend in="tinted" in2="SourceGraphic" mode="multiply" />
+          </filter>
+        </defs>
+      )}
       <image
         href={src}
         x={0} y={0} width={1000} height={1000}
         preserveAspectRatio="xMidYMid meet"
+        filter={applyTint ? `url(#${filterId})` : undefined}
         style={{ pointerEvents: "none" }}
       />
       {showPrintZone && (
