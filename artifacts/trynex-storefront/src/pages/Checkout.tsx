@@ -420,7 +420,7 @@ export default function Checkout() {
       if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
       setServerWaking(false);
       clearCart();
-      setStep(paymentMethod === 'card' ? 'success' : 'gateway');
+      setStep((paymentMethod === 'card' || paymentMethod === 'cod') ? 'success' : 'gateway');
     } catch (err: any) {
       if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
       setServerWaking(false);
@@ -579,6 +579,8 @@ export default function Checkout() {
           <p className="text-gray-400 mb-6 leading-relaxed text-sm">
             {paymentMethod === 'card'
               ? "Your order has been placed. We will send you a secure payment link via email or WhatsApp shortly."
+              : paymentMethod === 'cod'
+              ? "Your order is confirmed! We'll call or WhatsApp you to arrange delivery."
               : "Your payment info was submitted. Our team will verify and confirm your order shortly."}
           </p>
 
@@ -596,6 +598,16 @@ export default function Checkout() {
               <div className="text-xs text-gray-500 space-y-1">
                 <p>Order total: <strong className="text-gray-900">{formatPrice(snapshotRef.current.total)}</strong></p>
                 <p>A secure payment link (Visa/Mastercard/Amex) will be sent to you via email or WhatsApp.</p>
+              </div>
+            </div>
+          ) : paymentMethod === 'cod' ? (
+            <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
+              <p className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5" /> Cash on Delivery
+              </p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>Order total: <strong className="text-gray-900">{formatPrice(snapshotRef.current.total)}</strong></p>
+                <p>Pay when your order arrives at your door.</p>
               </div>
             </div>
           ) : (
@@ -1075,9 +1087,9 @@ export default function Checkout() {
                   <div className="grid grid-cols-1 gap-3">
                     {[
                       {
-                        id: 'cod', name: 'Cash on Delivery', desc: 'Pay 15% advance via bKash/Nagad, rest on delivery',
+                        id: 'cod', name: 'Cash on Delivery', desc: 'No advance — pay when your order arrives',
                         icon: <Banknote className="w-5 h-5 text-green-500" />,
-                        tag: '15% Advance', tagColor: 'rgba(232,93,4,0.06)', tagBorder: 'rgba(232,93,4,0.2)', tagText: '#E85D04'
+                        tag: 'Most Popular', tagColor: 'rgba(22,163,74,0.06)', tagBorder: 'rgba(22,163,74,0.2)', tagText: '#16a34a'
                       },
                       {
                         id: 'bkash', name: 'bKash', desc: `15% advance via Send Money to ${getPaymentNumber('bkash')}`,
@@ -1135,39 +1147,6 @@ export default function Checkout() {
                     ))}
                   </div>
 
-                  <AnimatePresence>
-                    {paymentMethod === 'cod' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 overflow-hidden"
-                      >
-                        <div className="p-4 rounded-xl" style={{ background: 'rgba(22,163,74,0.04)', border: '1px solid rgba(22,163,74,0.15)' }}>
-                          <p className="text-xs font-bold text-green-600 mb-2 flex items-center gap-1.5">
-                            <Smartphone className="w-3.5 h-3.5" /> Choose mobile banking for 15% advance:
-                          </p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(['bkash', 'nagad', 'rocket'] as MobileMethod[]).map(m => (
-                              <button
-                                key={m}
-                                type="button"
-                                onClick={() => setCodAdvanceMethod(m)}
-                                className="py-2.5 rounded-xl font-black text-xs transition-all"
-                                style={{
-                                  background: codAdvanceMethod === m ? gatewayTheme[m].light : '#f9fafb',
-                                  border: codAdvanceMethod === m ? `1px solid ${gatewayTheme[m].border}` : '1px solid #e5e7eb',
-                                  color: codAdvanceMethod === m ? gatewayTheme[m].primary : '#9ca3af',
-                                }}
-                              >
-                                {m === 'bkash' ? 'bKash' : m === 'nagad' ? 'Nagad' : 'Rocket'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <AnimatePresence>
                     {isMobilePayment && (
@@ -1296,21 +1275,22 @@ export default function Checkout() {
                     <span className="font-black text-2xl text-primary">{formatPrice(total)}</span>
                   </div>
 
-                  <div className="space-y-2 pt-1">
-                    <div className="flex justify-between items-center p-3 rounded-xl"
-                      style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.12)' }}>
-                      <span className="text-xs font-bold text-orange-600">
-                        Pay Now (15% Advance
-                        {paymentMethod === 'cod' ? ` via ${codAdvanceMethod === 'bkash' ? 'bKash' : codAdvanceMethod === 'nagad' ? 'Nagad' : 'Rocket'}` : ''})
-                      </span>
-                      <span className="font-black text-orange-600">{formatPrice(advanceAmount)}</span>
+                  {isMobilePayment && (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex justify-between items-center p-3 rounded-xl"
+                        style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.12)' }}>
+                        <span className="text-xs font-bold text-orange-600">
+                          Pay Now (15% Advance)
+                        </span>
+                        <span className="font-black text-orange-600">{formatPrice(advanceAmount)}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 rounded-xl"
+                        style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+                        <span className="text-xs font-bold text-green-600">Remaining (Paid on Delivery)</span>
+                        <span className="font-black text-green-600">{formatPrice(total - advanceAmount)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center p-3 rounded-xl"
-                      style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
-                      <span className="text-xs font-bold text-green-600">Remaining (Paid on Delivery)</span>
-                      <span className="font-black text-green-600">{formatPrice(total - advanceAmount)}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <TrustBadges />
@@ -1325,7 +1305,7 @@ export default function Checkout() {
                   {isPending ? (
                     <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {serverWaking ? "Waking up server…" : "Placing Order..."}</>
                   ) : paymentMethod === 'cod' ? (
-                    <>Proceed to Pay Advance <ArrowRight className="w-5 h-5" /></>
+                    <>Place Order <ArrowRight className="w-5 h-5" /></>
                   ) : paymentMethod === 'card' ? (
                     <>Proceed to Card Payment <ArrowRight className="w-5 h-5" /></>
                   ) : (
