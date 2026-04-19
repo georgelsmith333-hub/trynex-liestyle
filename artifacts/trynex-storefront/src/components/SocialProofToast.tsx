@@ -77,9 +77,10 @@ export function SocialProofToast() {
             </div>
             <button
               onClick={() => setVisible(false)}
-              className="text-gray-300 hover:text-gray-500 text-xs mt-0.5 shrink-0"
+              aria-label="Dismiss notification"
+              className="-mr-2 -mt-2 touch-target text-gray-400 hover:text-gray-600 shrink-0 rounded-full"
             >
-              ✕
+              <span aria-hidden="true" className="text-base leading-none">×</span>
             </button>
           </div>
         </motion.div>
