@@ -3,6 +3,7 @@ import { db, ordersTable, productsTable, adminTable } from "@workspace/db";
 import { eq, sql, desc, lte, asc } from "drizzle-orm";
 import * as crypto from "crypto";
 import { signToken, requireAdmin } from "../middlewares/adminAuth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -31,9 +32,24 @@ async function ensureAdminExists() {
   }
 }
 
+// Run admin sync once at module load (server startup) instead of on every
+// login attempt — avoids a DB write on every failed login.
+let adminEnsuredOnce: Promise<void> | null = null;
+function ensureAdminOnce(): Promise<void> {
+  if (!adminEnsuredOnce) {
+    adminEnsuredOnce = ensureAdminExists().catch((err) => {
+      // Reset so a future login attempt can retry if startup ensure failed.
+      adminEnsuredOnce = null;
+      throw err;
+    });
+  }
+  return adminEnsuredOnce;
+}
+ensureAdminOnce().catch(() => { /* logged on first login retry */ });
+
 router.post("/admin/login", async (req, res) => {
   try {
-    await ensureAdminExists();
+    await ensureAdminOnce();
     const { password } = req.body;
     if (!password) {
       res.status(400).json({ error: "validation_error", message: "password required" });
@@ -89,6 +105,27 @@ router.post("/admin/logout", (req, res) => {
 
 router.get("/admin/me", requireAdmin, async (req, res) => {
   res.json({ authenticated: true, username: "admin" });
+});
+
+router.get("/admin/health", requireAdmin, async (req, res) => {
+  const start = Date.now();
+  let dbLatencyMs: number | null = null;
+  let ok = true;
+  try {
+    await db.execute(sql`SELECT 1`);
+    dbLatencyMs = Date.now() - start;
+  } catch (err) {
+    ok = false;
+    req.log.warn({ err, route: "GET /admin/health" }, "DB ping failed");
+  }
+  const mem = process.memoryUsage();
+  res.json({
+    ok,
+    dbLatencyMs,
+    uptimeSec: Math.round(process.uptime()),
+    memoryMB: Math.round((mem.rss / 1024 / 1024) * 100) / 100,
+    version: process.env.npm_package_version || process.env.APP_VERSION || "0.0.0",
+  });
 });
 
 router.get("/admin/stats", requireAdmin, async (req, res) => {

@@ -5,9 +5,10 @@ import { SEOHead } from "@/components/SEOHead";
 import { useCartState, useCartActions, type CartItem } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
-import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
 import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FreeShippingProgress } from "@/components/FreeShippingProgress";
 
 interface LineProps {
   item: CartItem;
@@ -297,12 +298,8 @@ export default function Cart() {
                         {shippingCost === 0 ? "FREE" : formatPrice(shippingCost)}
                       </span>
                     </div>
-                    {subtotal > 0 && subtotal < freeShippingThreshold && (
-                      <div className="flex items-center gap-2 p-3 rounded-xl text-xs font-semibold"
-                        style={{ background: 'rgba(232,93,4,0.06)', border: '1px solid rgba(232,93,4,0.15)', color: '#E85D04' }}>
-                        <Tag className="w-3.5 h-3.5 shrink-0" />
-                        Add {formatPrice(freeShippingThreshold - subtotal)} more for FREE shipping!
-                      </div>
+                    {subtotal > 0 && (
+                      <FreeShippingProgress subtotal={subtotal} threshold={freeShippingThreshold} />
                     )}
                     <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
                       <span className="font-bold text-lg text-gray-900">Total</span>

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { db, productsTable, categoriesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -395,7 +396,9 @@ router.post("/admin/social/fetch-url", requireAdmin, async (req, res) => {
             const idMatch = oData.html.match(/data-href="[^"]*\/(\d+)/);
             if (idMatch) fbPostId = idMatch[1];
           }
-        } catch {}
+        } catch (err) {
+          logger.warn({ err, route: "GET /admin/facebook/url" }, "oembed_post lookup failed");
+        }
       }
 
       if (fbPostId) {
@@ -424,7 +427,9 @@ router.post("/admin/social/fetch-url", requireAdmin, async (req, res) => {
                 return;
               }
             }
-          } catch {}
+          } catch (err) {
+            logger.warn({ err, route: "GET /admin/facebook/url" }, "Composite-id facebook fetch failed");
+          }
         }
 
         res.status(400).json({
@@ -501,7 +506,9 @@ router.post("/admin/facebook/import", requireAdmin, async (req, res) => {
         await db.execute(
           `UPDATE categories SET product_count = (SELECT COUNT(*) FROM products WHERE category_id = ${categoryId}) WHERE id = ${categoryId}`
         );
-      } catch {}
+      } catch (err) {
+        logger.warn({ err, route: "POST /admin/facebook/import" }, "Failed to refresh category product_count");
+      }
     }
 
     res.status(201).json({ success: true, product });

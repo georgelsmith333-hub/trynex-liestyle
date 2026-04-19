@@ -288,7 +288,7 @@ export default function HamperDetail() {
                     <div className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-gray-200 hover:shadow-md transition-all">
                       <div className="aspect-[4/3] bg-gray-50 overflow-hidden">
                         {r.imageUrl ? (
-                          <img src={r.imageUrl} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <img src={r.imageUrl} alt={r.name} loading="lazy" decoding="async" width={400} height={300} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Gift className="w-12 h-12 text-orange-300" /></div>
                         )}

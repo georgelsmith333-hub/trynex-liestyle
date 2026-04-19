@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/tracking";
 import { getStoredUtm } from "@/hooks/useUtm";
+import { TrustBadges } from "@/components/TrustBadges";
 
 import { BD_UPAZILAS, getDivisionForDistrict, getAllDistricts, getPostCode } from "@/data/bd-addresses";
 import { DeliveryAreaPicker } from "@/components/DeliveryAreaPicker";
@@ -1311,6 +1312,8 @@ export default function Checkout() {
                     </div>
                   </div>
                 </div>
+
+                <TrustBadges />
 
                 <button
                   type="submit"

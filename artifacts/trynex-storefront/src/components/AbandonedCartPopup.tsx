@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { Link, useLocation } from "wouter";
-import { ShoppingBag, X, ArrowRight } from "lucide-react";
+import { ShoppingBag, X, ArrowRight, Tag, Truck } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function AbandonedCartPopup() {
   const { items, subtotal } = useCart();
+  const settings = useSiteSettings();
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [location] = useLocation();
+  const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
+  const promoCode = settings.exitIntentPromoCode || "";
+  const promoDiscount = settings.exitIntentPromoDiscount || "10%";
+  const remainingForFreeShip = Math.max(0, freeShippingThreshold - subtotal);
+  const showFreeShipNudge = subtotal > 0 && subtotal < freeShippingThreshold;
 
   const excludedPaths = ["/cart", "/checkout", "/admin"];
   const isExcluded = excludedPaths.some(p => location.startsWith(p));
@@ -87,6 +94,24 @@ export function AbandonedCartPopup() {
                   <span className="text-xs font-bold text-gray-400">+{items.length - 3} more</span>
                 )}
               </div>
+
+              {promoCode ? (
+                <div className="flex items-center gap-2 p-3 rounded-xl"
+                  style={{ background: 'rgba(232,93,4,0.06)', border: '1px solid rgba(232,93,4,0.18)' }}>
+                  <Tag className="w-4 h-4 text-orange-600 shrink-0" />
+                  <p className="text-xs font-bold text-orange-700 leading-tight">
+                    Use code <span className="px-1.5 py-0.5 rounded bg-white text-orange-600 font-black">{promoCode}</span> for {promoDiscount} off — one-time only!
+                  </p>
+                </div>
+              ) : showFreeShipNudge ? (
+                <div className="flex items-center gap-2 p-3 rounded-xl"
+                  style={{ background: 'rgba(232,93,4,0.06)', border: '1px solid rgba(232,93,4,0.18)' }}>
+                  <Truck className="w-4 h-4 text-orange-600 shrink-0" />
+                  <p className="text-xs font-bold text-orange-700 leading-tight">
+                    Free shipping over {formatPrice(freeShippingThreshold)} — you're only {formatPrice(remainingForFreeShip)} away!
+                  </p>
+                </div>
+              ) : null}
 
               <Link
                 href="/cart"

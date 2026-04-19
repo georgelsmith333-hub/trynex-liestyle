@@ -16,6 +16,8 @@ import { MobileImageLightbox } from "@/components/MobileImageLightbox";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { StickyAddToCart } from "@/components/StickyAddToCart";
+import { RecentlyViewed } from "@/components/RecentlyViewed";
 import {
   Minus, Plus, ShoppingBag, ShieldCheck, Truck, Star, Search,
   RotateCcw, ArrowLeft, ArrowRight, Check, Heart, Share2, Ruler, MessageCircle, Sparkles,
@@ -311,6 +313,7 @@ export default function ProductDetail() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  const mainAddToCartRef = useRef<HTMLButtonElement>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -324,15 +327,21 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (!product || product.stock < 1) return;
+    const root = document.documentElement;
     const setOffset = () => {
       const isMobile = window.innerWidth < 768;
-      document.documentElement.style.setProperty('--mobile-sticky-offset', isMobile ? '76px' : '0px');
+      const stickyVisible = root.dataset.stickyAddVisible === '1';
+      root.style.setProperty('--mobile-sticky-offset', isMobile && stickyVisible ? '76px' : '0px');
     };
     setOffset();
     window.addEventListener('resize', setOffset, { passive: true });
+    const observer = new MutationObserver(setOffset);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-sticky-add-visible'] });
     return () => {
       window.removeEventListener('resize', setOffset);
-      document.documentElement.style.setProperty('--mobile-sticky-offset', '0px');
+      observer.disconnect();
+      root.style.setProperty('--mobile-sticky-offset', '0px');
+      delete root.dataset.stickyAddVisible;
     };
   }, [product?.id, product?.stock]);
 
@@ -1004,6 +1013,7 @@ export default function ProductDetail() {
                   </button>
                 </div>
                 <button
+                  ref={mainAddToCartRef}
                   onClick={handleAddToCart}
                   disabled={product.stock < 1}
                   className="flex-1 h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2.5 text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
@@ -1145,60 +1155,26 @@ export default function ProductDetail() {
         </section>
       )}
 
+      <RecentlyViewed />
+
       <Footer />
 
-      {product.stock > 0 && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-30 md:hidden"
-          style={{
-            background: 'rgba(255,255,255,0.97)',
-            backdropFilter: 'blur(12px)',
-            borderTop: '1px solid #e5e7eb',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
-          }}
-        >
-          <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}>
-            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                aria-label="Decrease quantity"
-                className="w-9 h-11 flex items-center justify-center text-gray-500 active:bg-gray-100"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="w-7 text-center text-sm font-black text-gray-900 tabular-nums">{quantity}</span>
-              <button
-                onClick={() => setQuantity(Math.min(quantity + 1, product.stock))}
-                aria-label="Increase quantity"
-                className="w-9 h-11 flex items-center justify-center text-gray-500 active:bg-gray-100"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-gray-500 truncate leading-tight">{product.name}</p>
-              <p className="text-base font-black text-orange-600 leading-tight">
-                {formatPrice((product.discountPrice || product.price) * quantity)}
-              </p>
-            </div>
-            <button
-              onClick={handleAddToCart}
-              className="flex items-center gap-1.5 px-4 h-11 rounded-xl font-bold text-white text-sm shrink-0 active:scale-95 transition-transform"
-              style={{
-                background: addedToBag ? '#16a34a' : 'linear-gradient(135deg, #E85D04, #FB8500)',
-                boxShadow: '0 4px 16px rgba(232,93,4,0.3)',
-              }}
-              aria-label="Add to cart"
-            >
-              {addedToBag ? (
-                <><Check className="w-4 h-4" /> Added</>
-              ) : (
-                <><ShoppingBag className="w-4 h-4" /> Add</>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+      <StickyAddToCart
+        triggerRef={mainAddToCartRef}
+        product={{
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          discountPrice: product.discountPrice,
+          imageUrl: product.imageUrl,
+          stock: product.stock,
+        }}
+        quantity={quantity}
+        onChangeQuantity={setQuantity}
+        onAddToCart={handleAddToCart}
+        added={addedToBag}
+        imageOverride={displayImage}
+      />
 
       {lightboxOpen && (() => {
         const rawImages = [product.imageUrl, ...(product.images || [])].filter(Boolean) as string[];

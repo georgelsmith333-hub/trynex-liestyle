@@ -67,6 +67,14 @@ export default function Products() {
         description="Browse premium custom T-shirts, Hoodies, Mugs & Caps from TryNex Lifestyle. Best prices in Bangladesh with fast delivery to all 64 districts."
         canonical="/products"
         keywords="buy custom tshirt bangladesh, premium hoodie bd, custom mug dhaka, branded cap bangladesh"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://trynexshop.com/" },
+            { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://trynexshop.com/products" },
+          ],
+        }}
       />
       <Navbar />
 
