@@ -250,7 +250,7 @@ router.post("/products/bulk", requireAdmin, async (req, res) => {
 /** Toggle featured flag on a product — used by Admin Visual Designer */
 router.patch("/admin/products/:id/featured", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     const { featured } = req.body as { featured?: boolean };
     if (typeof featured !== "boolean") {
       res.status(400).json({ error: "validation_error", message: "featured must be a boolean" });

@@ -83,7 +83,7 @@ router.post("/admin/testimonials", requireAdmin, async (req, res) => {
 
 router.patch("/admin/testimonials/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     const { name, role, location, stars, body, active, sortOrder } = req.body as TestimonialUpdate;
     const isPartial = name === undefined && body === undefined;
     if (!isPartial && (!name?.trim() || !body?.trim())) {
@@ -116,7 +116,7 @@ router.patch("/admin/testimonials/:id", requireAdmin, async (req, res) => {
 
 router.delete("/admin/testimonials/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     await db.delete(testimonialsTable).where(eq(testimonialsTable.id, id));
     res.json({ success: true });
   } catch (err) {

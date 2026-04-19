@@ -89,10 +89,10 @@ router.post("/remove-bg", async (req: Request, res: Response) => {
 
     const resultBuffer = Buffer.from(await response.arrayBuffer());
     const resultBase64 = `data:image/png;base64,${resultBuffer.toString("base64")}`;
-    res.json({ result: resultBase64 });
+    return res.json({ result: resultBase64 });
   } catch (err) {
     req.log?.error?.({ err }, "remove-bg error");
-    res.status(500).json({ error: "internal_error", message: "Failed to remove background" });
+    return res.status(500).json({ error: "internal_error", message: "Failed to remove background" });
   }
 });
 

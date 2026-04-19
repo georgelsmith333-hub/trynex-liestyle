@@ -31,9 +31,24 @@ async function ensureAdminExists() {
   }
 }
 
+// Run admin sync once at module load (server startup) instead of on every
+// login attempt — avoids a DB write on every failed login.
+let adminEnsuredOnce: Promise<void> | null = null;
+function ensureAdminOnce(): Promise<void> {
+  if (!adminEnsuredOnce) {
+    adminEnsuredOnce = ensureAdminExists().catch((err) => {
+      // Reset so a future login attempt can retry if startup ensure failed.
+      adminEnsuredOnce = null;
+      throw err;
+    });
+  }
+  return adminEnsuredOnce;
+}
+ensureAdminOnce().catch(() => { /* logged on first login retry */ });
+
 router.post("/admin/login", async (req, res) => {
   try {
-    await ensureAdminExists();
+    await ensureAdminOnce();
     const { password } = req.body;
     if (!password) {
       res.status(400).json({ error: "validation_error", message: "password required" });

@@ -36,9 +36,9 @@ function ensureBlogTable(): Promise<void> {
           ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false,
           ADD COLUMN IF NOT EXISTS reading_time_override INTEGER
       `)
-    ).then(() => {}).catch(() => { blogTableReady = null; });
+    ).then(() => {}).catch(() => { blogTableReady = null; }) as Promise<void>;
   }
-  return blogTableReady;
+  return blogTableReady ?? Promise.resolve();
 }
 
 function calcReadingTime(content: string): number {

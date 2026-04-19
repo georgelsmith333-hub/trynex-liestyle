@@ -116,7 +116,7 @@ router.post("/admin/hampers", requireAdmin, async (req, res) => {
 // Admin: update
 router.put("/admin/hampers/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     const b = req.body || {};
     const updates: any = { updatedAt: new Date() };
     if (b.slug !== undefined) updates.slug = String(b.slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -151,7 +151,7 @@ router.put("/admin/hampers/:id", requireAdmin, async (req, res) => {
 // Admin: delete
 router.delete("/admin/hampers/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     await db.delete(hamperPackagesTable).where(eq(hamperPackagesTable.id, id));
     res.json({ ok: true });
   } catch (err) {

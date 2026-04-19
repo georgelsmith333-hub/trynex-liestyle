@@ -33,7 +33,9 @@ async function migrateOrdersTable() {
         ADD COLUMN IF NOT EXISTS utm_medium TEXT,
         ADD COLUMN IF NOT EXISTS utm_campaign TEXT
     `);
-  } catch {}
+  } catch (err) {
+    logger.warn({ err }, "migrateOrdersTable failed; UTM columns may be missing");
+  }
 }
 migrateOrdersTable();
 
@@ -183,11 +185,11 @@ function mapOrder(o: any) {
     paymentStatus: o.paymentStatus,
     status: o.status,
     items: (o.items ?? []).map((item: any, idx: number) => ({ id: idx + 1, ...item })),
-    subtotal: parseFloat(o.subtotal),
-    shippingCost: parseFloat(o.shippingCost ?? "0"),
+    subtotal: parseFloat(o.subtotal ?? "0") || 0,
+    shippingCost: parseFloat(o.shippingCost ?? "0") || 0,
     promoCode: o.promoCode || null,
-    promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) : 0,
-    total: parseFloat(o.total),
+    promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) || 0 : 0,
+    total: parseFloat(o.total ?? "0") || 0,
     notes: o.notes,
     utmSource: o.utmSource || null,
     utmMedium: o.utmMedium || null,
@@ -435,7 +437,7 @@ router.post("/orders", async (req, res) => {
           .select({ id: productsTable.id, price: productsTable.price, discountPrice: productsTable.discountPrice })
           .from(productsTable)
           .where(inArray(productsTable.id, productIds));
-        const priceById = new Map(dbProducts.map(p => [
+        const priceById = new Map<number, number>(dbProducts.map(p => [
           p.id,
           p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price),
         ]));
@@ -445,7 +447,7 @@ router.post("/orders", async (req, res) => {
           const pid = Number(it.productId);
           const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
           const unit = priceById.get(pid);
-          if (unit === undefined) continue;
+          if (unit == null || !Number.isFinite(unit)) continue;
           raw += unit * qty;
           validConstituents.push({ productId: pid, quantity: qty });
         }
