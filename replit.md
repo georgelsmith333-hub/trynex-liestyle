@@ -199,3 +199,27 @@ Home, Products, ProductDetail, Hampers, HamperDetail, HamperBuilder, DesignStudi
 
 ### Measurement
 Lighthouse mobile audit must be run against the live Cloudflare Pages URL (`https://trynexshop.com`) — the dev environment's localhost cannot produce representative CWV numbers because it bypasses the CDN, real network latency, and the production-built bundle. Task #23 (pre-launch deploy verification) executes this measurement against the live build and records before/after deltas. Baseline targets: ≥85 Performance, ≥95 SEO, ≥95 Best Practices on a Slow 4G + 4× CPU profile, with LCP < 2.5s, CLS < 0.1, INP < 200ms on Home and ProductDetail.
+
+## Pre-launch verification (Task #23)
+
+The end-to-end go/no-go checklist for paid-ad launch lives at `docs/launch-checklist.md`. It is operator-run against the **live** site (real browser, real Meta Pixel Helper, real COD test orders) — it cannot be automated from this dev environment.
+
+### Verified production hostnames
+| Layer | Provider | Hostname / identifier |
+| --- | --- | --- |
+| Storefront | Cloudflare Pages project `trynex-liestyle` (see `artifacts/trynex-storefront/wrangler.toml`) | `https://trynexshop.com` |
+| API | Render web service | `https://trynex-api.onrender.com` |
+| Database | Managed Postgres attached to the Render service via `DATABASE_URL` | n/a (private) |
+| Sitemap & robots | Edge-rewritten by `_redirects` to the API's DB-backed routes | `/sitemap.xml`, `/robots.txt` |
+
+### Security headers (set in `artifacts/trynex-storefront/public/_headers`)
+Every HTML response from Cloudflare Pages now ships with:
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+- `Content-Security-Policy` — `default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `upgrade-insecure-requests`; explicitly allows the Render API origin in `connect-src`, plus GTM / GA / Facebook Pixel / Google Sign-In / Facebook Login origins where actually used.
+- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)`.
+
+### Tracking pixel surface (verified-in-checklist)
+`TrackingPixels.tsx` lazy-initializes Meta Pixel + GA4 + Google Ads only if their IDs are filled in Admin → Settings. The launch checklist's section 5 walks the operator through verifying `PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, and `Purchase` in Meta Pixel Helper.
+
+### What "done" means for Task #23
+Checklist sections 1–7 in `docs/launch-checklist.md` all pass against `https://trynexshop.com` after the next deploy. The infrastructure prerequisites that this codebase controls (security headers, CORS lockdown, dynamic sitemap, no Replit hosts) are all in place; only the live-site walkthrough remains, and that is the operator's responsibility.
