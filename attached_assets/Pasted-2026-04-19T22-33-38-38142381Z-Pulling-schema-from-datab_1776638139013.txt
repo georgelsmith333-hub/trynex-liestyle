@@ -1,0 +1,50 @@
+2026-04-19T22:33:38.38142381Z [⣻] Pulling schema from database...
+2026-04-19T22:33:38.50990573Z [⣽] Pulling schema from database...
+2026-04-19T22:33:38.638070764Z [⣷] Pulling schema from database...
+2026-04-19T22:33:38.765647588Z [⣯] Pulling schema from database...
+2026-04-19T22:33:38.894247695Z [⣟] Pulling schema from database...
+2026-04-19T22:33:39.022478662Z [⡿] Pulling schema from database...
+2026-04-19T22:33:39.14859585Z [✓] Pulling schema from database...
+2026-04-19T22:33:39.162574154Z 
+2026-04-19T22:33:39.162596865Z Is customer_id column in reviews table created or renamed from another column?
+2026-04-19T22:33:39.162601445Z ❯ + customer_id            create column
+2026-04-19T22:33:39.162604205Z   ~ text › customer_id     rename column
+2026-04-19T22:33:49.180027985Z   ~ verified › customer_id rename column==> Building API server...
+2026-04-19T22:33:49.576869186Z 
+2026-04-19T22:33:49.576899228Z > @workspace/api-server@0.0.0 build /opt/render/project/src/artifacts/api-server
+2026-04-19T22:33:49.576907498Z > node ./build.mjs
+2026-04-19T22:33:49.576913788Z 
+2026-04-19T22:33:50.007993612Z 
+2026-04-19T22:33:50.008024213Z   dist/index.mjs                       2.1mb ⚠️
+2026-04-19T22:33:50.008032244Z   dist/pino-worker.mjs               153.4kb
+2026-04-19T22:33:50.008038314Z   dist/pino-file.mjs                 142.1kb
+2026-04-19T22:33:50.008044804Z   dist/pino-pretty.mjs               114.6kb
+2026-04-19T22:33:50.008051125Z   dist/thread-stream-worker.mjs        7.3kb
+2026-04-19T22:33:50.008056975Z   dist/index.mjs.map                   3.6mb
+2026-04-19T22:33:50.008062605Z   dist/pino-worker.mjs.map           256.9kb
+2026-04-19T22:33:50.008068266Z   dist/pino-file.mjs.map             229.0kb
+2026-04-19T22:33:50.008074186Z   dist/pino-pretty.mjs.map           203.9kb
+2026-04-19T22:33:50.008080196Z   dist/thread-stream-worker.mjs.map   12.0kb
+2026-04-19T22:33:50.008085626Z 
+2026-04-19T22:33:50.008091937Z ⚡ Done in 372ms
+2026-04-19T22:33:50.023828121Z ==> Build complete!
+2026-04-19T22:34:21.296430906Z ==> Uploading build...
+2026-04-19T22:34:35.961256797Z ==> Uploaded in 7.5s. Compression took 7.2s
+2026-04-19T22:34:36.026532185Z ==> Build successful 🎉
+2026-04-19T22:34:51.001829223Z ==> Deploying...
+2026-04-19T22:34:51.068270083Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-04-19T22:35:21.31007617Z ==> Running 'node artifacts/api-server/dist/index.mjs'
+2026-04-19T22:35:22.61637625Z {"level":50,"time":1776638122615,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-578d55f474-tpnt6","msg":"ALLOWED_ORIGINS env var is not set in production. Refusing to start with a permissive CORS fallback."}
+2026-04-19T22:35:22.712714344Z file:///opt/render/project/src/artifacts/api-server/dist/index.mjs:53245
+2026-04-19T22:35:22.712771345Z   throw new Error("ALLOWED_ORIGINS must be configured in production");
+2026-04-19T22:35:22.712775606Z         ^
+2026-04-19T22:35:22.712778076Z 
+2026-04-19T22:35:22.712781236Z Error: ALLOWED_ORIGINS must be configured in production
+2026-04-19T22:35:22.712784516Z     at file:///opt/render/project/src/artifacts/api-server/dist/index.mjs:53245:9
+2026-04-19T22:35:22.712787146Z     at ModuleJob.run (node:internal/modules/esm/module_job:234:25)
+2026-04-19T22:35:22.712789536Z     at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)
+2026-04-19T22:35:22.712792046Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:122:5)
+2026-04-19T22:35:22.712794236Z 
+2026-04-19T22:35:22.712796716Z Node.js v20.18.1
+2026-04-19T22:35:24.553738977Z ==> Exited with status 1
+2026-04-19T22:35:24.558151698Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
