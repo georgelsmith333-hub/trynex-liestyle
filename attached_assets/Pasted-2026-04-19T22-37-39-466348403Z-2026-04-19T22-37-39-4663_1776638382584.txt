@@ -1,0 +1,50 @@
+2026-04-19T22:37:39.466348403Z 
+2026-04-19T22:37:39.466367513Z Is customer_id column in reviews table created or renamed from another column?
+2026-04-19T22:37:39.466371603Z ❯ + customer_id            create column
+2026-04-19T22:37:39.466375024Z   ~ text › customer_id     rename column
+2026-04-19T22:37:49.501572596Z   ~ verified › customer_id rename column==> Building API server...
+2026-04-19T22:37:49.873222804Z 
+2026-04-19T22:37:49.873244585Z > @workspace/api-server@0.0.0 build /opt/render/project/src/artifacts/api-server
+2026-04-19T22:37:49.873249254Z > node ./build.mjs
+2026-04-19T22:37:49.873252585Z 
+2026-04-19T22:37:50.341891526Z 
+2026-04-19T22:37:50.341915486Z   dist/index.mjs                       2.1mb ⚠️
+2026-04-19T22:37:50.341920806Z   dist/pino-worker.mjs               153.4kb
+2026-04-19T22:37:50.341924916Z   dist/pino-file.mjs                 142.1kb
+2026-04-19T22:37:50.341928886Z   dist/pino-pretty.mjs               114.6kb
+2026-04-19T22:37:50.341932776Z   dist/thread-stream-worker.mjs        7.3kb
+2026-04-19T22:37:50.341936576Z   dist/index.mjs.map                   3.6mb
+2026-04-19T22:37:50.341940407Z   dist/pino-worker.mjs.map           256.9kb
+2026-04-19T22:37:50.341944167Z   dist/pino-file.mjs.map             229.0kb
+2026-04-19T22:37:50.341947947Z   dist/pino-pretty.mjs.map           203.9kb
+2026-04-19T22:37:50.341951737Z   dist/thread-stream-worker.mjs.map   12.0kb
+2026-04-19T22:37:50.341955537Z 
+2026-04-19T22:37:50.341959987Z ⚡ Done in 412ms
+2026-04-19T22:37:50.357137348Z ==> Build complete!
+2026-04-19T22:37:51.56673647Z ==> Uploading build...
+2026-04-19T22:38:10.69227821Z ==> Uploaded in 12.7s. Compression took 6.4s
+2026-04-19T22:38:10.756840213Z ==> Build successful 🎉
+2026-04-19T22:38:19.125840825Z ==> Deploying...
+2026-04-19T22:38:19.179014591Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-04-19T22:38:48.848847222Z ==> Running 'node artifacts/api-server/dist/index.mjs'
+2026-04-19T22:38:49.956876694Z {"level":30,"time":1776638329956,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","port":8080,"msg":"Server listening"}
+2026-04-19T22:38:50.153806512Z {"level":30,"time":1776638330153,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","msg":"Seeded 3 demo gift hampers"}
+2026-04-19T22:38:50.154454255Z {"level":30,"time":1776638330154,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","msg":"Database migrations complete"}
+2026-04-19T22:38:50.430191469Z {"level":30,"time":1776638330429,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":1,"method":"HEAD","url":"/"},"res":{"statusCode":404},"responseTime":4,"msg":"request completed"}
+2026-04-19T22:38:59.838070019Z {"level":30,"time":1776638339837,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":2,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":4,"msg":"request completed"}
+2026-04-19T22:38:59.84002451Z {"level":30,"time":1776638339839,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":3,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":0,"msg":"request completed"}
+2026-04-19T22:39:00.574781454Z ==> Your service is live 🎉
+2026-04-19T22:39:00.661595933Z {"level":30,"time":1776638340661,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":4,"method":"GET","url":"/"},"res":{"statusCode":404},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:00.769153469Z ==> 
+2026-04-19T22:39:00.771853956Z ==> ///////////////////////////////////////////////////////////
+2026-04-19T22:39:00.775275172Z ==> 
+2026-04-19T22:39:00.77803167Z ==> Available at your primary URL https://trynex-api.onrender.com
+2026-04-19T22:39:00.780624076Z ==> 
+2026-04-19T22:39:00.788188939Z ==> ///////////////////////////////////////////////////////////
+2026-04-19T22:39:04.833259729Z {"level":30,"time":1776638344833,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":5,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:09.834570308Z {"level":30,"time":1776638349834,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":6,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:14.833468118Z {"level":30,"time":1776638354833,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":7,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:19.834304929Z {"level":30,"time":1776638359833,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":8,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:19.835929183Z {"level":30,"time":1776638359835,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":9,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:24.833788192Z {"level":30,"time":1776638364833,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":10,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-04-19T22:39:29.834174024Z {"level":30,"time":1776638369833,"pid":68,"hostname":"srv-d7b774mdqaus73carp70-hibernate-58df5d66bf-4psk8","req":{"id":11,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
