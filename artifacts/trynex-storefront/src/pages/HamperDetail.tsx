@@ -114,9 +114,41 @@ export default function HamperDetail() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEOHead
-        title={`${hamper.name} | Gift Hamper | TryNex Lifestyle`}
-        description={hamper.description || `Premium ${hamper.name} gift hamper from TryNex Lifestyle Bangladesh.`}
+        title={`${hamper.name} | Gift Hamper`}
+        description={hamper.description || `Premium ${hamper.name} gift hamper from TryNex Lifestyle Bangladesh — beautifully wrapped, delivered nationwide.`}
         canonical={`/hampers/${hamper.slug}`}
+        ogImage={hamper.imageUrl}
+        ogType="product"
+        keywords={`${hamper.name}, gift hamper bangladesh, ${hamper.occasion || 'gift'} hamper, corporate gift bd`}
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": hamper.name,
+            "description": hamper.description || `Premium ${hamper.name} gift hamper from TryNex Lifestyle.`,
+            "image": hamper.imageUrl || "",
+            "sku": `hamper-${hamper.id}`,
+            "brand": { "@type": "Brand", "name": "TryNex Lifestyle" },
+            "category": "Gift Hamper",
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "BDT",
+              "price": price,
+              "availability": "https://schema.org/InStock",
+              "seller": { "@type": "Organization", "name": "TryNex Lifestyle" },
+              "url": `https://trynexshop.com/hampers/${hamper.slug}`,
+            },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://trynexshop.com/" },
+              { "@type": "ListItem", "position": 2, "name": "Gift Hampers", "item": "https://trynexshop.com/hampers" },
+              { "@type": "ListItem", "position": 3, "name": hamper.name, "item": `https://trynexshop.com/hampers/${hamper.slug}` },
+            ],
+          },
+        ]}
       />
       <Navbar />
 
@@ -136,7 +168,15 @@ export default function HamperDetail() {
                 style={{ border: '1px solid #e5e7eb' }}
               >
                 {hamper.imageUrl ? (
-                  <img src={hamper.imageUrl} alt={hamper.name} className="w-full h-full object-cover" />
+                  <img
+                    src={hamper.imageUrl}
+                    alt={`${hamper.name} — premium gift hamper from TryNex Lifestyle`}
+                    className="w-full h-full object-cover"
+                    width={800}
+                    height={800}
+                    {...({ fetchpriority: 'high' } as any)}
+                    decoding="async"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Gift className="w-32 h-32 text-orange-300" />

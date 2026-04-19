@@ -37,10 +37,31 @@ export default function Hampers() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEOHead
-        title="Gift Hampers • উপহার হ্যাম্পার | TryNex Lifestyle"
-        description="Premium curated gift hampers from Bangladesh's #1 lifestyle brand. Birthday, anniversary, corporate gifts, and build-your-own bundles."
+        title="Gift Hampers • উপহার হ্যাম্পার"
+        description="Premium curated gift hampers from Bangladesh's #1 lifestyle brand. Birthday, anniversary, corporate gifts, and build-your-own bundles — wrapped and delivered nationwide."
         canonical="/hampers"
         keywords="gift hampers bangladesh, gift box, corporate gift, birthday gift, anniversary gift, উপহার হ্যাম্পার"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://trynexshop.com/" },
+              { "@type": "ListItem", "position": 2, "name": "Gift Hampers", "item": "https://trynexshop.com/hampers" },
+            ],
+          },
+          ...(hampers.length > 0 ? [{
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "TryNex Gift Hampers",
+            "itemListElement": hampers.slice(0, 20).map((h, i) => ({
+              "@type": "ListItem",
+              "position": i + 1,
+              "url": `https://trynexshop.com/hampers/${h.slug}`,
+              "name": h.name,
+            })),
+          }] : []),
+        ]}
       />
       <Navbar />
 
@@ -121,7 +142,10 @@ export default function Hampers() {
                       >
                         <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
                           {h.imageUrl ? (
-                            <img src={h.imageUrl} alt={h.name}
+                            <img src={h.imageUrl} alt={`${h.name} gift hamper`}
+                              width={600} height={450}
+                              loading={idx < 3 ? "eager" : "lazy"}
+                              decoding="async"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">

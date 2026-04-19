@@ -168,3 +168,33 @@ The cart context (`artifacts/trynex-storefront/src/context/CartContext.tsx`) is 
 - `localStorage` writes are debounced 250ms and flushed on `visibilitychange`/`beforeunload` so rapid +/- clicks don't jank the main thread.
 - `updateQuantity` returns the previous array reference if nothing actually changed, avoiding spurious renders.
 - `Cart.tsx` and `CartDrawer.tsx` extract each cart row into a `React.memo`-wrapped subcomponent with stable callback props; cart line images use `loading="lazy" decoding="async"` with explicit width/height.
+
+## SEO + Core Web Vitals (Task #22)
+
+**Canonical domain**: `https://trynexshop.com` — used consistently across `index.html`, `SEOHead.tsx`, `sitemap.xml`, `robots.txt`, and all per-page `jsonLd` URLs. Previously `sitemap.xml` and `robots.txt` referenced the wrong `trynex.com.bd` host; corrected to match the production Cloudflare Pages domain.
+
+### Per-route SEO (verified)
+Every public route renders `SEOHead` with a unique `title`, `description`, and `canonical`. Routes audited and confirmed:
+Home, Products, ProductDetail, Hampers, HamperDetail, HamperBuilder, DesignStudio, Cart, Checkout, Login, Signup, Wishlist, Account, TrackOrder, Blog, BlogPost, FAQ, About, Referral, Sale, Size Guide, Shipping/Return/Privacy/Terms policy, 404.
+
+### Structured data (JSON-LD)
+- **Home / index.html (global)**: Organization, WebSite (with SearchAction), ClothingStore (LocalBusiness with aggregateRating).
+- **ProductDetail**: Product (price BDT, availability, brand, optional aggregateRating) + BreadcrumbList.
+- **HamperDetail**: Product (priced in BDT, InStock, Gift Hamper category) + BreadcrumbList.
+- **Hampers (list)**: BreadcrumbList + ItemList of up to 20 hampers.
+- **FAQ**: FAQPage with all 18 questions.
+
+### LCP / Core Web Vitals
+- Hero fallback image (`/images/hero-bg.png`) preloaded with `fetchpriority="high"` from `index.html`.
+- ProductDetail and HamperDetail main images render with explicit `width`/`height`, `decoding="async"`, and `fetchpriority="high"` to anchor LCP and prevent CLS.
+- Hampers grid: first 3 cards `loading="eager"`, the rest `loading="lazy"`.
+- Google Fonts subset trimmed to weights actually used (Outfit 400/600/700/800/900 + Plus Jakarta Sans 400-800) with `display=swap` to eliminate FOIT/CLS.
+- Added `preconnect` to the Render API origin (`trynex-api.onrender.com`) and `dns-prefetch` for GTM + Facebook pixel domains.
+- Global `<img>` tags across product cards already use `loading="lazy"`/`decoding="async"`/explicit dimensions (verified during the Cart / Products audit in Task #21).
+
+### Sitemap + robots
+- `public/sitemap.xml` regenerated with all current routes: home, products (+ 4 category filter URLs), hampers, hampers/build, design-studio, sale, blog, about, faq, track, size-guide, referral, and the 4 policy pages. Lastmod set to 2026-04-19.
+- `public/robots.txt` corrected to point at `https://trynexshop.com/sitemap.xml`, explicitly disallows `/admin/`, `/api/`, `/cart`, `/checkout`, `/wishlist`, `/account`, `?search=`, `?sort=`, and explicitly allows Googlebot, Bingbot, and facebookexternalhit.
+
+### Measurement
+Lighthouse mobile audit must be re-run against the live Cloudflare Pages URL after deploy (Task #23 covers pre-launch verification). Baseline targets: ≥85 Performance, ≥95 SEO, ≥95 Best Practices on a Slow 4G + 4× CPU profile, with LCP < 2.5s, CLS < 0.1, INP < 200ms on Home and ProductDetail.

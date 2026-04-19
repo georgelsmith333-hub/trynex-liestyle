@@ -6,5 +6,18 @@ Disallow: /api/
 Disallow: /cart
 Disallow: /checkout
 Disallow: /wishlist
+Disallow: /account
+Disallow: /*?search=
+Disallow: /*?sort=
 
-Sitemap: https://trynex.com.bd/api/sitemap.xml
+# Major bots — explicitly allowed
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+Sitemap: https://trynexshop.com/sitemap.xml

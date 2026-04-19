@@ -169,8 +169,10 @@ export default function FAQ() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEOHead
-        title="FAQ — Frequently Asked Questions | TryNex Lifestyle"
+        title="FAQ — Frequently Asked Questions"
         description="Answers to common questions about shipping, returns, custom orders, sizing, and payments at TryNex Lifestyle Bangladesh."
+        canonical="/faq"
+        keywords="trynex faq, shipping bangladesh faq, custom apparel questions, return policy bd"
         jsonLd={faqSchema}
       />
       <Navbar />

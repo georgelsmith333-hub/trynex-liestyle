@@ -558,8 +558,12 @@ export default function ProductDetail() {
                 {displayImage ? (
                   <img
                     src={displayImage}
-                    alt={product.name}
+                    alt={`${product.name} — TryNex Lifestyle`}
                     className="w-full h-full object-cover transition-transform duration-300"
+                    width={800}
+                    height={800}
+                    {...({ fetchpriority: 'high' } as any)}
+                    decoding="async"
                     style={zoomActive ? {
                       transform: 'scale(2)',
                       transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
