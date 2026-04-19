@@ -335,7 +335,9 @@ router.post("/orders", async (req, res) => {
       const settingsMap = Object.fromEntries(allSettings.map((s: any) => [s.key, s.value]));
       if (settingsMap.studioTshirtPrice) studioTshirtPrice = parseFloat(settingsMap.studioTshirtPrice) || 1099;
       if (settingsMap.studioMugPrice) studioMugPrice = parseFloat(settingsMap.studioMugPrice) || 799;
-    } catch {}
+    } catch (err) {
+      logger.warn({ err, route: "POST /orders" }, "Failed to load studio prices from settings; using defaults");
+    }
 
     const productIds = catalogItems.map((i: any) => Number(i.productId));
 
@@ -503,7 +505,9 @@ router.post("/orders", async (req, res) => {
       const settingsMap = Object.fromEntries(settings.map(s => [s.key, s.value]));
       if (settingsMap.freeShippingThreshold) freeThreshold = Number(settingsMap.freeShippingThreshold) || 1500;
       if (settingsMap.shippingCost) shipCost = Number(settingsMap.shippingCost) || 100;
-    } catch {}
+    } catch (err) {
+      logger.warn({ err, route: "POST /orders" }, "Failed to load shipping settings; using defaults");
+    }
     const shippingCost = subtotal >= freeThreshold ? 0 : shipCost;
 
     const wantsPromo = promoCode && typeof promoCode === "string" && promoCode.trim().length > 0;

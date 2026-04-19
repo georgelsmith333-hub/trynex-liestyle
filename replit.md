@@ -2,284 +2,51 @@
 
 ## Overview
 
-Full-stack e-commerce platform for TryNex Lifestyle, a premium custom apparel brand from Bangladesh. Built as a pnpm workspace monorepo with TypeScript.
-
-## Production URLs & Auth Setup
-
-- **Storefront** (Cloudflare Pages): `https://trynexshop.com`
-- **API server** (Render): `https://trynex-api.onrender.com`
-- **Admin panel**: `https://trynexshop.com/admin/login` — default password `Admins@Trynex` (overridable by setting `ADMIN_PASSWORD` env var on Render; the password auto-syncs to the env value on every login attempt).
-- **Push to GitHub from Admin** → `Admin → Deployment`. Save your GitHub owner/repo/branch + a fine-grained PAT (Contents: Read & Write). The token is stored in the `settings` table and never echoed back to the browser. Hitting "Push to GitHub Now" stages all changes in the workspace, commits with your message, and pushes — Cloudflare Pages and Render then auto-deploy. The push command uses `execFile` (no shell), strict allowlist regexes for owner/repo/branch/email/token, and scrubs the PAT from any returned error/log output.
-
-The storefront has the production API URL hardcoded as a fallback (`PRODUCTION_API_BASE_URL` in `artifacts/trynex-storefront/src/lib/utils.ts`), so it works even if `VITE_API_BASE_URL` is not set in Cloudflare Pages env. Only `localhost`/`127.0.0.1` use same-origin requests; every other host (including Cloudflare Pages preview URLs) hits the Render API directly. **Production has zero dependencies on any `*.replit.dev`, `*.repl.co`, or other Replit-hosted infrastructure.**
-
-### Allowed production hosts (post Task #20 sweep)
-- **Frontend origin**: `https://trynexshop.com` (Cloudflare Pages)
-- **Backend origin**: `https://trynex-api.onrender.com` (Render)
-- **API CORS allowlist**: controlled by the `ALLOWED_ORIGINS` env var on Render (comma-separated). Set this to `https://trynexshop.com` plus any Cloudflare Pages preview origin you want to enable. There are no Replit entries hardcoded in `artifacts/api-server/src/app.ts`. **In production (`NODE_ENV=production`) the API server refuses to start if `ALLOWED_ORIGINS` is unset** — this guarantees a misconfigured deploy can never silently fall back to a permissive `allow-all` CORS policy. In dev, a built-in default allowlist is used (`https://trynexshop.com` + localhost dev ports).
-- **Cloudflare Pages `_redirects`**: only `/api/* → https://trynex-api.onrender.com/api/:splat` (proxy) + SPA fallback. No Replit hosts.
-- The storefront `getApiBaseUrl()` no longer special-cases `.replit.dev`. The Replit dev environment, when used, just talks to the Render API like any other non-localhost host.
-
-### Keep-alive monitor (Render cold-start mitigation)
-Render free-tier services sleep after 15 minutes of inactivity, which gives the first paying visitor of the hour a 30–50 second cold start. Mitigation:
-- An external HTTP keep-alive monitor (UptimeRobot or equivalent) hits `https://trynex-api.onrender.com/api/healthz` every **5 minutes**, with a 30-second monitor timeout.
-- The storefront also fires a warm-up `GET /api/healthz` 300ms after app mount (with a one-time retry after 2s if the first attempt fails) — see `useWarmUpApi` in `artifacts/trynex-storefront/src/App.tsx`.
-- Render's `healthCheckPath` in `render.yaml` is also set to `/api/healthz`. If you change one, change the other — a mismatch will mark the service unhealthy and Render will refuse to promote new deploys.
-
-### Google sign-in setup (one-time, optional)
-1. In Google Cloud Console, create an OAuth 2.0 Client ID (type: Web application).
-2. Under "Authorized JavaScript origins" add: `https://trynexshop.com`
-3. Copy the Client ID and paste it into Admin Settings → "Google Client ID".
-
-### Facebook sign-in setup (one-time, optional)
-1. At developers.facebook.com create an App (type: Consumer) and add the "Facebook Login" product.
-2. Under Facebook Login → Settings → "Valid OAuth Redirect URIs" add: `https://trynexshop.com/`
-3. Under App Settings → Basic, add `trynexshop.com` to "App Domains".
-4. Copy the App ID and paste it into Admin Settings → "Facebook App ID".
-
-If those fields are blank in Admin Settings, the social buttons simply hide on the login/signup pages — the rest of the site still works.
-
-## Stack
-
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **Frontend**: React 19 + Vite 7 + Tailwind CSS v4 + Framer Motion
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Auth**: JWT for admin, cookie-based for customers
-- **Build**: esbuild (CJS bundle for API server)
-
-## Architecture
-
-### Storefront (port 8081 → external 80)
-- `artifacts/trynex-storefront/` — React + Vite SPA
-- Routing via `wouter`
-- State: TanStack React Query for server data
-- UI: Radix UI + Tailwind v4 + shadcn-style components
-- PWA support (service worker via vite-plugin-pwa)
-- Rich text editor (Tiptap) for admin blog
-
-### API Server (port 8080)
-- `artifacts/api-server/` — Express 5 + TypeScript
-- 18+ route modules: products, orders, categories, auth, blog, reviews, settings, admin, promoCodes, referrals, testimonials, publicStats, storage, backup, facebook, removeBg, sitemap, health
-- Rate limiting on auth/order/promo endpoints
-- JWT authentication for admin panel
-- Auto-migration and auto-seed on startup
-
-### Database (PostgreSQL)
-- Tables: admins, settings, categories, products, orders, blog_posts, customers, testimonials, promo_codes, reviews, referrals
-- Schema defined in `lib/db/src/schema/index.ts`
-- Migrations run inline via `autoSeed.ts` at startup
-
-## Key Business Features
-
-- **Brand**: TryNex Lifestyle — premium custom apparel (t-shirts, hoodies, mugs, caps) from Bangladesh
-- **Currency**: BDT (Bangladeshi Taka, ৳)
-- **Payment methods**: COD (Cash on Delivery), bKash, Nagad, Rocket, Card
-- **Free shipping** threshold: ৳1500
-- **WhatsApp** order support: 01903426915
-- **Admin panel**: `/admin/login` — default creds: admin / admin123
-- **Design Studio**: custom apparel designer with canvas
-- **Facebook Import**: import products from Facebook Ads
-- **Blog**: full CMS with rich text editor
-- **Referral system**: customer referral tracking
-- **Promo codes**: percentage/fixed discount codes
-- **Reviews**: product review system with approval workflow
-
-## Admin Access
-
-- URL: `/admin/login`
-- Default username: `admin`
-- Default password: `admin123`
-- Secret access: tap footer element 5 times to reveal hidden link
-
-## Key Commands
-
-```bash
-# Install all dependencies
-pnpm install
-
-# Start API server (port 8080)
-pnpm --filter @workspace/api-server run dev
-
-# Start storefront (port 8081)
-pnpm --filter @workspace/trynex-storefront run dev
-
-# Build for production
-pnpm --filter @workspace/trynex-storefront run build
-pnpm --filter @workspace/api-server run build
-
-# Type check
-pnpm --filter @workspace/trynex-storefront run typecheck
-pnpm --filter @workspace/api-server run typecheck
-```
-
-## Package Structure
-
-```
-artifacts/
-  api-server/        — Express API (port 8080)
-  trynex-storefront/ — React Vite storefront (port 8081)
-lib/
-  api-client-react/  — React Query hooks + types for all API endpoints
-  api-spec/          — OpenAPI spec + orval codegen
-  api-zod/           — Zod schemas generated from OpenAPI
-  db/                — Drizzle ORM schema + database client
-```
-
-## Environment Variables
-
-- `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)
-- `JWT_SECRET` — Secret for signing customer JWTs (login/account tokens)
-- `ADMIN_JWT_SECRET` — Separate secret for signing admin panel JWTs. Must be distinct from `JWT_SECRET` so a customer token cannot pass admin signature verification. Required in production.
-- `SESSION_SECRET` — Legacy/session secret (still read in some places)
-- `PORT` — Port for each service (set by Replit workflows)
-- `API_PORT` — API server port for storefront proxy (default: 8080)
-
-## Ports
-
-- `8080` → API server (external 8080)
-- `8081` → Storefront (external 80, main web)
-
-## Mobile UX QA checklist (Task #21)
-
-Before merging any new page or floating widget, verify on **iPhone SE (375)**, **iPhone 14 Pro (393)**, and **Pixel 7 (412)**:
-
-- [ ] **No horizontal scroll** on Home, Products, ProductDetail, Cart, Checkout, Hampers, Account at widths 360–430. Long product names use `truncate`/`line-clamp`, hero images are `max-w-full`.
-- [ ] **All tap targets ≥ 44×44px** (use the `.touch-target` utility for icon-only buttons).
-- [ ] **All bottom-fixed floaters** (`WhatsAppButton`, `BackToTop`, `SocialProofToast`) honor BOTH `--mobile-sticky-offset` (set by ProductDetail when its sticky CTA bar is mounted, so floaters lift above it) AND `env(safe-area-inset-bottom)` (so they clear the iPhone home indicator). The pattern is `bottom: calc(<base> + var(--mobile-sticky-offset, 0px) + env(safe-area-inset-bottom, 0px))`.
-- [ ] **Sticky bottom CTA bars** (e.g. ProductDetail) include `paddingBottom: 'calc(<base> + env(safe-area-inset-bottom, 0px))'` so the buttons clear the home indicator.
-- [ ] **Modals/drawers** prefer `max-h-[100dvh]` over `100vh` and use the `.drawer-mobile` utility (which falls back to `-webkit-fill-available` on iOS Safari).
-- [ ] **Form inputs** declare the right `type` AND a matching `inputMode` so the correct mobile keyboard appears:
-  - Email → `type="email" inputMode="email" autoComplete="email" autoCapitalize="off"`
-  - Phone → `type="tel" inputMode="tel" autoComplete="tel"` (BD format: `01XXXXXXXXX`)
-  - Numeric (qty, postal code) → `inputMode="numeric"`
-  - Order ID, promo code, tracking number → `autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}`
-  - Names → `autoCapitalize="words" autoComplete="name"`
-  - Add `enterKeyHint="next" | "done" | "search"` so the on-screen keyboard's primary action button matches the field's role.
-- [ ] **iOS auto-zoom prevention**: input/select/textarea font-size ≥ 16px on mobile. Globally enforced via the `@media (max-width: 640px)` rule in `index.css`.
-- [ ] **Empty / loading / error states**: every list-driven page renders a friendly empty state with a CTA, a skeleton loader (use `.skeleton`), and a non-blank error state instead of raw JSON.
-
-The `--mobile-sticky-offset` CSS variable is the single source of truth for "how much vertical space is currently consumed by a sticky bottom CTA bar". Pages that mount such a bar should set it to the bar's height in a `useEffect` and reset it to `0px` on unmount (see `artifacts/trynex-storefront/src/pages/ProductDetail.tsx`). All floating widgets honor it automatically.
-
-## Cart performance notes (Task #19)
-
-The cart context (`artifacts/trynex-storefront/src/context/CartContext.tsx`) is split into two contexts to minimize re-renders:
-
-- `CartStateContext` — `{ items, subtotal, itemCount }`. Subtotal and itemCount are computed in a single pass and memoized on `items`. Updates only when the cart actually changes.
-- `CartActionsContext` — `{ addToCart, removeFromCart, updateQuantity, changeQuantity, clearCart }`. Actions are wrapped in `useCallback` with the functional `setItems` form, so they keep referential equality across renders. Cart line +/- buttons call `changeQuantity(id, ±1)` (delta-based, atomic inside `setItems`) so rapid mobile taps can't read stale quantities.
-- `useCart()` is a backwards-compat combined hook. **Action-only consumers (ProductCard, ProductDetail, DesignStudio, HamperDetail, HamperBuilder, Wishlist) use `useCartActions()` instead** so they don't re-render when items change.
-- `localStorage` writes are debounced 250ms and flushed on `visibilitychange`/`beforeunload` so rapid +/- clicks don't jank the main thread.
-- `updateQuantity` returns the previous array reference if nothing actually changed, avoiding spurious renders.
-- `Cart.tsx` and `CartDrawer.tsx` extract each cart row into a `React.memo`-wrapped subcomponent with stable callback props; cart line images use `loading="lazy" decoding="async"` with explicit width/height.
-
-## SEO + Core Web Vitals (Task #22)
-
-**Canonical domain**: `https://trynexshop.com` — used consistently across `index.html`, `SEOHead.tsx`, `sitemap.xml`, `robots.txt`, and all per-page `jsonLd` URLs. Previously `sitemap.xml` and `robots.txt` referenced the wrong `trynex.com.bd` host; corrected to match the production Cloudflare Pages domain.
-
-### Per-route SEO (verified)
-Every public route renders `SEOHead` with a unique `title`, `description`, and `canonical`. Routes audited and confirmed:
-Home, Products, ProductDetail, Hampers, HamperDetail, HamperBuilder, DesignStudio, Cart, Checkout, Login, Signup, Wishlist, Account, TrackOrder, Blog, BlogPost, FAQ, About, Referral, Sale, Size Guide, Shipping/Return/Privacy/Terms policy, 404.
-
-### Structured data (JSON-LD)
-- **Home / index.html (global)**: Organization, WebSite (with SearchAction), ClothingStore (LocalBusiness with aggregateRating).
-- **ProductDetail**: Product (price BDT, availability, brand, optional aggregateRating) + BreadcrumbList.
-- **HamperDetail**: Product (priced in BDT, InStock, Gift Hamper category) + BreadcrumbList.
-- **Hampers (list)**: BreadcrumbList + ItemList of up to 20 hampers.
-- **FAQ**: FAQPage with all 18 questions.
-
-### LCP / Core Web Vitals
-- Hero fallback image (`/images/hero-bg.png`) preloaded with `fetchpriority="high"` from `index.html`.
-- ProductDetail and HamperDetail main images render with explicit `width`/`height`, `decoding="async"`, and `fetchpriority="high"` to anchor LCP and prevent CLS.
-- Hampers grid: first 3 cards `loading="eager"`, the rest `loading="lazy"`.
-- Google Fonts subset trimmed to weights actually used (Outfit 400/600/700/800/900 + Plus Jakarta Sans 400-800) with `display=swap` to eliminate FOIT/CLS.
-- Added `preconnect` to the Render API origin (`trynex-api.onrender.com`) and `dns-prefetch` for GTM + Facebook pixel domains.
-- Global `<img>` tags across product cards already use `loading="lazy"`/`decoding="async"`/explicit dimensions (verified during the Cart / Products audit in Task #21).
-
-### Sitemap + robots
-- **Dynamic sitemap**: `https://trynexshop.com/sitemap.xml` and `/robots.txt` are now proxied by Cloudflare Pages (`public/_redirects`) directly to the API server's DB-backed endpoints (`artifacts/api-server/src/routes/sitemap.ts`). Every product, hamper, blog post, and category appears in the sitemap as soon as it is published — no manual regeneration required.
-- **Static fallback**: `public/sitemap.xml` and `public/robots.txt` remain in the repo as a safety net for the (rare) case where the API is unreachable. Both list the canonical static routes (home, products + 4 category filter URLs, hampers, hampers/build, design-studio, sale, blog, about, faq, track, size-guide, referral, 4 policy pages). Lastmod 2026-04-19.
-- robots.txt explicitly disallows `/admin/`, `/api/`, `/cart`, `/checkout`, `/wishlist`, `/account`, `?search=`, `?sort=`, and explicitly allows Googlebot, Bingbot, and facebookexternalhit.
-
-### Measurement
-Lighthouse mobile audit must be run against the live Cloudflare Pages URL (`https://trynexshop.com`) — the dev environment's localhost cannot produce representative CWV numbers because it bypasses the CDN, real network latency, and the production-built bundle. Task #23 (pre-launch deploy verification) executes this measurement against the live build and records before/after deltas. Baseline targets: ≥85 Performance, ≥95 SEO, ≥95 Best Practices on a Slow 4G + 4× CPU profile, with LCP < 2.5s, CLS < 0.1, INP < 200ms on Home and ProductDetail.
-
-## Pre-launch verification (Task #23)
-
-The end-to-end go/no-go checklist for paid-ad launch lives at `docs/launch-checklist.md`. It is operator-run against the **live** site (real browser, real Meta Pixel Helper, real COD test orders) — it cannot be automated from this dev environment.
-
-### Verified production hostnames
-| Layer | Provider | Hostname / identifier |
-| --- | --- | --- |
-| Storefront | Cloudflare Pages project `trynex-liestyle` (see `artifacts/trynex-storefront/wrangler.toml`) | `https://trynexshop.com` |
-| API | Render web service | `https://trynex-api.onrender.com` |
-| Database | Managed Postgres attached to the Render service via `DATABASE_URL` | n/a (private) |
-| Sitemap & robots | Edge-rewritten by `_redirects` to the API's DB-backed routes | `/sitemap.xml`, `/robots.txt` |
-
-### Security headers (set in `artifacts/trynex-storefront/public/_headers`)
-Every HTML response from Cloudflare Pages now ships with:
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
-- `Content-Security-Policy` — `default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `upgrade-insecure-requests`; explicitly allows the Render API origin in `connect-src`, plus GTM / GA / Facebook Pixel / Google Sign-In / Facebook Login origins where actually used.
-- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)`.
-
-### Tracking pixel surface (verified-in-checklist)
-`TrackingPixels.tsx` lazy-initializes Meta Pixel + GA4 + Google Ads only if their IDs are filled in Admin → Settings. The launch checklist's section 5 walks the operator through verifying `PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, and `Purchase` in Meta Pixel Helper.
-
-### What "done" means for Task #23
-Checklist sections 1–7 in `docs/launch-checklist.md` all pass against `https://trynexshop.com` after the next deploy. The infrastructure prerequisites that this codebase controls (security headers, CORS lockdown, dynamic sitemap, no Replit hosts) are all in place; only the live-site walkthrough remains, and that is the operator's responsibility.
-
-## Design Studio overhaul (April 2026)
-
-The Realtime Design Studio now uses photographic mockup templates instead of inline SVG illustrations.
-
-### Mockup pipeline
-- 14 AI-generated PNG mockups live in `artifacts/trynex-storefront/public/mockups/<id>-<face>.png` (front + back for tshirt / longsleeve / hoodie; front-only for cap and mug). All ~1024×1024 with a soft drop shadow on a white studio background.
-- `mockups.tsx` collapsed from per-product inline SVG components into a single `GarmentSVG` that embeds the PNG via SVG `<image>` and overlays a labelled dashed "Print Area" outline.
-- All products now share a unified `1000×1000` viewBox. Each product carries its own front `printZone` (and optional `printZoneBack`) calibrated to the chest / back / wraparound area of its photograph.
-
-### Face awareness
-- `DesignStudio.tsx` derives `pz` from `activeFace` for the editor.
-- `ProductViewer3D` and the cart `composeLayers` calls always pass the *explicit* front zone for the front payload and `printZoneBack ?? printZone` for the back payload — they never use the editor's face-aware `pz` (would otherwise leak the back zone into the front snapshot).
-- The Front/Back face switcher only renders when `supportsBack` is true (cap + mug hide it).
-- Print-area outline auto-hides once the active face has at least one layer placed (`effectiveShowPrintZone`).
-
-### Draft storage version
-- `DRAFT_VERSION` was bumped from `1` → `2`. Old drafts saved in the previous ~400-wide coordinate system are dropped on load, so nobody opens the studio to a misplaced/oversized restored design.
-
-### Mobile product card consistency
-- `ProductCard.tsx` is now `h-full flex flex-col` with the price+CTA row anchored via `mt-auto`, so every card in a grid lines up at the bottom regardless of title length, colour-swatch presence, or savings badge. Verified on a 390-wide viewport: Add to Bag and the WhatsApp button both sit above the fold.
-
-## Data preservation policy (April 2026)
-
-User-facing data is **never** auto-reset, replaced, or seeded by code deployments. The following live in the database and persist across every Cloudflare Pages and Render deploy:
-
-- Blog posts (`blog_posts`)
-- Reviews / testimonials (`reviews`, `testimonials`)
-- Orders (`orders`, `order_items`)
-- Customers / customer accounts (`customers`, `users`)
-- Site settings (`settings` — admin-edited values like hero copy, hours, payment toggles)
-- Hampers and hamper items
-- Admins (`admins`)
-
-Mechanisms in place:
-- `runMigrations()` (`artifacts/api-server/src/lib/autoSeed.ts`) only issues `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. It never `DROP`s, `TRUNCATE`s, or `DELETE`s rows.
-- `autoSeedIfEmpty()` is a true no-op when `productsTable` already has at least one row. It only ever fires on a brand-new empty database (first cold boot), and even then only inserts default categories / sample products / a default admin — it does not touch blogs, reviews, orders, customers, or settings.
-- `pnpm --filter db push` (the post-merge step) uses `drizzle-kit push` in non-destructive mode. Schema additions are applied; column drops or type changes that would lose data require explicit confirmation and are blocked by the `--force` flag absence.
-- No cron job or background worker truncates user data.
-
-If you ever want to reset content, do it from the admin panel or by an explicit one-off SQL run — never by re-deploying.
-
-## Hero performance (April 2026)
-
-The home hero now dynamically gates GPU-heavy effects to large screens to keep mid-range Android devices smooth:
-
-- `ParticleCanvas` (15–35 animated particles) renders only on `lg:` and up.
-- The three large animated background blobs (`blur-[60–90px]` + infinite scale/opacity loops) are also `lg:`-only. Mobile gets two small static blurred gradients (`blur-[40px]`, ~280px) instead — same visual mood, no GPU compositing churn.
-- Feature mini-badges drop their `backdrop-filter: blur(10px)` on mobile (4 stacked blur layers were a major frame-drop source) and use a near-opaque `bg-white/90` instead.
-- The animated payment ribbon was repacked into a single `overflow-x-auto` flex row with `flex-nowrap` and a hidden scrollbar, so all five methods (bKash, Nagad, Rocket, COD, VISA) plus the “100% Secure” badge are visible side-by-side on any phone width.
-
-## Admin blog drafts visibility fix
-
-`useListBlogPosts` previously accepted an `_opts` parameter but discarded it, so the admin's `Authorization: Bearer …` header never reached `/api/blog`. That made the API treat admin requests as anonymous and filter out unpublished drafts — admins saw zero posts even after creating them. Fixed in `lib/api-client-react/src/trynex-hooks.ts` by forwarding `opts.request.headers` to `customFetch` and including the auth state in the React Query cache key.
+TryNex Lifestyle is a full-stack e-commerce platform specializing in premium custom apparel from Bangladesh. The project aims to provide a robust online storefront, an efficient administration panel, and a unique design studio for personalized products. It leverages a modern tech stack to ensure high performance, scalability, and a rich user experience, targeting the growing market for custom fashion.
+
+## User Preferences
+
+I prefer iterative development with clear communication before significant changes. Please prioritize high-level features and architectural decisions. I want to be informed about the implications of any proposed changes, especially concerning database interactions and user data. Ensure that user-facing data is never auto-reset, replaced, or seeded by code deployments. Always confirm major architectural shifts or external dependency integrations.
+
+## System Architecture
+
+The platform is built as a pnpm workspace monorepo using TypeScript.
+
+### Storefront
+-   **Technology**: React 19, Vite 7, Tailwind CSS v4, Framer Motion, Radix UI, shadcn-style components.
+-   **Routing**: `wouter`.
+-   **State Management**: TanStack React Query for server data.
+-   **Features**: PWA support, rich text editor (Tiptap) for admin blog, dynamic GPU-heavy effects gated to large screens for performance optimization on mobile.
+-   **UI/UX**: Responsive design verified across various mobile viewports, adherence to touch target guidelines, correct mobile keyboard types for form inputs, iOS auto-zoom prevention. Product cards maintain consistent alignment regardless of content length.
+
+### API Server
+-   **Technology**: Express 5, TypeScript.
+-   **Functionality**: Manages 18+ route modules including products, orders, categories, authentication, blog, reviews, settings, and administration.
+-   **Security**: Rate limiting on critical endpoints, JWT authentication for admin panel.
+-   **Database Integration**: Auto-migration and auto-seeding on startup for new databases.
+
+### Database
+-   **Technology**: PostgreSQL with Drizzle ORM.
+-   **Schema**: Defined in `lib/db/src/schema/index.ts` with tables for admins, settings, categories, products, orders, blog posts, customers, testimonials, promo codes, reviews, and referrals.
+-   **Data Preservation**: Migrations are non-destructive, using `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. `autoSeedIfEmpty()` only runs on empty databases.
+
+### Key Business Features
+-   **Products**: Custom apparel (t-shirts, hoodies, mugs, caps).
+-   **Currency**: BDT (Bangladeshi Taka).
+-   **Payment**: COD, bKash, Nagad, Rocket, Card. Free shipping threshold at ৳1500.
+-   **Admin Panel**: Comprehensive management for products, orders, blog, settings, and users. Includes GitHub integration for automated deployments.
+-   **Design Studio**: Realtime custom apparel designer with photographic mockup templates and precise print area calibration.
+-   **Social Integration**: Facebook product import, Google/Facebook sign-in.
+-   **Marketing**: Referral system, promo codes, product review system.
+-   **SEO & Performance**: Canonical domain `https://trynexshop.com`, per-route SEO with unique titles, descriptions, and canonicals. Structured data (JSON-LD) for key pages. Optimized LCP and Core Web Vitals through image preloading, explicit dimensions, font subsetting, and API preconnects. Dynamic sitemap and robots.txt.
+-   **Cart Performance**: Optimized with split contexts, debounced `localStorage` writes, and memoized components to minimize re-renders.
+
+## External Dependencies
+
+-   **Hosting**: Cloudflare Pages (storefront), Render (API server).
+-   **Database**: PostgreSQL.
+-   **Authentication**: Google OAuth 2.0, Facebook Login.
+-   **Monitoring**: External HTTP keep-alive monitor (e.g., UptimeRobot).
+-   **Analytics/Tracking**: Google Analytics 4 (GA4), Google Tag Manager (GTM), Meta Pixel.
+-   **Social Media**: WhatsApp for order support.
+-   **Build Tools**: pnpm workspaces, Vite, esbuild.

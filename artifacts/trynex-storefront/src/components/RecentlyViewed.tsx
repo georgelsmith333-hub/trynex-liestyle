@@ -34,10 +34,13 @@ export function RecentlyViewed() {
                   style={{ border: '1px solid #f0f0f0', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
                   <div className="aspect-square overflow-hidden bg-gray-50">
                     <img
-                      src={item.imageUrl?.startsWith('http') ? item.imageUrl : `${getApiUrl()}${item.imageUrl}`}
+                      src={item.imageUrl?.startsWith('http') ? item.imageUrl : (item.imageUrl ? getApiUrl(item.imageUrl) : '')}
                       alt={item.name}
+                      width={400}
+                      height={400}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <div className="p-3 sm:p-4">
