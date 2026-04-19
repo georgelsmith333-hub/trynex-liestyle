@@ -85,6 +85,27 @@ Install the [Meta Pixel Helper](https://chrome.google.com/webstore/detail/meta-p
 - [ ] No background errors in Render logs in the last 30 minutes.
 - [ ] Operator marks this checklist complete with date + initials in the project tracker.
 
+## Keep-alive monitor (UptimeRobot)
+
+Render free-tier services sleep after 15 minutes of inactivity, which gives the
+first paying visitor of the hour a 30–50 second cold start. To avoid this on a
+live ad campaign, configure an external HTTP keep-alive:
+
+1. Sign in at <https://uptimerobot.com> (the free plan covers this).
+2. Add a new **HTTP(s)** monitor with:
+   - **URL**: `https://trynex-api.onrender.com/api/healthz`
+   - **Monitoring interval**: every **5 minutes**
+   - **Monitor timeout**: 30 seconds (Render cold starts can exceed the default 10s)
+3. Add an alert contact (email / SMS / Slack) so you are paged when the API
+   actually goes down — not just when it's waking up.
+4. Confirm the monitor reports **200 OK** with body `{"status":"ok"}`. The
+   `/api/healthz` route is intentionally unauthenticated and cheap (no DB hit)
+   so it is safe to ping every 5 minutes indefinitely.
+
+> Render's `healthCheckPath` in `render.yaml` is also set to `/api/healthz`. If
+> you change one, change the other — a mismatch will mark the service unhealthy
+> and Render will refuse to promote new deploys.
+
 ## Rerun commands (operator quick-reference)
 
 ```bash
@@ -98,7 +119,7 @@ pnpm --filter @workspace/api-server run build
 
 # Inspect production headers
 curl -sI https://trynexshop.com | sort
-curl -sI https://trynexshop.com/api/health
+curl -sI https://trynex-api.onrender.com/api/healthz
 
 # Inspect production sitemap
 curl -s https://trynexshop.com/sitemap.xml | head -40
