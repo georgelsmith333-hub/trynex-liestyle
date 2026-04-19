@@ -27,7 +27,7 @@ import { DeliveryAreaPicker } from "@/components/DeliveryAreaPicker";
 const checkoutSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  customerEmail: z.string().email("Invalid email address"),
+  customerEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   customerPhone: z.string().min(11, "Valid phone number required"),
   shippingAddress: z.string().min(5, "Street address required (House / Road / Area)"),
   shippingDistrict: z.string().min(2, "District is required"),
@@ -49,7 +49,8 @@ const inputClass = "w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outl
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
 
 type CheckoutStep = 'form' | 'gateway' | 'success';
-type MobileMethod = 'bkash' | 'nagad' | 'rocket';
+type MobileMethod = 'bkash' | 'nagad' | 'upay';
+type PaymentMode = 'full' | 'advance';
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
@@ -63,8 +64,8 @@ export default function Checkout() {
   const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
   const shippingFee = settings.shippingCost ?? 100;
 
-  const [paymentMethod, setPaymentMethod] = useState<CreateOrderRequestPaymentMethod>('cod');
-  const [codAdvanceMethod, setCodAdvanceMethod] = useState<MobileMethod>('bkash');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('advance');
+  const [walletChoice, setWalletChoice] = useState<MobileMethod>('bkash');
   const [step, setStep] = useState<CheckoutStep>('form');
   const [createdOrder, setCreatedOrder] = useState<Record<string, unknown> | null>(null);
   const [lastFour, setLastFour] = useState("");
@@ -240,7 +241,7 @@ export default function Checkout() {
   const getPaymentNumber = (method: MobileMethod) => {
     if (method === 'bkash') return settings.bkashNumber || FALLBACK_PAYMENT_NUMBER;
     if (method === 'nagad') return settings.nagadNumber || FALLBACK_PAYMENT_NUMBER;
-    if (method === 'rocket') return settings.rocketNumber || FALLBACK_PAYMENT_NUMBER;
+    if (method === 'upay') return (settings as any).upayNumber || FALLBACK_PAYMENT_NUMBER;
     return FALLBACK_PAYMENT_NUMBER;
   };
 
@@ -300,10 +301,8 @@ export default function Checkout() {
     return null;
   }
 
-  const effectiveGatewayMethod: MobileMethod =
-    paymentMethod === 'cod' ? codAdvanceMethod : (paymentMethod as MobileMethod);
-
-  const isMobilePayment = paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'rocket';
+  const effectiveGatewayMethod: MobileMethod = walletChoice;
+  const paymentMethod = paymentMode === 'full' ? walletChoice : 'cod';
 
   const onSubmit = async (data: CheckoutFormData) => {
     const snapSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -420,7 +419,7 @@ export default function Checkout() {
       if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
       setServerWaking(false);
       clearCart();
-      setStep((paymentMethod === 'card' || paymentMethod === 'cod') ? 'success' : 'gateway');
+      setStep('gateway');
     } catch (err: any) {
       if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
       setServerWaking(false);
@@ -543,14 +542,14 @@ export default function Checkout() {
       badge: 'linear-gradient(135deg, #f7941d 0%, #e07800 100%)',
       logo: <span className="text-4xl font-black" style={{ color: '#f7941d' }}>Nagad</span>,
     },
-    rocket: {
-      name: 'Rocket',
-      primary: '#7c3aed',
-      light: 'rgba(124,58,237,0.08)',
-      border: 'rgba(124,58,237,0.2)',
-      glow: '0 4px 30px rgba(124,58,237,0.1)',
-      badge: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)',
-      logo: <span className="text-4xl font-black" style={{ color: '#7c3aed' }}>Rocket</span>,
+    upay: {
+      name: 'uPay',
+      primary: '#0077cc',
+      light: 'rgba(0,119,204,0.08)',
+      border: 'rgba(0,119,204,0.2)',
+      glow: '0 4px 30px rgba(0,119,204,0.1)',
+      badge: 'linear-gradient(135deg, #0077cc 0%, #005fa3 100%)',
+      logo: <span className="text-4xl font-black" style={{ color: '#0077cc' }}>uPay</span>,
     },
   };
 
@@ -577,11 +576,9 @@ export default function Checkout() {
 
           <h1 className="text-4xl font-black font-display mb-2 text-gray-900">Order Confirmed!</h1>
           <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-            {paymentMethod === 'card'
-              ? "Your order has been placed. We will send you a secure payment link via email or WhatsApp shortly."
-              : paymentMethod === 'cod'
-              ? "Your order is confirmed! We'll call or WhatsApp you to arrange delivery."
-              : "Your payment info was submitted. Our team will verify and confirm your order shortly."}
+            {paymentMode === 'full'
+              ? "Full payment submitted! Our team will verify and confirm your order shortly."
+              : "15% advance submitted. We'll collect the remaining balance on delivery."}
           </p>
 
           <div className="p-5 rounded-2xl mb-4 bg-gray-50 border border-gray-100">
@@ -590,30 +587,20 @@ export default function Checkout() {
             <p className="text-xs text-gray-400 mt-1">Save this number to track your order</p>
           </div>
 
-          {paymentMethod === 'card' ? (
-            <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
-              <p className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" /> Card Payment Pending
+          {paymentMode === 'full' ? (
+            <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+              <p className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5" /> Full Payment Under Verification
               </p>
               <div className="text-xs text-gray-500 space-y-1">
-                <p>Order total: <strong className="text-gray-900">{formatPrice(snapshotRef.current.total)}</strong></p>
-                <p>A secure payment link (Visa/Mastercard/Amex) will be sent to you via email or WhatsApp.</p>
-              </div>
-            </div>
-          ) : paymentMethod === 'cod' ? (
-            <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
-              <p className="text-xs font-bold text-green-700 mb-2 flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5" /> Cash on Delivery
-              </p>
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>Order total: <strong className="text-gray-900">{formatPrice(snapshotRef.current.total)}</strong></p>
-                <p>Pay when your order arrives at your door.</p>
+                <p>Amount sent: <strong className="text-gray-900">{formatPrice(snapshotRef.current.total)}</strong></p>
+                <p>We'll confirm your order once payment is verified.</p>
               </div>
             </div>
           ) : (
             <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
               <p className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5" /> Payment Under Verification
+                <Info className="w-3.5 h-3.5" /> Advance Payment Under Verification
               </p>
               <div className="text-xs text-gray-500 space-y-1">
                 <p>Advance paid: <strong className="text-gray-900">{formatPrice(snapshotRef.current.advance)}</strong></p>
@@ -657,6 +644,7 @@ export default function Checkout() {
     const snapTotal = snapshotRef.current.total;
     const snapAdvance = snapshotRef.current.advance;
     const snapRemaining = snapTotal - snapAdvance;
+    const amountToSend = paymentMode === 'full' ? snapTotal : snapAdvance;
 
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 py-10">
@@ -672,40 +660,13 @@ export default function Checkout() {
               <div className="mb-2">{theme.logo}</div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-1">Payment Gateway</p>
               <p className="text-sm text-gray-500">
-                {paymentMethod === 'cod'
-                  ? 'Pay 15% advance via mobile banking — rest on delivery'
-                  : 'Complete your 15% advance payment below'}
+                {paymentMode === 'full'
+                  ? `Pay full amount via ${theme.name} — order confirmed instantly`
+                  : `Pay 15% advance via ${theme.name} — rest collected on delivery`}
               </p>
             </div>
 
             <div className="p-6 space-y-5">
-
-              {paymentMethod === 'cod' && (
-                <div className="p-3 rounded-xl" style={{ background: 'rgba(22,163,74,0.04)', border: '1px solid rgba(22,163,74,0.15)' }}>
-                  <p className="text-xs font-black text-green-600 mb-2 flex items-center gap-1.5">
-                    <Banknote className="w-3.5 h-3.5" /> Cash on Delivery — 15% Advance Required
-                  </p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Choose how to send the 15% advance. The rest ({formatPrice(snapRemaining)}) will be collected when we deliver your order.
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['bkash', 'nagad', 'rocket'] as MobileMethod[]).map(m => (
-                      <button
-                        key={m}
-                        onClick={() => setCodAdvanceMethod(m)}
-                        className="py-2 px-3 rounded-lg font-black text-xs transition-all"
-                        style={{
-                          background: codAdvanceMethod === m ? gatewayTheme[m].light : '#f9fafb',
-                          border: codAdvanceMethod === m ? `1px solid ${gatewayTheme[m].border}` : '1px solid #e5e7eb',
-                          color: codAdvanceMethod === m ? gatewayTheme[m].primary : '#9ca3af',
-                        }}
-                      >
-                        {m === 'bkash' ? 'bKash' : m === 'nagad' ? 'Nagad' : 'Rocket'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
@@ -713,23 +674,25 @@ export default function Checkout() {
                   <p className="font-black text-sm font-mono text-orange-600">{createdOrder?.orderNumber as string}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Full Order Total</p>
+                  <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Order Total</p>
                   <p className="font-black text-sm text-gray-900">{formatPrice(snapTotal)}</p>
                 </div>
               </div>
 
               <div className="rounded-2xl p-5 text-center" style={{ background: theme.light, border: `2px solid ${theme.border}` }}>
                 <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: theme.primary }}>
-                  Send This Amount (15% Advance)
+                  {paymentMode === 'full' ? 'Send This Amount (Full Payment)' : 'Send This Amount (15% Advance)'}
                 </p>
                 <p className="text-6xl font-black font-display" style={{ color: theme.primary }}>
-                  {formatPrice(snapAdvance)}
+                  {formatPrice(amountToSend)}
                 </p>
-                <div className="mt-3 pt-3 border-t" style={{ borderColor: theme.border }}>
-                  <p className="text-xs font-semibold text-gray-500">
-                    Remaining <strong className="text-gray-900 text-sm">{formatPrice(snapRemaining)}</strong> paid on delivery
-                  </p>
-                </div>
+                {paymentMode === 'advance' && (
+                  <div className="mt-3 pt-3 border-t" style={{ borderColor: theme.border }}>
+                    <p className="text-xs font-semibold text-gray-500">
+                      Remaining <strong className="text-gray-900 text-sm">{formatPrice(snapRemaining)}</strong> paid on delivery
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -738,7 +701,7 @@ export default function Checkout() {
                   `Open your ${theme.name} app`,
                   `Go to "Send Money"`,
                   `Enter number: ${activePaymentNumber}`,
-                  `Send exactly ${formatPrice(snapAdvance)}`,
+                  `Send exactly ${formatPrice(amountToSend)}`,
                   'Enter your sending number last 4 digits below',
                 ].map((s, i) => (
                   <div key={i} className="flex items-start gap-3">
@@ -1071,129 +1034,98 @@ export default function Checkout() {
                   <h2 className="text-xl font-black font-display flex items-center gap-3 mb-6 text-gray-800">
                     <span className="w-8 h-8 rounded-xl flex items-center justify-center"
                       style={{ background: 'rgba(232,93,4,0.08)', color: '#E85D04' }}>
-                      <CreditCard className="w-4 h-4" />
+                      <Smartphone className="w-4 h-4" />
                     </span>
-                    Payment Method
+                    E-Wallet Payment
                   </h2>
 
-                  <div className="mb-4 p-3 rounded-xl flex items-start gap-2.5"
-                    style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.15)' }}>
-                    <AlertCircle className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      <strong className="text-orange-600">15% advance is required for all orders</strong> — this lets us confirm and dispatch your order. The remaining balance is collected on delivery.
+                  <p className="text-xs text-gray-500 mb-5 leading-relaxed">
+                    Choose how you'd like to pay — then select your preferred e-wallet below.
+                  </p>
+
+                  {/* Two payment mode cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                    {/* Option A: Pay Full */}
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode('full')}
+                      className="text-left p-4 rounded-2xl transition-all duration-200 focus:outline-none"
+                      style={{
+                        background: paymentMode === 'full' ? 'rgba(232,93,4,0.05)' : '#f9fafb',
+                        border: paymentMode === 'full' ? '2px solid rgba(232,93,4,0.45)' : '2px solid #e5e7eb',
+                        boxShadow: paymentMode === 'full' ? '0 2px 16px rgba(232,93,4,0.10)' : 'none',
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${paymentMode === 'full' ? 'border-orange-500' : 'border-gray-300'}`}>
+                          {paymentMode === 'full' && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+                        </div>
+                        <span className="font-black text-sm text-gray-900">Pay Full Amount</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold ml-auto"
+                          style={{ background: 'rgba(232,93,4,0.08)', color: '#E85D04', border: '1px solid rgba(232,93,4,0.2)' }}>
+                          Best Deal
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed pl-6">
+                        Pay the entire <strong className="text-gray-800">{formatPrice(total)}</strong> now via e-wallet. Order confirmed instantly.
+                      </p>
+                    </button>
+
+                    {/* Option B: 15% Advance + COD */}
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode('advance')}
+                      className="text-left p-4 rounded-2xl transition-all duration-200 focus:outline-none"
+                      style={{
+                        background: paymentMode === 'advance' ? 'rgba(22,163,74,0.05)' : '#f9fafb',
+                        border: paymentMode === 'advance' ? '2px solid rgba(22,163,74,0.45)' : '2px solid #e5e7eb',
+                        boxShadow: paymentMode === 'advance' ? '0 2px 16px rgba(22,163,74,0.10)' : 'none',
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${paymentMode === 'advance' ? 'border-green-500' : 'border-gray-300'}`}>
+                          {paymentMode === 'advance' && <div className="w-2 h-2 rounded-full bg-green-500" />}
+                        </div>
+                        <span className="font-black text-sm text-gray-900">15% Advance + COD</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold ml-auto"
+                          style={{ background: 'rgba(22,163,74,0.08)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.2)' }}>
+                          Popular
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed pl-6">
+                        Pay <strong className="text-gray-800">{formatPrice(advanceAmount)}</strong> now (15% advance). The rest (<strong className="text-gray-800">{formatPrice(total - advanceAmount)}</strong>) on delivery.
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* Wallet selector — always visible */}
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Select E-Wallet</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { id: 'bkash' as MobileMethod, label: 'bKash', color: '#e2136e', bg: 'rgba(226,19,110,0.06)', border: 'rgba(226,19,110,0.25)' },
+                        { id: 'nagad' as MobileMethod, label: 'Nagad', color: '#f7941d', bg: 'rgba(247,148,29,0.06)', border: 'rgba(247,148,29,0.25)' },
+                        { id: 'upay'  as MobileMethod, label: 'uPay',  color: '#0077cc', bg: 'rgba(0,119,204,0.06)',  border: 'rgba(0,119,204,0.25)'  },
+                      ]).map(w => (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => setWalletChoice(w.id)}
+                          className="py-3 px-2 rounded-xl font-black text-sm transition-all duration-150 focus:outline-none"
+                          style={{
+                            background: walletChoice === w.id ? w.bg : '#f9fafb',
+                            border: walletChoice === w.id ? `2px solid ${w.border}` : '2px solid #e5e7eb',
+                            color: walletChoice === w.id ? w.color : '#9ca3af',
+                          }}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2.5 text-center">
+                      Merchant number: <strong className="text-gray-600 font-mono">{getPaymentNumber(walletChoice)}</strong>
                     </p>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      {
-                        id: 'cod', name: 'Cash on Delivery', desc: 'No advance — pay when your order arrives',
-                        icon: <Banknote className="w-5 h-5 text-green-500" />,
-                        tag: 'Most Popular', tagColor: 'rgba(22,163,74,0.06)', tagBorder: 'rgba(22,163,74,0.2)', tagText: '#16a34a'
-                      },
-                      {
-                        id: 'bkash', name: 'bKash', desc: `15% advance via Send Money to ${getPaymentNumber('bkash')}`,
-                        icon: <span className="font-black text-pink-500 text-sm">bKash</span>,
-                        tag: 'Popular', tagColor: 'rgba(226,19,110,0.06)', tagBorder: 'rgba(226,19,110,0.2)', tagText: '#e2136e'
-                      },
-                      {
-                        id: 'nagad', name: 'Nagad', desc: `15% advance via Send Money to ${getPaymentNumber('nagad')}`,
-                        icon: <span className="font-black text-orange-500 text-sm">Nagad</span>,
-                        tag: null
-                      },
-                      {
-                        id: 'rocket', name: 'Rocket (DBBL)', desc: `15% advance via Send Money to ${getPaymentNumber('rocket')}`,
-                        icon: <span className="font-black text-purple-500 text-sm">Rocket</span>,
-                        tag: null
-                      },
-                      {
-                        id: 'card', name: 'Credit / Debit Card', desc: 'Visa, Mastercard, American Express',
-                        icon: <CreditCard className="w-5 h-5 text-blue-500" />,
-                        tag: 'International', tagColor: 'rgba(37,99,235,0.06)', tagBorder: 'rgba(37,99,235,0.2)', tagText: '#2563eb'
-                      },
-                    ].map(method => (
-                      <label
-                        key={method.id}
-                        className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200"
-                        style={{
-                          background: paymentMethod === method.id ? 'rgba(232,93,4,0.04)' : '#f9fafb',
-                          border: paymentMethod === method.id ? '1px solid rgba(232,93,4,0.25)' : '1px solid #e5e7eb',
-                          boxShadow: paymentMethod === method.id ? '0 2px 12px rgba(232,93,4,0.08)' : 'none',
-                        }}
-                      >
-                        <input type="radio" name="payment" value={method.id}
-                          checked={paymentMethod === method.id}
-                          onChange={() => setPaymentMethod(method.id as CreateOrderRequestPaymentMethod)}
-                          className="hidden" />
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${paymentMethod === method.id ? 'border-orange-500' : 'border-gray-300'}`}>
-                          {paymentMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />}
-                        </div>
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
-                          {method.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-sm text-gray-900">{method.name}</p>
-                            {method.tag && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                                style={{ background: method.tagColor, border: `1px solid ${method.tagBorder}`, color: method.tagText }}>
-                                {method.tag}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 truncate mt-0.5">{method.desc}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-
-
-                  <AnimatePresence>
-                    {isMobilePayment && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 overflow-hidden"
-                      >
-                        <div className="p-4 rounded-xl" style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.12)' }}>
-                          <div className="flex items-start gap-2">
-                            <Smartphone className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="font-bold text-sm text-orange-600 mb-1">15% Advance Required</p>
-                              <p className="text-xs text-gray-500 leading-relaxed">
-                                You'll pay <strong className="text-gray-900">{formatPrice(advanceAmount)}</strong> (15% of {formatPrice(total)}) now via Send Money.
-                                The remaining <strong className="text-gray-900">{formatPrice(total - advanceAmount)}</strong> is paid on delivery.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence>
-                    {paymentMethod === 'card' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 overflow-hidden"
-                      >
-                        <div className="p-4 rounded-xl" style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)' }}>
-                          <div className="flex items-start gap-2">
-                            <CreditCard className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                            <div>
-                              <p className="font-bold text-sm text-blue-600 mb-1">Card Payment</p>
-                              <p className="text-xs text-gray-500 leading-relaxed">
-                                We accept Visa, Mastercard, and American Express. You will receive a payment link via email/WhatsApp after placing your order.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               </form>
             </div>
@@ -1275,22 +1207,28 @@ export default function Checkout() {
                     <span className="font-black text-2xl text-primary">{formatPrice(total)}</span>
                   </div>
 
-                  {isMobilePayment && (
-                    <div className="space-y-2 pt-1">
+                  <div className="space-y-2 pt-1">
+                    {paymentMode === 'full' ? (
                       <div className="flex justify-between items-center p-3 rounded-xl"
                         style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.12)' }}>
-                        <span className="text-xs font-bold text-orange-600">
-                          Pay Now (15% Advance)
-                        </span>
-                        <span className="font-black text-orange-600">{formatPrice(advanceAmount)}</span>
+                        <span className="text-xs font-bold text-orange-600">Pay Now (Full — via {walletChoice === 'bkash' ? 'bKash' : walletChoice === 'nagad' ? 'Nagad' : 'uPay'})</span>
+                        <span className="font-black text-orange-600">{formatPrice(total)}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 rounded-xl"
-                        style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
-                        <span className="text-xs font-bold text-green-600">Remaining (Paid on Delivery)</span>
-                        <span className="font-black text-green-600">{formatPrice(total - advanceAmount)}</span>
-                      </div>
-                    </div>
-                  )}
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center p-3 rounded-xl"
+                          style={{ background: 'rgba(232,93,4,0.04)', border: '1px solid rgba(232,93,4,0.12)' }}>
+                          <span className="text-xs font-bold text-orange-600">Pay Now (15% Advance via {walletChoice === 'bkash' ? 'bKash' : walletChoice === 'nagad' ? 'Nagad' : 'uPay'})</span>
+                          <span className="font-black text-orange-600">{formatPrice(advanceAmount)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 rounded-xl"
+                          style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+                          <span className="text-xs font-bold text-green-600">Remaining (Paid on Delivery)</span>
+                          <span className="font-black text-green-600">{formatPrice(total - advanceAmount)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <TrustBadges />
@@ -1304,12 +1242,8 @@ export default function Checkout() {
                 >
                   {isPending ? (
                     <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {serverWaking ? "Waking up server…" : "Placing Order..."}</>
-                  ) : paymentMethod === 'cod' ? (
-                    <>Place Order <ArrowRight className="w-5 h-5" /></>
-                  ) : paymentMethod === 'card' ? (
-                    <>Proceed to Card Payment <ArrowRight className="w-5 h-5" /></>
                   ) : (
-                    <>Proceed to {paymentMethod === 'bkash' ? 'bKash' : paymentMethod === 'nagad' ? 'Nagad' : 'Rocket'} Payment <ArrowRight className="w-5 h-5" /></>
+                    <>Proceed to {walletChoice === 'bkash' ? 'bKash' : walletChoice === 'nagad' ? 'Nagad' : 'uPay'} Payment <ArrowRight className="w-5 h-5" /></>
                   )}
                 </button>
 
