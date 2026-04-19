@@ -393,7 +393,7 @@ router.post("/orders", async (req, res) => {
           .from(hamperPackagesTable)
           .where(and(eq(hamperPackagesTable.id, h.hamperId), eq(hamperPackagesTable.active, true)));
         if (!dbHamper) {
-          res.status(400).json({ error: "Invalid hamper", message: `Hamper ${h.hamperId} not available` });
+          res.status(400).json({ error: "hamper_invalid", message: `Hamper ${h.hamperId} not available` });
           return;
         }
         unitPrice = dbHamper.discountPrice ? parseFloat(dbHamper.discountPrice) : parseFloat(dbHamper.basePrice);
@@ -405,7 +405,7 @@ router.post("/orders", async (req, res) => {
           .map((it: any) => Number(it.productId))
           .filter((id: number) => Number.isFinite(id) && id > 0);
         if (productIds.length === 0) {
-          res.status(400).json({ error: "Invalid hamper", message: "Custom hamper requires at least one product" });
+          res.status(400).json({ error: "hamper_invalid", message: "Custom hamper requires at least one product" });
           return;
         }
         const dbProducts = await db
@@ -427,7 +427,7 @@ router.post("/orders", async (req, res) => {
           validConstituents.push({ productId: pid, quantity: qty });
         }
         if (validConstituents.length === 0 || raw <= 0) {
-          res.status(400).json({ error: "Invalid hamper", message: "Custom hamper has no valid products" });
+          res.status(400).json({ error: "hamper_invalid", message: "Custom hamper has no valid products" });
           return;
         }
         // 5% bundle discount, matches storefront builder
@@ -436,12 +436,12 @@ router.post("/orders", async (req, res) => {
         (h as any).__constituents = validConstituents;
       } else {
         // Hamper line with neither valid curated id nor isCustom — reject.
-        res.status(400).json({ error: "Invalid hamper", message: "Hamper line item missing required identifier" });
+        res.status(400).json({ error: "hamper_invalid", message: "Hamper line item missing required identifier" });
         return;
       }
 
       if (unitPrice < 0 || !Number.isFinite(unitPrice)) {
-        res.status(400).json({ error: "Invalid hamper price" });
+        res.status(400).json({ error: "hamper_invalid", message: "Hamper price could not be calculated" });
         return;
       }
 

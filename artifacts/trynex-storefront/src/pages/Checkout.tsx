@@ -191,6 +191,12 @@ export default function Checkout() {
     );
   }, [setValue, toast]);
 
+  useEffect(() => {
+    return () => {
+      if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
+    };
+  }, []);
+
   const checkoutEntryFiredRef = useRef(false);
   useEffect(() => {
     if (checkoutEntryFiredRef.current || items.length === 0) return;
@@ -404,7 +410,7 @@ export default function Checkout() {
           variant: "destructive",
         });
         setTimeout(() => setLocation("/cart"), 2500);
-      } else if (code === "Invalid hamper" || code === "Invalid hamper price") {
+      } else if (code === "hamper_invalid") {
         toast({
           title: "Gift hamper issue",
           description: serverMessage || "One of your gift hampers is no longer valid. Please rebuild it from the Hampers page.",
