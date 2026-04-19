@@ -321,7 +321,10 @@ export default function Checkout() {
     rest.shippingAddress = addressParts.join(", ");
 
     if (wakingTimerRef.current) clearTimeout(wakingTimerRef.current);
-    wakingTimerRef.current = setTimeout(() => setServerWaking(true), 8000);
+    // If the very first request is still in flight after 6s, the API is
+    // most likely cold-starting (Render free tier). Surface a friendly
+    // "warming up" indicator so the customer doesn't think it crashed.
+    wakingTimerRef.current = setTimeout(() => setServerWaking(true), 6000);
 
     const utm = getStoredUtm();
     const orderPayload = {
@@ -346,25 +349,50 @@ export default function Checkout() {
       ...(utm.utmCampaign ? { utmCampaign: utm.utmCampaign } : {}),
     };
 
-    // Retry once after 2s on transient errors (network blips, cold-start
-    // gateway timeouts) before surfacing a failure to the user. Validation
-    // / business errors (4xx with structured `error` code) are NOT retried.
+    // Retry transient errors (network blips, cold-start gateway timeouts,
+    // 502/503/504 from Render warm-up) up to 3 times with exponential
+    // backoff. Validation / business errors (structured 4xx with `error`
+    // code) are NEVER retried — those need user action. Rate-limit (429)
+    // is also not retried; we surface a clear message instead.
     const isTransient = (err: unknown): boolean => {
-      const e = err as { status?: number; data?: { error?: unknown } } | undefined;
+      const e = err as { status?: number; name?: string; message?: string } | undefined;
       const status = e?.status;
-      if (status && status >= 400 && status < 500) return false;
-      return true;
+      // Network-level failure (no response) — definitely retry.
+      if (!status || status === 0) return true;
+      if (e?.name === "TypeError" || /network|fetch|aborted/i.test(e?.message ?? "")) return true;
+      // Render cold-start / gateway hiccups — retry.
+      if (status === 502 || status === 503 || status === 504) return true;
+      // Anything else 4xx (incl. 429 rate limit) is final.
+      if (status >= 400 && status < 500) return false;
+      // Generic 5xx — retry once is reasonable.
+      if (status >= 500) return true;
+      return false;
     };
+
+    const MAX_ATTEMPTS = 3;
+    const BACKOFF_MS = [0, 1500, 3500]; // 0s → 1.5s → 3.5s
 
     try {
       let order: unknown;
-      try {
-        order = await createOrder({ data: orderPayload });
-      } catch (firstErr) {
-        if (!isTransient(firstErr)) throw firstErr;
-        await new Promise(r => setTimeout(r, 2000));
-        order = await createOrder({ data: orderPayload });
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (BACKOFF_MS[attempt]) {
+          await new Promise(r => setTimeout(r, BACKOFF_MS[attempt]));
+          // After the first failure, we know the server is cold or flaky —
+          // promote the "warming up" UI immediately rather than waiting.
+          setServerWaking(true);
+        }
+        try {
+          order = await createOrder({ data: orderPayload });
+          lastErr = undefined;
+          break;
+        } catch (e) {
+          lastErr = e;
+          if (!isTransient(e)) throw e;
+          if (attempt === MAX_ATTEMPTS - 1) throw e;
+        }
       }
+      if (lastErr) throw lastErr;
 
       const orderData = order as unknown as Record<string, unknown>;
       setCreatedOrder(orderData);
@@ -439,7 +467,19 @@ export default function Checkout() {
           description: serverMessage || "Some fields look incorrect. Review and try again.",
           variant: "destructive",
         });
-      } else if (err?.status === 0 || err?.name === "TypeError" || /network|fetch/i.test(err?.message ?? "")) {
+      } else if (code === "rate_limited" || err?.status === 429) {
+        toast({
+          title: "Too many attempts from your network",
+          description: serverMessage || "Please wait a few minutes and try again, or message us on WhatsApp to place your order directly.",
+          variant: "destructive",
+        });
+      } else if (err?.status === 502 || err?.status === 503 || err?.status === 504) {
+        toast({
+          title: "Server is waking up",
+          description: "Our servers were sleeping and didn't respond in time. Please tap Place Order again — it should go through now.",
+          variant: "destructive",
+        });
+      } else if (err?.status === 0 || err?.name === "TypeError" || /network|fetch|aborted/i.test(err?.message ?? "")) {
         toast({
           title: "Connection lost",
           description: "We couldn't reach the server. Check your internet and try again — or message us on WhatsApp.",

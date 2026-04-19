@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { verifyAdminToken } from "./middlewares/adminAuth";
 
 const app: Express = express();
 
@@ -102,11 +103,28 @@ const adminLoginLimiter = rateLimit({
 });
 
 const orderLimiter = rateLimit({
+  // Production-tuned: 30 orders / 15 min per IP. The previous value (10)
+  // was tripping legitimate customers behind shared NATs (mobile carriers,
+  // offices) and made admin-side test orders impossible during deploys.
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "rate_limited", message: "Too many order requests, please try again later" },
+  // Admin-authenticated requests bypass the limiter entirely so the
+  // operator can place test orders without burning through the budget.
+  // We *fully verify* the JWT — a stray "Bearer x" header from an
+  // anonymous client must NOT be enough to bypass the limit.
+  skip: (req) => {
+    const auth = req.headers.authorization;
+    if (!auth) return false;
+    const m = /^Bearer\s+(.+)$/i.exec(auth);
+    if (!m) return false;
+    return verifyAdminToken(m[1].trim()) !== null;
+  },
+  message: {
+    error: "rate_limited",
+    message: "Too many orders from this network in the last 15 minutes. Please wait a few minutes and try again, or message us on WhatsApp to place your order directly.",
+  },
 });
 
 const promoLimiter = rateLimit({
