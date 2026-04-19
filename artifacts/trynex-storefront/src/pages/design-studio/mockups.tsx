@@ -107,13 +107,17 @@ export const PRODUCTS: DesignProduct[] = [
    to their bundled PNG.
 ════════════════════════════════════════════════════════ */
 
-// Per-category base PNGs (white versions) — these have the
-// best framing / lighting and are tintable via multiply blend.
+// Per-category base PNGs (white versions, BACKGROUND-REMOVED cutouts) —
+// these have the best framing/lighting and have a transparent background
+// so when we multiply-tint them with a swatch hex only the GARMENT pixels
+// take the colour. The white card behind the SVG stays white. If you ever
+// need to regenerate the cutouts, run remove_image_background_tool against
+// the originals (white-*.png) and save as *-cutout.png.
 const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
-  tshirt:     { front: "/mockups/white-tshirt-front.png",     back: "/mockups/white-tshirt-back.png" },
-  longsleeve: { front: "/mockups/white-longsleeve-front.png", back: "/mockups/white-longsleeve-back.png" },
-  hoodie:     { front: "/mockups/white-hoodie-front.png",     back: "/mockups/white-hoodie-back.png" },
-  mug:        { front: "/mockups/white-mug-front.png" },
+  tshirt:     { front: "/mockups/white-tshirt-front-cutout.png",     back: "/mockups/white-tshirt-back-cutout.png" },
+  longsleeve: { front: "/mockups/white-longsleeve-front-cutout.png", back: "/mockups/white-longsleeve-back-cutout.png" },
+  hoodie:     { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },
+  mug:        { front: "/mockups/white-mug-front-cutout.png" },
   cap:        undefined,
 };
 
