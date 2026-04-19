@@ -336,6 +336,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.22.3
         version: 3.22.3
+      '@use-gesture/react':
+        specifier: ^10.3.1
+        version: 10.3.1(react@19.1.0)
       dompurify:
         specifier: ^3.3.3
         version: 3.4.0

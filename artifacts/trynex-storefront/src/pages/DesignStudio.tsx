@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { getApiUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGesture } from "@use-gesture/react";
 import {
   Upload, RotateCcw, Trash2, ShoppingCart,
   ZoomIn, ZoomOut, RotateCw, Move, Ruler,
@@ -436,111 +437,113 @@ export default function DesignStudio() {
     }
   };
 
-  /* ── Multi-pointer interaction (drag + pinch + rotate) ── */
-  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  /* ── Multi-pointer interaction (drag + pinch + rotate) ──
+   *
+   * Built on @use-gesture/react. The library handles the cross-browser
+   * mess (pointer capture, touch-cancel, stylus/finger combos, lifted
+   * fingers mid-pinch, fast double-taps, mouse wheel as pinch on
+   * desktop) so we only have to express the intent: "drag moves the
+   * layer; pinch scales+rotates+pans it."
+   *
+   * The one piece of bespoke logic kept is the per-pointer-down hit
+   * test on `event.target` — that's how we know which layer the user
+   * grabbed. Without it, dragging the white background would grab
+   * whatever layer was selected last, which feels broken.
+   */
   const gestureRef = useRef<
     | { mode: "drag"; layerId: string; startSvg: { x: number; y: number }; startT: Transform }
-    | { mode: "pinch"; layerId: string; startDist: number; startAngle: number; startMid: { x: number; y: number }; startT: Transform }
+    | { mode: "pinch"; layerId: string; startMid: { x: number; y: number }; startT: Transform }
     | null
   >(null);
 
   const SNAP_THRESHOLD = 6; // svg units
 
-  const beginDrag = (layerId: string, clientX: number, clientY: number) => {
-    const layer = layersRef.current.find(l => l.id === layerId);
-    if (!layer || layer.locked) return;
-    const startSvg = clientToSVG(clientX, clientY);
-    gestureRef.current = { mode: "drag", layerId, startSvg, startT: { ...layer.transform } };
-  };
-  const beginPinch = (layerId: string, p1: { x: number; y: number }, p2: { x: number; y: number }) => {
-    const layer = layersRef.current.find(l => l.id === layerId);
-    if (!layer || layer.locked) return;
-    const dx = p2.x - p1.x; const dy = p2.y - p1.y;
-    const startDist = Math.hypot(dx, dy);
-    const startAngle = Math.atan2(dy, dx) * 180 / Math.PI;
-    const mid = clientToSVG((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-    gestureRef.current = { mode: "pinch", layerId, startDist, startAngle, startMid: mid, startT: { ...layer.transform } };
-  };
-
-  const onSvgPointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-
-    if (pointersRef.current.size === 1) {
-      // Hit test: find topmost layer at this svg point. If background → deselect.
-      const target = e.target as Element;
-      const layerId = target.getAttribute?.("data-layer-id");
-      if (layerId) {
-        setSelectedLayerId(layerId);
-        selectedLayerIdRef.current = layerId; // sync immediately so a fast second finger pinches the right layer
-        beginDrag(layerId, e.clientX, e.clientY);
-      } else {
-        setSelectedLayerId(null);
-        selectedLayerIdRef.current = null;
-        gestureRef.current = null;
-      }
-    } else if (pointersRef.current.size === 2) {
-      // Prefer the layer the active gesture is already on; fall back to selected
-      const target = e.target as Element;
-      const hitId = target.getAttribute?.("data-layer-id") ?? null;
-      const targetId = (gestureRef.current?.layerId) ?? hitId ?? selectedLayerIdRef.current;
-      if (targetId) {
+  const bindCanvasGestures = useGesture(
+    {
+      onDragStart: ({ event, xy: [cx, cy] }) => {
+        const target = event.target as Element;
+        const layerId = target.getAttribute?.("data-layer-id");
+        if (layerId) {
+          const layer = layersRef.current.find(l => l.id === layerId);
+          if (!layer || layer.locked) { gestureRef.current = null; return; }
+          setSelectedLayerId(layerId);
+          selectedLayerIdRef.current = layerId;
+          gestureRef.current = {
+            mode: "drag",
+            layerId,
+            startSvg: clientToSVG(cx, cy),
+            startT: { ...layer.transform },
+          };
+        } else {
+          // Tapped empty canvas → deselect
+          setSelectedLayerId(null);
+          selectedLayerIdRef.current = null;
+          gestureRef.current = null;
+        }
+      },
+      onDrag: ({ xy: [cx, cy], pinching, cancel }) => {
+        if (pinching) { cancel(); return; }
+        const g = gestureRef.current;
+        if (!g || g.mode !== "drag") return;
+        const cur = clientToSVG(cx, cy);
+        let nx = g.startT.x + (cur.x - g.startSvg.x);
+        let ny = g.startT.y + (cur.y - g.startSvg.y);
+        const showV = Math.abs(nx) < SNAP_THRESHOLD;
+        const showH = Math.abs(ny) < SNAP_THRESHOLD;
+        if (showV) nx = 0;
+        if (showH) ny = 0;
+        setSnapGuides({ v: showV, h: showH });
+        setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, x: nx, y: ny } } : l));
+      },
+      onDragEnd: () => {
+        if (gestureRef.current?.mode === "drag") {
+          commitLayers(layersRef.current);
+        }
+        if (gestureRef.current?.mode === "drag") gestureRef.current = null;
+        setSnapGuides({ v: false, h: false });
+      },
+      onPinchStart: ({ event, origin: [ox, oy] }) => {
+        const target = event.target as Element;
+        const hitId = target.getAttribute?.("data-layer-id") ?? null;
+        const targetId = hitId ?? selectedLayerIdRef.current;
+        if (!targetId) return;
+        const layer = layersRef.current.find(l => l.id === targetId);
+        if (!layer || layer.locked) return;
         if (selectedLayerIdRef.current !== targetId) {
           setSelectedLayerId(targetId);
           selectedLayerIdRef.current = targetId;
         }
-        const [p1, p2] = Array.from(pointersRef.current.values());
-        beginPinch(targetId, p1, p2);
-      }
+        gestureRef.current = {
+          mode: "pinch",
+          layerId: targetId,
+          startMid: clientToSVG(ox, oy),
+          startT: { ...layer.transform },
+        };
+      },
+      onPinch: ({ origin: [ox, oy], offset: [scaleOffset, angleOffset] }) => {
+        const g = gestureRef.current;
+        if (!g || g.mode !== "pinch") return;
+        const mid = clientToSVG(ox, oy);
+        const scale = Math.max(0.1, Math.min(5, g.startT.scale * scaleOffset));
+        const rotation = g.startT.rotation + angleOffset;
+        const x = g.startT.x + (mid.x - g.startMid.x);
+        const y = g.startT.y + (mid.y - g.startMid.y);
+        setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, scale, rotation, x, y } } : l));
+      },
+      onPinchEnd: () => {
+        if (gestureRef.current?.mode === "pinch") {
+          commitLayers(layersRef.current);
+          gestureRef.current = null;
+        }
+      },
+    },
+    {
+      drag: { filterTaps: true, pointer: { touch: true }, threshold: 1 },
+      // offset is multiplicative for scale (starts at 1) and additive degrees for angle (starts at 0)
+      pinch: { scaleBounds: { min: 0.1, max: 5 }, rubberband: true, from: () => [1, 0] },
+      eventOptions: { passive: false },
     }
-  }, [clientToSVG]);
-
-  const onSvgPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    if (!pointersRef.current.has(e.pointerId)) return;
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const g = gestureRef.current;
-    if (!g) return;
-
-    if (g.mode === "drag") {
-      const cur = clientToSVG(e.clientX, e.clientY);
-      let nx = g.startT.x + (cur.x - g.startSvg.x);
-      let ny = g.startT.y + (cur.y - g.startSvg.y);
-      const showV = Math.abs(nx) < SNAP_THRESHOLD;
-      const showH = Math.abs(ny) < SNAP_THRESHOLD;
-      if (showV) nx = 0;
-      if (showH) ny = 0;
-      setSnapGuides({ v: showV, h: showH });
-      setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, x: nx, y: ny } } : l));
-    } else if (g.mode === "pinch" && pointersRef.current.size >= 2) {
-      const pts = Array.from(pointersRef.current.values());
-      const [p1, p2] = pts;
-      const dx = p2.x - p1.x; const dy = p2.y - p1.y;
-      const dist = Math.hypot(dx, dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      const mid = clientToSVG((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-      const scale = Math.max(0.1, Math.min(5, g.startT.scale * (dist / Math.max(g.startDist, 1))));
-      const rotation = g.startT.rotation + (angle - g.startAngle);
-      const x = g.startT.x + (mid.x - g.startMid.x);
-      const y = g.startT.y + (mid.y - g.startMid.y);
-      setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, scale, rotation, x, y } } : l));
-    }
-  }, [clientToSVG]);
-
-  const endGesture = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    pointersRef.current.delete(e.pointerId);
-    const g = gestureRef.current;
-    if (!g) return;
-    if (pointersRef.current.size === 0) {
-      // commit final state to history — pull from the ref so we never use stale closure data
-      commitLayers(layersRef.current);
-      gestureRef.current = null;
-      setSnapGuides({ v: false, h: false });
-    } else if (pointersRef.current.size === 1 && g.mode === "pinch") {
-      // Drop back to drag with the remaining pointer
-      const [p] = Array.from(pointersRef.current.values());
-      beginDrag(g.layerId, p.x, p.y);
-    }
-  }, [commitLayers]);
+  );
 
   /* ── Keyboard shortcuts: undo/redo, delete ─────────── */
   useEffect(() => {
@@ -990,10 +993,7 @@ export default function DesignStudio() {
                   animate={{ opacity: 1, rotateY: 0 }}
                   exit={{ opacity: 0, rotateY: activeFace === "back" ? 12 : -12 }}
                   transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                  onPointerDown={onSvgPointerDown}
-                  onPointerMove={onSvgPointerMove}
-                  onPointerUp={endGesture}
-                  onPointerCancel={endGesture}
+                  {...bindCanvasGestures()}
                 >
                   <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
 
