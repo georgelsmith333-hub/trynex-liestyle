@@ -137,6 +137,27 @@ lib/
 - `8080` → API server (external 8080)
 - `8081` → Storefront (external 80, main web)
 
+## Mobile UX QA checklist (Task #21)
+
+Before merging any new page or floating widget, verify on **iPhone SE (375)**, **iPhone 14 Pro (393)**, and **Pixel 7 (412)**:
+
+- [ ] **No horizontal scroll** on Home, Products, ProductDetail, Cart, Checkout, Hampers, Account at widths 360–430. Long product names use `truncate`/`line-clamp`, hero images are `max-w-full`.
+- [ ] **All tap targets ≥ 44×44px** (use the `.touch-target` utility for icon-only buttons).
+- [ ] **All bottom-fixed floaters** (`WhatsAppButton`, `BackToTop`, `SocialProofToast`) honor BOTH `--mobile-sticky-offset` (set by ProductDetail when its sticky CTA bar is mounted, so floaters lift above it) AND `env(safe-area-inset-bottom)` (so they clear the iPhone home indicator). The pattern is `bottom: calc(<base> + var(--mobile-sticky-offset, 0px) + env(safe-area-inset-bottom, 0px))`.
+- [ ] **Sticky bottom CTA bars** (e.g. ProductDetail) include `paddingBottom: 'calc(<base> + env(safe-area-inset-bottom, 0px))'` so the buttons clear the home indicator.
+- [ ] **Modals/drawers** prefer `max-h-[100dvh]` over `100vh` and use the `.drawer-mobile` utility (which falls back to `-webkit-fill-available` on iOS Safari).
+- [ ] **Form inputs** declare the right `type` AND a matching `inputMode` so the correct mobile keyboard appears:
+  - Email → `type="email" inputMode="email" autoComplete="email" autoCapitalize="off"`
+  - Phone → `type="tel" inputMode="tel" autoComplete="tel"` (BD format: `01XXXXXXXXX`)
+  - Numeric (qty, postal code) → `inputMode="numeric"`
+  - Order ID, promo code, tracking number → `autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}`
+  - Names → `autoCapitalize="words" autoComplete="name"`
+  - Add `enterKeyHint="next" | "done" | "search"` so the on-screen keyboard's primary action button matches the field's role.
+- [ ] **iOS auto-zoom prevention**: input/select/textarea font-size ≥ 16px on mobile. Globally enforced via the `@media (max-width: 640px)` rule in `index.css`.
+- [ ] **Empty / loading / error states**: every list-driven page renders a friendly empty state with a CTA, a skeleton loader (use `.skeleton`), and a non-blank error state instead of raw JSON.
+
+The `--mobile-sticky-offset` CSS variable is the single source of truth for "how much vertical space is currently consumed by a sticky bottom CTA bar". Pages that mount such a bar should set it to the bar's height in a `useEffect` and reset it to `0px` on unmount (see `artifacts/trynex-storefront/src/pages/ProductDetail.tsx`). All floating widgets honor it automatically.
+
 ## Cart performance notes (Task #19)
 
 The cart context (`artifacts/trynex-storefront/src/context/CartContext.tsx`) is split into two contexts to minimize re-renders:

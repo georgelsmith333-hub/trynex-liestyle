@@ -162,6 +162,13 @@ export default function TrackOrder() {
                   </label>
                   <input
                     required
+                    type="text"
+                    inputMode="text"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="search"
                     placeholder="e.g. TN250325XXXX"
                     value={orderNumber}
                     onChange={e => setOrderNumber(e.target.value.toUpperCase())}
@@ -175,6 +182,12 @@ export default function TrackOrder() {
                   </label>
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="search"
                     placeholder="your@email.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}

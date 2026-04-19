@@ -47,7 +47,7 @@ export function WhatsAppButton() {
         animate={{ scale: 1, opacity: 1 }}
         onClick={() => setMinimized(false)}
         className="fixed left-4 z-[9998] w-9 h-9 rounded-full flex items-center justify-center shadow-md"
-        style={{ background: '#25D366', bottom: 'calc(1.5rem + var(--mobile-sticky-offset, 0px))' }}
+        style={{ background: '#25D366', bottom: 'calc(1.5rem + var(--mobile-sticky-offset, 0px) + env(safe-area-inset-bottom, 0px))' }}
         aria-label="Open WhatsApp"
       >
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
@@ -60,7 +60,7 @@ export function WhatsAppButton() {
   return (
     <div
       className="fixed left-4 z-[9998] flex flex-col items-start gap-2"
-      style={{ bottom: 'calc(1.5rem + var(--mobile-sticky-offset, 0px))' }}
+      style={{ bottom: 'calc(1.5rem + var(--mobile-sticky-offset, 0px) + env(safe-area-inset-bottom, 0px))' }}
     >
       <AnimatePresence>
         {expanded && (

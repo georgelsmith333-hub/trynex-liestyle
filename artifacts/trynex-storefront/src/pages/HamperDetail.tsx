@@ -195,6 +195,11 @@ export default function HamperDetail() {
                   <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1.5">Recipient name (optional)</label>
                     <input
+                      type="text"
+                      inputMode="text"
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      enterKeyHint="next"
                       value={recipientName}
                       onChange={e => setRecipientName(e.target.value)}
                       placeholder="e.g. Ayesha"
@@ -209,6 +214,8 @@ export default function HamperDetail() {
                       <span className={giftMessage.length > 200 ? 'text-red-500' : 'text-gray-400'}>{giftMessage.length}/200</span>
                     </label>
                     <textarea
+                      autoCapitalize="sentences"
+                      enterKeyHint="done"
                       value={giftMessage}
                       onChange={e => setGiftMessage(e.target.value.slice(0, 200))}
                       placeholder="Happy Birthday! শুভ জন্মদিন!"

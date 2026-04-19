@@ -21,7 +21,7 @@ export function BackToTop() {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="fixed right-5 z-50 w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg transition-all hover:scale-110"
           style={{
-            bottom: "calc(1.5rem + var(--mobile-sticky-offset, 0px))",
+            bottom: "calc(1.5rem + var(--mobile-sticky-offset, 0px) + env(safe-area-inset-bottom, 0px))",
             background: "linear-gradient(135deg, #E85D04, #FB8500)",
             boxShadow: "0 4px 16px rgba(232,93,4,0.35)",
           }}
