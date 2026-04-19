@@ -33,7 +33,9 @@ async function migrateOrdersTable() {
         ADD COLUMN IF NOT EXISTS utm_medium TEXT,
         ADD COLUMN IF NOT EXISTS utm_campaign TEXT
     `);
-  } catch {}
+  } catch (err) {
+    logger.warn({ err }, "migrateOrdersTable failed; UTM columns may be missing");
+  }
 }
 migrateOrdersTable();
 
@@ -183,11 +185,11 @@ function mapOrder(o: any) {
     paymentStatus: o.paymentStatus,
     status: o.status,
     items: (o.items ?? []).map((item: any, idx: number) => ({ id: idx + 1, ...item })),
-    subtotal: parseFloat(o.subtotal),
-    shippingCost: parseFloat(o.shippingCost ?? "0"),
+    subtotal: parseFloat(o.subtotal ?? "0") || 0,
+    shippingCost: parseFloat(o.shippingCost ?? "0") || 0,
     promoCode: o.promoCode || null,
-    promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) : 0,
-    total: parseFloat(o.total),
+    promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) || 0 : 0,
+    total: parseFloat(o.total ?? "0") || 0,
     notes: o.notes,
     utmSource: o.utmSource || null,
     utmMedium: o.utmMedium || null,
@@ -287,11 +289,30 @@ router.get("/orders/:id", requireAdmin, async (req, res) => {
 
 router.post("/orders", async (req, res) => {
   try {
-    const { customerName, customerEmail, customerPhone, shippingAddress, shippingCity, shippingDistrict, paymentMethod, items, notes, promoCode, utmSource, utmMedium, utmCampaign } = req.body;
+    const body = req.body ?? {};
+    // Accept either combined customerName OR separate firstName+lastName
+    const customerName: string = body.customerName?.trim() ||
+      [body.firstName, body.lastName].filter(Boolean).join(" ").trim();
+    const customerEmail: string = body.customerEmail;
+    const customerPhone: string = body.customerPhone;
+    const shippingAddress: string = body.shippingAddress;
+    const shippingCity: string = body.shippingCity;
+    const shippingDistrict: string = body.shippingDistrict;
+    // Default payment method to COD so missing/empty values don't block orders
+    const paymentMethod: string = body.paymentMethod || "cod";
+    const { items, notes, promoCode, utmSource, utmMedium, utmCampaign } = body;
     const customerEmailLower = customerEmail ? customerEmail.toLowerCase().trim() : null;
 
-    if (!customerName || !customerEmail || !customerPhone || !shippingAddress || !paymentMethod || !items?.length) {
-      res.status(400).json({ error: "validation_error", message: "Missing required fields" });
+    const missing: string[] = [];
+    if (!customerName) missing.push("Full name");
+    if (!customerPhone) missing.push("Phone number");
+    if (!shippingAddress) missing.push("Street address");
+    if (!items?.length) missing.push("Cart items");
+    if (missing.length > 0) {
+      res.status(400).json({
+        error: "validation_error",
+        message: `Please fill in: ${missing.join(", ")}`,
+      });
       return;
     }
 
@@ -333,7 +354,9 @@ router.post("/orders", async (req, res) => {
       const settingsMap = Object.fromEntries(allSettings.map((s: any) => [s.key, s.value]));
       if (settingsMap.studioTshirtPrice) studioTshirtPrice = parseFloat(settingsMap.studioTshirtPrice) || 1099;
       if (settingsMap.studioMugPrice) studioMugPrice = parseFloat(settingsMap.studioMugPrice) || 799;
-    } catch {}
+    } catch (err) {
+      logger.warn({ err, route: "POST /orders" }, "Failed to load studio prices from settings; using defaults");
+    }
 
     const productIds = catalogItems.map((i: any) => Number(i.productId));
 
@@ -435,7 +458,7 @@ router.post("/orders", async (req, res) => {
           .select({ id: productsTable.id, price: productsTable.price, discountPrice: productsTable.discountPrice })
           .from(productsTable)
           .where(inArray(productsTable.id, productIds));
-        const priceById = new Map(dbProducts.map(p => [
+        const priceById = new Map<number, number>(dbProducts.map(p => [
           p.id,
           p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price),
         ]));
@@ -445,7 +468,7 @@ router.post("/orders", async (req, res) => {
           const pid = Number(it.productId);
           const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
           const unit = priceById.get(pid);
-          if (unit === undefined) continue;
+          if (unit == null || !Number.isFinite(unit)) continue;
           raw += unit * qty;
           validConstituents.push({ productId: pid, quantity: qty });
         }
@@ -501,7 +524,9 @@ router.post("/orders", async (req, res) => {
       const settingsMap = Object.fromEntries(settings.map(s => [s.key, s.value]));
       if (settingsMap.freeShippingThreshold) freeThreshold = Number(settingsMap.freeShippingThreshold) || 1500;
       if (settingsMap.shippingCost) shipCost = Number(settingsMap.shippingCost) || 100;
-    } catch {}
+    } catch (err) {
+      logger.warn({ err, route: "POST /orders" }, "Failed to load shipping settings; using defaults");
+    }
     const shippingCost = subtotal >= freeThreshold ? 0 : shipCost;
 
     const wantsPromo = promoCode && typeof promoCode === "string" && promoCode.trim().length > 0;
