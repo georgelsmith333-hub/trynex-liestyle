@@ -12,6 +12,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { trackViewContent } from "@/lib/tracking";
 import { ViewerCount } from "@/components/ViewerCount";
+import { MobileImageLightbox } from "@/components/MobileImageLightbox";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
@@ -307,6 +308,8 @@ export default function ProductDetail() {
   const [activeTab, setActiveTab] = useState<"details" | "reviews">("details");
   const [zoomActive, setZoomActive] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
@@ -624,13 +627,25 @@ export default function ProductDetail() {
                 const hasMultiple = allImages.length > 1;
                 const activeIdx = Math.max(0, activeImage ? allImages.indexOf(activeImage) : 0);
                 const onTouchStart = (e: React.TouchEvent) => {
-                  if (!hasMultiple) return;
+                  if (e.touches.length > 1) {
+                    setLightboxIndex(activeIdx);
+                    setLightboxOpen(true);
+                    touchStartXRef.current = null;
+                    touchStartYRef.current = null;
+                    return;
+                  }
+                  if (!hasMultiple) {
+                    const t = e.touches[0];
+                    touchStartXRef.current = t.clientX;
+                    touchStartYRef.current = t.clientY;
+                    return;
+                  }
                   const t = e.touches[0];
                   touchStartXRef.current = t.clientX;
                   touchStartYRef.current = t.clientY;
                 };
                 const onTouchEnd = (e: React.TouchEvent) => {
-                  if (!hasMultiple || touchStartXRef.current === null) {
+                  if (touchStartXRef.current === null) {
                     touchStartXRef.current = null;
                     touchStartYRef.current = null;
                     return;
@@ -640,12 +655,17 @@ export default function ProductDetail() {
                   const dy = t.clientY - (touchStartYRef.current ?? 0);
                   touchStartXRef.current = null;
                   touchStartYRef.current = null;
-                  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+                  if (hasMultiple && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
                     if (dx < 0) {
                       setActiveImage(allImages[(activeIdx + 1) % allImages.length]);
                     } else {
                       setActiveImage(allImages[(activeIdx - 1 + allImages.length) % allImages.length]);
                     }
+                    return;
+                  }
+                  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                    setLightboxIndex(activeIdx);
+                    setLightboxOpen(true);
                   }
                 };
                 return (
@@ -686,6 +706,20 @@ export default function ProductDetail() {
                       <span className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/55 text-white backdrop-blur-sm pointer-events-none">
                         {activeIdx + 1} / {allImages.length}
                       </span>
+                    )}
+                    {displayImage && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxIndex(activeIdx);
+                          setLightboxOpen(true);
+                        }}
+                        aria-label="Open image viewer"
+                        className="absolute bottom-3 right-3 z-10 w-10 h-10 rounded-full bg-black/55 text-white backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform"
+                      >
+                        <ZoomIn className="w-4.5 h-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
+                      </button>
                     )}
                   </motion.div>
                 );
@@ -1165,6 +1199,20 @@ export default function ProductDetail() {
           </div>
         </div>
       )}
+
+      {lightboxOpen && (() => {
+        const rawImages = [product.imageUrl, ...(product.images || [])].filter(Boolean) as string[];
+        const allImages = [...new Set(rawImages)];
+        if (allImages.length === 0) return null;
+        return (
+          <MobileImageLightbox
+            images={allImages}
+            startIndex={Math.min(lightboxIndex, allImages.length - 1)}
+            alt={product.name}
+            onClose={() => setLightboxOpen(false)}
+          />
+        );
+      })()}
     </div>
   );
 }
