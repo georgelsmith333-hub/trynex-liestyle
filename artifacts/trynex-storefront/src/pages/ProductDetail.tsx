@@ -7,7 +7,7 @@ import { useGetProduct, useListProducts } from "@workspace/api-client-react";
 import { ProductCard } from "@/components/ProductCard";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
 import { useState, useEffect } from "react";
-import { useCart } from "@/context/CartContext";
+import { useCartActions } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { trackViewContent } from "@/lib/tracking";
@@ -288,7 +288,7 @@ export default function ProductDetail() {
   const relatedProducts = (relatedData?.products || []).filter(p => p.id !== productId).slice(0, 4);
 
   const [, navigate] = useLocation();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { toast } = useToast();
   const settings = useSiteSettings();

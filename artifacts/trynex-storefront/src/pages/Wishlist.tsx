@@ -4,7 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useWishlist } from "@/context/WishlistContext";
-import { useCart } from "@/context/CartContext";
+import { useCartActions } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { type Product } from "@workspace/api-client-react";
 import { Heart, ShoppingCart, ArrowRight, Trash2, X, Check } from "lucide-react";
@@ -132,7 +132,7 @@ function VariantPicker({ product, onClose, onAdd }: {
 export default function Wishlist() {
   const [, navigate] = useLocation();
   const { items, removeFromWishlist } = useWishlist();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const { toast } = useToast();
   const [pendingItem, setPendingItem] = useState<typeof items[0] | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);

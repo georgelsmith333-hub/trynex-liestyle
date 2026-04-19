@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useCart } from "@/context/CartContext";
+import { useCartActions } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice, getApiUrl } from "@/lib/utils";
 import { Gift, ShoppingBag, Heart, Plus, Minus, Package, Check } from "lucide-react";
@@ -22,7 +22,7 @@ const MIN_ITEMS = 3;
 
 export default function HamperBuilder() {
   const [, setLocation] = useLocation();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

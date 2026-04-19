@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Menu, X, ChevronDown, Heart, ShoppingCart, User, LogIn, LogOut, Package, ShoppingBag, Gift, Search } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -73,6 +73,9 @@ export function Navbar() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+
+  // Stable identity so memoized children inside CartDrawer can bail out of re-renders.
+  const closeCartDrawer = useCallback(() => setCartDrawerOpen(false), []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -516,7 +519,7 @@ export function Navbar() {
         )}
       </AnimatePresence>
 
-      <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
+      <CartDrawer open={cartDrawerOpen} onClose={closeCartDrawer} />
     </header>
   );
 }

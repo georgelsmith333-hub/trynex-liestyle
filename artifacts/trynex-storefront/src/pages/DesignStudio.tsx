@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useCart } from "@/context/CartContext";
+import { useCartActions } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { getApiUrl } from "@/lib/utils";
@@ -147,7 +147,7 @@ interface DraftPayload {
 
 export default function DesignStudio() {
   const [, navigate] = useLocation();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const settings = useSiteSettings();
   const { toast } = useToast();
 

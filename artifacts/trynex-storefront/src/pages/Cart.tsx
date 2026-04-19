@@ -2,19 +2,24 @@ import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useCart } from "@/context/CartContext";
+import { useCartState, useCartActions, type CartItem } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, Tag, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart } from "lucide-react";
-import { useState as useCartState } from "react";
+import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; updateQuantity: (id: string, q: number) => void; removeFromCart: (id: string) => void }) {
-  const [open, setOpen] = useCartState(false);
-  const h = item.hamperPayload;
+interface LineProps {
+  item: CartItem;
+  onChangeQuantity: (id: string, delta: number) => void;
+  onRemove: (id: string) => void;
+}
+
+const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, onRemove }: LineProps) {
+  const [open, setOpen] = useState(false);
+  const h = item.hamperPayload!;
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -30, height: 0 }}
@@ -25,7 +30,7 @@ function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; u
         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
           {item.imageUrl
-            ? <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+            ? <img src={item.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" width={112} height={112} />
             : <Gift className="w-10 h-10 text-white" />}
         </div>
         <div className="flex-1 flex flex-col justify-between min-w-0">
@@ -43,15 +48,15 @@ function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; u
                 </p>
               )}
             </div>
-            <button onClick={() => removeFromCart(item.id)} className="p-2 rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0">
+            <button onClick={() => onRemove(item.id)} className="p-2 rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center rounded-xl border border-orange-200 overflow-hidden bg-white">
-              <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Minus className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onChangeQuantity(item.id, -1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Minus className="w-3.5 h-3.5" /></button>
               <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-              <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Plus className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onChangeQuantity(item.id, +1)} className="px-3 py-2 text-orange-400 hover:text-orange-700"><Plus className="w-3.5 h-3.5" /></button>
             </div>
             <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
           </div>
@@ -64,7 +69,7 @@ function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; u
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2 space-y-1.5 bg-white/60 border-t border-orange-100">
-          {h.items.map((it: any, idx: number) => (
+          {h.items.map((it, idx) => (
             <div key={idx} className="flex items-center gap-2 text-xs text-gray-700">
               <div className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
               <span className="font-semibold flex-1">{it.name}</span>
@@ -81,10 +86,97 @@ function HamperCartLine({ item, updateQuantity, removeFromCart }: { item: any; u
       )}
     </motion.div>
   );
-}
+});
+
+const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, onRemove }: LineProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -30, height: 0 }}
+      className="flex gap-5 p-4 rounded-2xl"
+      style={{ background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+    >
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0" style={{ background: '#f3f4f6' }}>
+        <img
+          src={item.imageUrl || `https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop`}
+          alt={item.name}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          width={112}
+          height={112}
+        />
+      </div>
+      <div className="flex-1 flex flex-col justify-between min-w-0">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0">
+            <Link href={`/product/${item.productId}`} className="font-bold text-base leading-tight hover:text-orange-600 transition-colors block truncate text-gray-900">
+              {item.name}
+            </Link>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {item.size && (
+                <span className="text-xs px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                  Size: {item.size}
+                </span>
+              )}
+              {item.color && (
+                <span className="text-xs px-2 py-0.5 rounded-md font-semibold capitalize" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                  {item.color}
+                </span>
+              )}
+            </div>
+            {item.customNote && (
+              <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
+                "{item.customNote}"
+              </p>
+            )}
+            {item.customImages && item.customImages.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <ImageIcon className="w-3 h-3 text-orange-400 shrink-0" />
+                <div className="flex gap-1">
+                  {item.customImages.slice(0, 4).map((img, idx) => (
+                    <img key={idx} src={img} alt={`Design ${idx + 1}`}
+                      loading="lazy" decoding="async" width={32} height={32}
+                      className="w-8 h-8 rounded-md object-cover border border-gray-200" />
+                  ))}
+                  {item.customImages.length > 4 && (
+                    <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                      +{item.customImages.length - 4}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => onRemove(item.id)}
+            className="p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
+            <button onClick={() => onChangeQuantity(item.id, -1)} className="px-3 py-2 text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
+            <button onClick={() => onChangeQuantity(item.id, +1)} className="px-3 py-2 text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
 
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, clearCart, subtotal } = useCart();
+  const { items, subtotal } = useCartState();
+  const { changeQuantity, removeFromCart, clearCart } = useCartActions();
   const [, setLocation] = useLocation();
   const settings = useSiteSettings();
   const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
@@ -157,88 +249,19 @@ export default function Cart() {
                 <AnimatePresence>
                   {items.map((item) => (
                     item.hamperPayload ? (
-                      <HamperCartLine key={item.id} item={item} updateQuantity={updateQuantity} removeFromCart={removeFromCart} />
+                      <HamperCartLine
+                        key={item.id}
+                        item={item}
+                        onChangeQuantity={changeQuantity}
+                        onRemove={removeFromCart}
+                      />
                     ) : (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -30, height: 0 }}
-                      className="flex gap-5 p-4 rounded-2xl"
-                      style={{ background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-                    >
-                      {/* Image */}
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0" style={{ background: '#f3f4f6' }}>
-                        <img
-                          src={item.imageUrl || `https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop`}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
-                      <div className="flex-1 flex flex-col justify-between min-w-0">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="min-w-0">
-                            <Link href={`/product/${item.productId}`} className="font-bold text-base leading-tight hover:text-orange-600 transition-colors block truncate text-gray-900">
-                              {item.name}
-                            </Link>
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {item.size && (
-                                <span className="text-xs px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f3f4f6', color: '#6b7280' }}>
-                                  Size: {item.size}
-                                </span>
-                              )}
-                              {item.color && (
-                                <span className="text-xs px-2 py-0.5 rounded-md font-semibold capitalize" style={{ background: '#f3f4f6', color: '#6b7280' }}>
-                                  {item.color}
-                                </span>
-                              )}
-                            </div>
-                            {item.customNote && (
-                              <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
-                                "{item.customNote}"
-                              </p>
-                            )}
-                            {item.customImages && item.customImages.length > 0 && (
-                              <div className="flex items-center gap-1.5 mt-2">
-                                <ImageIcon className="w-3 h-3 text-orange-400 shrink-0" />
-                                <div className="flex gap-1">
-                                  {item.customImages.slice(0, 4).map((img, idx) => (
-                                    <img key={idx} src={img} alt={`Design ${idx + 1}`}
-                                      className="w-8 h-8 rounded-md object-cover border border-gray-200" />
-                                  ))}
-                                  {item.customImages.length > 4 && (
-                                    <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                      +{item.customImages.length - 4}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
-                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="px-3 py-2 text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-3 py-2 text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
-                        </div>
-                      </div>
-                    </motion.div>
+                      <CatalogCartLine
+                        key={item.id}
+                        item={item}
+                        onChangeQuantity={changeQuantity}
+                        onRemove={removeFromCart}
+                      />
                     )
                   ))}
                 </AnimatePresence>

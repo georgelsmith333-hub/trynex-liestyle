@@ -3,7 +3,7 @@ import { Link, useRoute, useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useCart } from "@/context/CartContext";
+import { useCartActions } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice, getApiUrl } from "@/lib/utils";
 import { Gift, ShoppingBag, Heart, ArrowLeft, Check } from "lucide-react";
@@ -27,7 +27,7 @@ interface Hamper {
 export default function HamperDetail() {
   const [, params] = useRoute("/hampers/:slug");
   const [, setLocation] = useLocation();
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions();
   const { toast } = useToast();
   const [hamper, setHamper] = useState<Hamper | null>(null);
   const [loading, setLoading] = useState(true);

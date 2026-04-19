@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
   import { formatPrice } from "@/lib/utils";
   import type { Product } from "@workspace/api-client-react";
   import { motion, AnimatePresence } from "framer-motion";
-  import { useCart } from "@/context/CartContext";
+  import { useCartActions } from "@/context/CartContext";
   import { useWishlist } from "@/context/WishlistContext";
   import { useSiteSettings } from "@/context/SiteSettingsContext";
   import { useToast } from "@/hooks/use-toast";
@@ -27,7 +27,7 @@ import { useLocation } from "wouter";
 
   export function ProductCard({ product, index = 0 }: ProductCardProps) {
     const [, navigate] = useLocation();
-    const { addToCart } = useCart();
+    const { addToCart } = useCartActions();
     const { toggleWishlist, isWishlisted } = useWishlist();
     const { toast } = useToast();
     const { scarcityThreshold } = useSiteSettings();
