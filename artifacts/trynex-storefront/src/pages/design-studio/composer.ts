@@ -165,7 +165,8 @@ export async function composeGarmentMockup(opts: {
     const garmentImg = await loadImage(garmentSrc, imageCache);
     ctx.drawImage(garmentImg, 0, 0, outSize, outSize);
 
-    // 2. Multiply-tint for non-white colors (matches GarmentSVG in mockups.tsx)
+    // 2. Multiply-tint for non-white colors, CLIPPED to the garment alpha mask
+    //    so transparent areas around the garment never become tinted (no card bleed).
     const r = parseInt(garmentColor.slice(1, 3), 16) || 0;
     const g = parseInt(garmentColor.slice(3, 5), 16) || 0;
     const b = parseInt(garmentColor.slice(5, 7), 16) || 0;
@@ -174,11 +175,24 @@ export async function composeGarmentMockup(opts: {
       ctx.globalCompositeOperation = "multiply";
       ctx.fillStyle = garmentColor;
       ctx.fillRect(0, 0, outSize, outSize);
+      // Re-mask to the garment's alpha so the multiply tint cannot leak past the silhouette
+      ctx.globalCompositeOperation = "destination-in";
+      ctx.drawImage(garmentImg, 0, 0, outSize, outSize);
       ctx.globalCompositeOperation = "source-over";
     }
   } catch {
+    // Fallback: solid garment color clipped to a rounded rect so it doesn't fill the whole card
     ctx.fillStyle = garmentColor;
-    ctx.fillRect(0, 0, outSize, outSize);
+    ctx.beginPath();
+    const r = outSize * 0.06;
+    const x = outSize * 0.12, y = outSize * 0.10, w = outSize * 0.76, h = outSize * 0.80;
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
   }
 
   // 3. Draw design layers at their correct 1000-unit positions

@@ -17,6 +17,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "express-rate-limit": "^7",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9",
     "pino": "^9",
     "pino-http": "^10"

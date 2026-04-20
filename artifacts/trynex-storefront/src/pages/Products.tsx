@@ -53,12 +53,26 @@ export default function Products() {
 
   const products = productsData?.products || [];
 
+  // Default category priority: t-shirt → mug → hoodie → cap → long sleeve → custom → other
+  const categoryWeight = (p: any): number => {
+    const slug = (p.category?.slug || p.category?.name || "").toLowerCase();
+    if (slug.includes("t-shirt") || slug.includes("tshirt") || slug === "t-shirts") return 1;
+    if (slug.includes("mug")) return 2;
+    if (slug.includes("hoodie")) return 3;
+    if (slug.includes("cap") || slug.includes("hat")) return 4;
+    if (slug.includes("longsleeve") || slug.includes("long-sleeve")) return 5;
+    if (slug.includes("custom")) return 6;
+    return 99;
+  };
   const sortedProducts = [...products].sort((a: any, b: any) => {
     if (sort === "price-asc") return (a.discountPrice || a.price) - (b.discountPrice || b.price);
     if (sort === "price-desc") return (b.discountPrice || b.price) - (a.discountPrice || a.price);
     if (sort === "name") return a.name.localeCompare(b.name);
     if (sort === "rating") return (parseFloat(String(b.rating || 0))) - (parseFloat(String(a.rating || 0)));
-    return 0;
+    // default: category priority then by created date (id desc as a proxy)
+    const wa = categoryWeight(a), wb = categoryWeight(b);
+    if (wa !== wb) return wa - wb;
+    return (b.id || 0) - (a.id || 0);
   });
 
   const activeCategoryData = useMemo(() => {
@@ -216,10 +230,10 @@ export default function Products() {
                     <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <p className="font-bold text-sm mb-1">Custom Order?</p>
-                  <p className="text-xs text-orange-100 mb-3">Starting from ৳750. WhatsApp us!</p>
-                  <a href={`https://wa.me/${(settings.whatsappNumber?.replace(/[^0-9]/g, '') || '8801903426915').replace(/^(?!88)/, '88')}?text=Hi%20TryNex!%20I%27m%20interested%20in%20a%20custom%20order.%20Can%20you%20help%20me%3F`} target="_blank" rel="noopener noreferrer"
+                  <p className="text-xs text-orange-100 mb-3">Design your own from ৳750.</p>
+                  <a href="/design-studio"
                     className="inline-block px-4 py-2 rounded-xl bg-white text-orange-600 text-xs font-black hover:bg-orange-50 transition-colors">
-                    Chat Now
+                    Open Design Studio
                   </a>
                 </div>
               </div>
