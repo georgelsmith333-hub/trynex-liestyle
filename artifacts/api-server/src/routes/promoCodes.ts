@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, promoCodesTable, referralsTable, settingsTable } from "@workspace/db";
 import { eq, sql, and, gt, or, isNull } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
 
 // Simple in-memory IP rate limiter for exit-intent endpoint: 1 code per IP per 10 minutes
 const exitIntentCooldowns = new Map<string, number>();
@@ -61,6 +62,27 @@ router.post("/promo-codes/validate", async (req, res) => {
     const { code, orderTotal, customerEmail } = req.body;
     if (!code) {
       res.status(400).json({ error: "validation_error", message: "code is required" });
+      return;
+    }
+
+    // Virtual spin-wheel promos always validate (no DB seed required)
+    const virtual = getVirtualPromo(code);
+    if (virtual) {
+      const subtotal = Number(orderTotal) || 0;
+      if (virtual.minOrderAmount && subtotal < virtual.minOrderAmount) {
+        res.status(400).json({ error: "min_order", message: `Minimum order of ৳${virtual.minOrderAmount} required for this code` });
+        return;
+      }
+      const { discount, freeShipping } = calcVirtualDiscount(virtual, subtotal, 0);
+      res.json({
+        valid: true,
+        code: virtual.code,
+        discountType: virtual.discountType,
+        discountValue: virtual.discountValue,
+        discount,
+        freeShipping,
+        message: virtual.message,
+      });
       return;
     }
 

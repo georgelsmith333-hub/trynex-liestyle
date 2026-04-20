@@ -75,11 +75,20 @@ interface SiteSettings {
   salePageTitle: string;
   salePageSubtitle: string;
   salePageBadge: string;
+  spinWheelEnabled: boolean;
+  spinWheelDelay: number;
+  spinWheelTitle: string;
+  spinWheelSubtitle: string;
+  seoDefaultTitle: string;
+  seoDefaultDescription: string;
+  seoDefaultKeywords: string;
+  seoOgImage: string;
+  seoTwitterHandle: string;
   metaCapiTokenConfigured: boolean;
   isLoaded: boolean;
 }
 
-const CACHE_KEY = "trynex_site_settings_v5";
+const CACHE_KEY = "trynex_site_settings_v6";
 
 function getCachedSettings(): Partial<SiteSettings> {
   try {
@@ -167,6 +176,15 @@ const defaults: SiteSettings = {
   salePageTitle: c("salePageTitle") || "Mega Sale — Up to 50% Off!",
   salePageSubtitle: c("salePageSubtitle") || "Bangladesh's best custom apparel at unbeatable prices.",
   salePageBadge: c("salePageBadge") || "LIMITED TIME",
+  spinWheelEnabled: c("spinWheelEnabled") ?? true,
+  spinWheelDelay: Number(c("spinWheelDelay")) || 4,
+  spinWheelTitle: c("spinWheelTitle") || "Spin & Win an Offer!",
+  spinWheelSubtitle: c("spinWheelSubtitle") || "One free spin — no purchase needed.",
+  seoDefaultTitle: c("seoDefaultTitle") || "TryNex Lifestyle — Custom Apparel & Gifts in Bangladesh",
+  seoDefaultDescription: c("seoDefaultDescription") || "Design and order custom T-shirts, hoodies, mugs, caps, and gift hampers in Bangladesh. Premium quality, nationwide delivery, cash on delivery.",
+  seoDefaultKeywords: c("seoDefaultKeywords") || "custom t-shirt bangladesh, personalized mug, gift hamper, custom hoodie, design studio, trynex",
+  seoOgImage: c("seoOgImage") || "",
+  seoTwitterHandle: c("seoTwitterHandle") || "",
   metaCapiTokenConfigured: c("metaCapiTokenConfigured") ?? false,
   isLoaded: false,
 };

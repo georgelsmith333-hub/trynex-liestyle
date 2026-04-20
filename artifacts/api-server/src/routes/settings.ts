@@ -41,6 +41,10 @@ const SETTINGS_KEYS = [
   "scarcityThreshold", "metaCapiToken",
   "exitIntentPromoEnabled", "exitIntentPromoCode", "exitIntentPromoDiscount",
   "salePageTitle", "salePageSubtitle", "salePageBadge",
+  // Spin-the-Wheel settings
+  "spinWheelEnabled", "spinWheelDelay", "spinWheelTitle", "spinWheelSubtitle",
+  // SEO defaults
+  "seoDefaultTitle", "seoDefaultDescription", "seoDefaultKeywords", "seoOgImage", "seoTwitterHandle",
 ];
 
 async function buildSettings(map: Record<string, string | null>) {
@@ -124,6 +128,17 @@ async function buildSettings(map: Record<string, string | null>) {
     salePageTitle: map["salePageTitle"] ?? "Mega Sale — Up to 50% Off!",
     salePageSubtitle: map["salePageSubtitle"] ?? "Bangladesh's best custom apparel at unbeatable prices.",
     salePageBadge: map["salePageBadge"] ?? "LIMITED TIME",
+    // Spin-the-Wheel
+    spinWheelEnabled: (map["spinWheelEnabled"] ?? "true") !== "false",
+    spinWheelDelay: parseInt(map["spinWheelDelay"] ?? "4", 10),
+    spinWheelTitle: map["spinWheelTitle"] ?? "Spin & Win an Offer!",
+    spinWheelSubtitle: map["spinWheelSubtitle"] ?? "One free spin — no purchase needed.",
+    // SEO defaults (used as fallback when page has no override)
+    seoDefaultTitle: map["seoDefaultTitle"] ?? "TryNex Lifestyle — Custom Apparel & Gifts in Bangladesh",
+    seoDefaultDescription: map["seoDefaultDescription"] ?? "Design and order custom T-shirts, hoodies, mugs, caps, and gift hampers in Bangladesh. Premium quality, nationwide delivery, cash on delivery.",
+    seoDefaultKeywords: map["seoDefaultKeywords"] ?? "custom t-shirt bangladesh, personalized mug, gift hamper, custom hoodie, design studio, trynex",
+    seoOgImage: map["seoOgImage"] ?? "",
+    seoTwitterHandle: map["seoTwitterHandle"] ?? "",
     // NOTE: removeBgApiKey is intentionally NOT included here — it is server-only secret
     // NOTE: metaCapiToken is intentionally NOT included — server-only
     // Safe boolean flag: tells admin UI whether the token is configured (no secret exposed)
