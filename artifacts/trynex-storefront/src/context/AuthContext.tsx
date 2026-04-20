@@ -139,6 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(data.token as string);
       const c = data.customer as CustomerProfile;
       setCustomer({ ...c, isGuest: true });
+      // Persist guest credentials so the buyer can sign back in later if their
+      // session is cleared (per guest-account contract).
+      try {
+        const username = data.username as string | undefined;
+        const password = data.password as string | undefined;
+        if (username && password) {
+          localStorage.setItem(
+            "trynex_guest_credentials",
+            JSON.stringify({ id: data.id, username, password, createdAt: new Date().toISOString() }),
+          );
+        }
+      } catch {
+        // localStorage unavailable (private mode etc.) — non-fatal
+      }
       return { success: true };
     } catch {
       return { success: false, error: "Could not connect to server. Please check your internet and try again." };

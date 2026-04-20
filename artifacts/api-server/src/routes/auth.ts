@@ -383,12 +383,17 @@ router.post("/auth/guest", async (req, res) => {
           .limit(1);
         const nextSeq = (last?.seq ?? 0) + 1 + attempt;
         const padded = String(nextSeq).padStart(4, "0");
-        const guestEmail = `guestaccount${padded}@trynex.guest`;
+        const username = `guestaccount${padded}`;
+        const guestEmail = `${username}@trynex.guest`;
+        // Auto-generated password = username (per guest-account contract)
+        const guestPassword = username;
+        const passwordHash = hashPassword(guestPassword);
 
         const [customer] = await db.insert(customersTable).values({
           name: `${safeName} #${padded}`,
           email: guestEmail,
           phone: phone?.trim() || null,
+          passwordHash,
           isGuest: true,
           guestSequence: nextSeq,
           verified: false,
@@ -404,6 +409,9 @@ router.post("/auth/guest", async (req, res) => {
         });
         res.json({
           success: true,
+          id: customer.id,
+          username,
+          password: guestPassword,
           token,
           customer: {
             id: customer.id,
@@ -411,15 +419,18 @@ router.post("/auth/guest", async (req, res) => {
             email: customer.email,
             phone: customer.phone,
             avatar: customer.avatar,
+            username,
           },
           isGuest: true,
           guestSequence: nextSeq,
         });
         return;
-      } catch (err: any) {
+      } catch (err) {
         lastErr = err;
-        // Unique violation on email — retry with a higher sequence
-        if (err?.code === "23505" || /duplicate key|unique/i.test(String(err?.message))) {
+        const code = (err as { code?: string } | null)?.code;
+        const msg = String((err as { message?: string } | null)?.message ?? "");
+        // Unique violation on email/sequence — retry with a higher sequence
+        if (code === "23505" || /duplicate key|unique/i.test(msg)) {
           continue;
         }
         throw err;

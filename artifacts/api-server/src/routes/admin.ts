@@ -354,9 +354,11 @@ router.get("/admin/guest-customers", requireAdmin, async (req, res) => {
         .orderBy(desc(ordersTable.createdAt));
       const totalSpent = orders.reduce((s: number, o: typeof ordersTable.$inferSelect) => s + parseFloat(String(o.total)), 0);
       const last = orders[0];
+      const username = g.email.includes("@") ? g.email.split("@")[0] : g.email;
       return {
         id: g.id,
         guestSequence: g.guestSequence,
+        username,
         name: g.name,
         email: g.email,
         phone: g.phone,

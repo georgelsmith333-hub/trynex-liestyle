@@ -226,6 +226,7 @@ export default function AdminCustomers() {
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">#</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Name</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Email</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Username</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Phone</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Orders</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Spent</th>
@@ -240,6 +241,7 @@ export default function AdminCustomers() {
                         <td className="px-5 py-3 font-mono text-xs text-gray-500">#{String(g.guestSequence ?? "").padStart(4, "0")}</td>
                         <td className="px-5 py-3 font-bold text-gray-900">{g.name}</td>
                         <td className="px-5 py-3 text-xs text-gray-500">{g.email}</td>
+                        <td className="px-5 py-3 font-mono text-xs text-orange-600 font-bold">{g.username}</td>
                         <td className="px-5 py-3 text-xs text-gray-700">{g.phone || "—"}</td>
                         <td className="px-5 py-3 font-bold text-gray-900">{g.totalOrders}</td>
                         <td className="px-5 py-3 font-bold text-orange-600">{formatPrice(g.totalSpent)}</td>
@@ -265,8 +267,9 @@ export default function AdminCustomers() {
                                 try {
                                   await convertGuest.mutateAsync({ id: g.id, email: email.trim(), password, name: g.name });
                                   toast({ title: "Converted to full account", description: `${email} is now a registered customer.` });
-                                } catch (e: any) {
-                                  toast({ title: "Convert failed", description: e?.message || "Try again", variant: "destructive" });
+                                } catch (e: unknown) {
+                                  const msg = e instanceof Error ? e.message : "Try again";
+                                  toast({ title: "Convert failed", description: msg, variant: "destructive" });
                                 }
                               }}
                               className="p-1.5 rounded-md text-emerald-600 hover:bg-emerald-50"
@@ -281,8 +284,9 @@ export default function AdminCustomers() {
                                 try {
                                   await deleteGuest.mutateAsync({ id: g.id });
                                   toast({ title: "Guest deleted" });
-                                } catch (e: any) {
-                                  toast({ title: "Delete failed", description: e?.message || "Try again", variant: "destructive" });
+                                } catch (e: unknown) {
+                                  const msg = e instanceof Error ? e.message : "Try again";
+                                  toast({ title: "Delete failed", description: msg, variant: "destructive" });
                                 }
                               }}
                               className="p-1.5 rounded-md text-red-500 hover:bg-red-50"

@@ -622,6 +622,7 @@ export const useListAdminCustomers = () => {
 export interface AdminGuestCustomer {
   id: number;
   guestSequence: number | null;
+  username: string;
   name: string;
   email: string;
   phone: string | null;
