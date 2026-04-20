@@ -1,0 +1,287 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Gift, Sparkles, X, Copy, Check } from "lucide-react";
+
+type Prize = {
+  id: string;
+  label: string;
+  short: string;
+  code?: string;
+  weight: number;
+  color: string;
+  textColor?: string;
+  message?: string;
+};
+
+const PRIZES: Prize[] = [
+  { id: "miss1",     label: "Better luck next time", short: "Try Again", weight: 30, color: "#1f2937", textColor: "#fff" },
+  { id: "off5",      label: "5% off your next order", short: "5% OFF",   code: "SPIN5",      weight: 15, color: "#fb923c" },
+  { id: "miss2",     label: "Better luck next time", short: "Try Again", weight: 30, color: "#374151", textColor: "#fff" },
+  { id: "off10",     label: "10% off your next order", short: "10% OFF", code: "SPIN10",     weight: 10, color: "#f97316" },
+  { id: "freedeliv", label: "Free delivery on ৳1500+", short: "Free Delivery", code: "FREEDELIV", weight: 5,  color: "#22c55e" },
+  { id: "off15",     label: "15% off your next order", short: "15% OFF", code: "SPIN15",     weight: 5,  color: "#ea580c" },
+  { id: "super",     label: "SUPER DEAL: Free delivery + 10% off", short: "SUPER DEAL", code: "SUPERDEAL", weight: 5,  color: "#dc2626", textColor: "#fff", message: "Jackpot!" },
+];
+
+const SLICES = PRIZES.length;
+const SLICE_DEG = 360 / SLICES;
+
+function pickWeighted(): number {
+  const total = PRIZES.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < PRIZES.length; i++) {
+    r -= PRIZES[i].weight;
+    if (r <= 0) return i;
+  }
+  return 0;
+}
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+const STORAGE_LAST_SPIN = "spin_last_date";
+const STORAGE_SHOWN     = "spin_modal_shown_v1";
+const STORAGE_REWARD    = "spin_reward";
+
+interface Props {
+  /** When true, opens automatically on mount if user hasn't seen it yet. */
+  autoOpen?: boolean;
+  /** External trigger to force-open (e.g. from a "Spin to win" button). */
+  forceOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose }: Props) {
+  const [open, setOpen] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const [result, setResult] = useState<Prize | null>(null);
+  const [copied, setCopied] = useState(false);
+  const spunTodayRef = useRef(false);
+
+  // Auto-open once per browser, after a short delay
+  useEffect(() => {
+    if (forceOpen) { setOpen(true); return; }
+    if (!autoOpen) return;
+    try {
+      if (localStorage.getItem(STORAGE_SHOWN) === "1") return;
+    } catch { return; }
+    const t = setTimeout(() => {
+      setOpen(true);
+      try { localStorage.setItem(STORAGE_SHOWN, "1"); } catch {}
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [autoOpen, forceOpen]);
+
+  // Has the user already spun today?
+  useEffect(() => {
+    try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}
+  }, [open]);
+
+  const close = () => {
+    setOpen(false);
+    setResult(null);
+    setCopied(false);
+    onClose?.();
+  };
+
+  const spin = () => {
+    if (spinning) return;
+    if (spunTodayRef.current) return;
+
+    const idx = pickWeighted();
+    const prize = PRIZES[idx];
+
+    // Pointer is at top (12 o'clock). Slices are drawn starting at angle 0 going clockwise.
+    // We want slice `idx` centered under the pointer.
+    const sliceCenter = idx * SLICE_DEG + SLICE_DEG / 2;
+    const targetAngle = 360 - sliceCenter; // wheel rotation that puts slice center at top
+    const fullSpins = 6 + Math.floor(Math.random() * 3); // 6-8 turns
+    const finalRotation = rotation + fullSpins * 360 + (targetAngle - (rotation % 360));
+
+    setSpinning(true);
+    setRotation(finalRotation);
+
+    setTimeout(() => {
+      setSpinning(false);
+      setResult(prize);
+      try {
+        localStorage.setItem(STORAGE_LAST_SPIN, todayKey());
+        if (prize.code) {
+          localStorage.setItem(STORAGE_REWARD, JSON.stringify({
+            code: prize.code,
+            label: prize.label,
+            wonAt: Date.now(),
+          }));
+        }
+      } catch {}
+      spunTodayRef.current = true;
+    }, 5200);
+  };
+
+  const copyCode = async () => {
+    if (!result?.code) return;
+    try {
+      await navigator.clipboard.writeText(result.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  };
+
+  // Build conic-gradient for the wheel slices
+  const conicStyle = useMemo(() => {
+    const stops: string[] = [];
+    PRIZES.forEach((p, i) => {
+      const start = i * SLICE_DEG;
+      const end = (i + 1) * SLICE_DEG;
+      stops.push(`${p.color} ${start}deg ${end}deg`);
+    });
+    return { background: `conic-gradient(from 0deg, ${stops.join(", ")})` };
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={() => !spinning && close()}
+        >
+          <motion.div
+            initial={{ scale: 0.85, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+            style={{ background: "linear-gradient(180deg, #fff7ed 0%, #ffffff 60%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={close}
+              disabled={spinning}
+              aria-label="Close"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors z-10 disabled:opacity-40"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="px-6 pt-7 pb-3 text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white"
+                style={{ background: "linear-gradient(90deg, #ea580c, #f97316)" }}>
+                <Sparkles className="w-3 h-3" /> Free Spin
+              </div>
+              <h2 className="text-2xl font-black font-display text-gray-900 mt-3">Spin &amp; Win an Offer!</h2>
+              <p className="text-sm text-gray-500 mt-1">One free spin — no purchase needed.</p>
+            </div>
+
+            <div className="relative mx-auto" style={{ width: 320, height: 320 }}>
+              {/* Pointer */}
+              <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-20"
+                style={{
+                  width: 0, height: 0,
+                  borderLeft: "14px solid transparent",
+                  borderRight: "14px solid transparent",
+                  borderTop: "22px solid #E85D04",
+                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                }} />
+              {/* Wheel */}
+              <motion.div
+                animate={{ rotate: rotation }}
+                transition={{ duration: 5, ease: [0.17, 0.67, 0.21, 0.99] }}
+                className="absolute inset-0 rounded-full shadow-xl"
+                style={{
+                  ...conicStyle,
+                  border: "8px solid #fff",
+                  boxShadow: "0 0 0 4px #E85D04, 0 14px 30px rgba(0,0,0,0.25)",
+                }}
+              >
+                {PRIZES.map((p, i) => {
+                  const angle = i * SLICE_DEG + SLICE_DEG / 2;
+                  return (
+                    <div
+                      key={p.id}
+                      className="absolute left-1/2 top-1/2 origin-[0_0]"
+                      style={{
+                        transform: `rotate(${angle}deg) translate(-50%, -120px)`,
+                      }}
+                    >
+                      <div className="text-[10px] font-black uppercase tracking-wider text-center w-20 -translate-x-1/2"
+                        style={{ color: p.textColor || "#1a1a1a", textShadow: p.textColor ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.4)" }}>
+                        {p.short}
+                      </div>
+                    </div>
+                  );
+                })}
+              </motion.div>
+              {/* Hub */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center z-10"
+                style={{
+                  background: "radial-gradient(circle at 30% 30%, #fff, #f3f4f6)",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.25), inset 0 -2px 4px rgba(0,0,0,0.1)",
+                }}>
+                <Gift className="w-6 h-6 text-orange-500" />
+              </div>
+            </div>
+
+            <div className="px-6 pb-6 pt-4 text-center">
+              {!result ? (
+                <>
+                  <button
+                    onClick={spin}
+                    disabled={spinning || spunTodayRef.current}
+                    data-testid="button-spin-wheel"
+                    className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                    style={{ background: spinning ? "#9ca3af" : "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 16px rgba(232,93,4,0.35)" }}
+                  >
+                    {spinning ? "Spinning…" : spunTodayRef.current ? "Come back tomorrow!" : "SPIN NOW"}
+                  </button>
+                  <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">
+                    One spin per day &middot; T&amp;Cs apply
+                  </p>
+                </>
+              ) : (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                  {result.code ? (
+                    <>
+                      <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">You Won!</p>
+                      <p className="text-lg font-black text-gray-900">{result.label}</p>
+                      <button
+                        onClick={copyCode}
+                        className="mx-auto inline-flex items-center gap-2 px-5 py-3 rounded-xl font-black border-2 border-dashed text-base"
+                        style={{ borderColor: "#E85D04", color: "#E85D04", background: "#fff7ed" }}
+                      >
+                        {result.code}
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                      <p className="text-[11px] text-gray-500">
+                        Coupon auto-applies at checkout. {result.message && <strong className="text-orange-600">{result.message}</strong>}
+                      </p>
+                      <button onClick={close} className="w-full py-3 rounded-xl font-bold text-white"
+                        style={{ background: "#1f2937" }}>
+                        Continue Shopping
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xl font-black text-gray-900">Better luck next time!</p>
+                      <p className="text-sm text-gray-500">Come back tomorrow for another free spin.</p>
+                      <button onClick={close} className="w-full py-3 rounded-xl font-bold text-white"
+                        style={{ background: "#E85D04" }}>
+                        Keep Shopping
+                      </button>
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

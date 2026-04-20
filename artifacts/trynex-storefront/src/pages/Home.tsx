@@ -7,6 +7,7 @@ import { InstagramFeed } from "@/components/InstagramFeed";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import SpinWheel from "@/components/SpinWheel";
 import { useListProducts, useGetTestimonials } from "@workspace/api-client-react";
 import { getApiUrl } from "@/lib/utils";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -721,6 +722,7 @@ export default function Home() {
         ]}
       />
       <Navbar />
+      <SpinWheel autoOpen />
 
       {/* ═══════════════════════════════════════
           HERO SECTION
