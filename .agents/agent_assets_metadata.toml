@@ -95,3 +95,9 @@ id = "33HHp_DWduja0AXdXop8o"
 uri = "file://attached_assets/PRODUCTION_STATUS_REPORT.txt"
 type = "text"
 title = "TryNex — Exact Production Status + Render vs ProCloudify Comparison"
+
+[[outputs]]
+id = "ma1kqNQdymutvUUCXbDsa"
+uri = "file://docs/TryNex-Lifestyle-Overview.pdf"
+type = "pdf"
+title = "TryNex Lifestyle — Platform Overview"

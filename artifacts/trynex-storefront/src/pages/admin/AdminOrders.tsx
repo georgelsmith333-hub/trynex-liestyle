@@ -46,11 +46,50 @@ export default function AdminOrders() {
     { limit: 200, ...(statusFilter !== "all" ? { status: statusFilter } : {}) },
     {
       request: { headers: getAuthHeaders() },
-      query: { refetchInterval: 10000 } as any
+      query: {
+        refetchInterval: 3000,           // 3s polling for near-real-time updates across devices
+        refetchIntervalInBackground: true,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+        staleTime: 0,                    // never serve stale data — always show latest
+      } as any
     }
   );
 
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Cross-tab + cross-window instant sync: when any admin tab updates an order,
+  // every other admin tab refetches immediately via BroadcastChannel.
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const ch = new BroadcastChannel("trynex-admin-orders");
+    ch.onmessage = (ev) => {
+      if (ev.data?.type === "orders:invalidate") {
+        queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+        refetch();
+      }
+    };
+    return () => ch.close();
+  }, [queryClient, refetch]);
+
+  // Refetch the moment the tab becomes visible (covers mobile background → foreground)
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") refetch();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [refetch]);
+
+  const broadcastInvalidate = () => {
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel("trynex-admin-orders");
+        ch.postMessage({ type: "orders:invalidate", at: Date.now() });
+        ch.close();
+      }
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     if (data?.total !== undefined && lastCount !== null && data.total > lastCount) {
@@ -80,6 +119,7 @@ export default function AdminOrders() {
       });
       if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+      broadcastInvalidate();
       toast({ title: "✓ Status updated" });
     } catch {
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
@@ -101,6 +141,7 @@ export default function AdminOrders() {
       });
       if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+      broadcastInvalidate();
       toast({ title: "✓ Payment status updated" });
     } catch {
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
@@ -169,7 +210,16 @@ export default function AdminOrders() {
               </motion.span>
             )}
           </h1>
-          {lastRefresh && <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 10s · Last: {lastRefresh}</p>}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-600">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Live
+            </span>
+            {lastRefresh && <span className="text-xs text-gray-400">Auto-syncs every 3s · Last: {lastRefresh}</span>}
+          </div>
         </div>
         <button
           onClick={() => refetch()}
