@@ -231,6 +231,7 @@ export default function AdminCustomers() {
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Orders</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Spent</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Order</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Order Date</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Created</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Actions</th>
                     </tr>
@@ -253,6 +254,7 @@ export default function AdminCustomers() {
                             </span>
                           ) : "—"}
                         </td>
+                        <td className="px-5 py-3 text-xs text-gray-700">{g.lastOrderAt ? formatDate(g.lastOrderAt) : "—"}</td>
                         <td className="px-5 py-3 text-xs text-gray-400">{formatDate(g.createdAt || "")}</td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-1.5">
