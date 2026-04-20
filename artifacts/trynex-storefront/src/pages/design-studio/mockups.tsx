@@ -88,14 +88,10 @@ export const PRODUCTS: DesignProduct[] = [
     description: "Cotton Twill",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: CAP_PZ,
     frontSrc: "/mockups/black-cap-front.png" },
-  { id: "white-mug",        name: "White Mug",         category: "mug",        garmentColor: "#F5F5F5",
-    description: "11oz Ceramic",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+  { id: "white-mug",        name: "Coffee Mug",        category: "mug",        garmentColor: "#F5F5F5",
+    description: "11oz Ceramic · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: MUG_PZ,
     frontSrc: "/mockups/white-mug-front.png" },
-  { id: "black-mug",        name: "Black Mug",         category: "mug",        garmentColor: "#1C1917",
-    description: "11oz Ceramic",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: MUG_PZ,
-    frontSrc: "/mockups/black-mug-front.png" },
 ];
 
 /* ═══════════════════════════════════════════════════════
