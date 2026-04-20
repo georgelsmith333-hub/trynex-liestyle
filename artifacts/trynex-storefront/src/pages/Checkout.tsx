@@ -113,17 +113,22 @@ export default function Checkout() {
     if (customer.phone && !watch("customerPhone")) setValue("customerPhone", customer.phone, { shouldValidate: false });
   }, [customer, setValue, watch]);
 
-  // Spinner-wheel reward auto-apply at checkout (set by SpinWheel component)
+  // Spinner-wheel reward auto-apply at checkout — set the code AND validate it
+  // so the discount actually appears on the total. Runs once on mount.
+  const spinAutoAppliedRef = useRef(false);
   useEffect(() => {
+    if (spinAutoAppliedRef.current) return;
     try {
       const raw = localStorage.getItem("spin_reward");
       if (!raw) return;
       const r = JSON.parse(raw) as { code?: string; usedOn?: string };
-      if (r?.code && !r.usedOn && !promoApplied) {
+      if (r?.code && !r.usedOn && !promoApplied && !promoInput) {
+        spinAutoAppliedRef.current = true;
         setPromoInput(r.code);
+        // Defer one tick so promoInput state is committed before validate reads it
+        setTimeout(() => { void validatePromo(); }, 0);
       }
     } catch { /* ignore */ }
-    // We intentionally do not depend on promoApplied to avoid loops; runs once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
