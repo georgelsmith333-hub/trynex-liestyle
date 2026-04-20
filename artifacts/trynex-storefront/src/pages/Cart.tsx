@@ -16,9 +16,10 @@ interface LineProps {
   item: CartItem;
   onChangeQuantity: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
+  removeFromCart: (id: string) => void;
 }
 
-const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, onRemove }: LineProps) {
+const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, onRemove }: Omit<LineProps, 'removeFromCart'>) {
   const [open, setOpen] = useState(false);
   const h = item.hamperPayload!;
   return (
@@ -91,8 +92,9 @@ const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, on
   );
 });
 
-const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, onRemove }: LineProps) {
+const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, onRemove, removeFromCart }: LineProps) {
   const [show3D, setShow3D] = useState(false);
+  const [, setLocation] = useLocation();
 
   const studioMeta = (() => {
     if (!item.customNote) return null;
@@ -102,6 +104,16 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
     } catch {}
     return null;
   })();
+
+  const handleReedit = () => {
+    if (!studioMeta?.sessionId) return;
+    const sessionRaw = localStorage.getItem(`studio_session_${studioMeta.sessionId}`);
+    if (sessionRaw) {
+      localStorage.setItem("trynex-design-draft-v1", sessionRaw);
+      removeFromCart(item.id);
+      setLocation("/design-studio?edit=1");
+    }
+  };
 
   return (
     <motion.div
@@ -147,6 +159,16 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
                     <Sparkles className="w-3 h-3" />
                     Custom design{studioMeta.layerCount ? ` · ${studioMeta.layerCount} layer${studioMeta.layerCount === 1 ? '' : 's'}` : ''}
                   </span>
+                  
+                  {studioMeta.sessionId && (
+                    <button
+                      onClick={handleReedit}
+                      className="text-[11px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-100"
+                    >
+                      ✏️ Re-edit
+                    </button>
+                  )}
+
                   {item.customImages && item.customImages.length > 0 && (
                     <button
                       onClick={() => setShow3D(v => !v)}
@@ -178,18 +200,36 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
           </div>
 
           <div className="flex items-center justify-between mt-3">
-            <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
-              <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-              <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
+                <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
+                <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
           </div>
         </div>
+      </div>
+      {show3D && item.customImages && item.customImages.length > 0 && (
+        <div className="px-4 pb-4 bg-gray-50/50 border-t border-gray-100">
+          <div className="aspect-square w-full max-w-[320px] mx-auto rounded-2xl overflow-hidden mt-4 shadow-inner bg-white border border-gray-200">
+            <Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-gray-50"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
+              <CartViewer3D
+                category={(studioMeta?.category as any) || "tshirt"}
+                garmentColor={studioMeta?.colorHex || "#1a1a1a"}
+                frontTexUrl={item.customImages?.[0]}
+                backTexUrl={item.customImages?.[1]}
+              />
+            </Suspense>
+          </div>
+          <p className="text-[10px] text-center text-gray-400 mt-3 font-medium uppercase tracking-widest">3D Design Preview</p>
+        </div>
+      )}
     </motion.div>
   );
 });
@@ -281,6 +321,7 @@ export default function Cart() {
                         item={item}
                         onChangeQuantity={changeQuantity}
                         onRemove={removeFromCart}
+                        removeFromCart={removeFromCart}
                       />
                     )
                   ))}

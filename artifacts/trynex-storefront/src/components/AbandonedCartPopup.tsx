@@ -101,6 +101,7 @@ export function AbandonedCartPopup() {
                   <Tag className="w-4 h-4 text-orange-600 shrink-0" />
                   <p className="text-xs font-bold text-orange-700 leading-tight">
                     Use code <span className="px-1.5 py-0.5 rounded bg-white text-orange-600 font-black">{promoCode}</span> for {promoDiscount} off — one-time only!
+                    {showFreeShipNudge && <span className="block mt-1 text-[10px] opacity-80">🎁 Get FREE delivery on orders over {formatPrice(freeShippingThreshold)}!</span>}
                   </p>
                 </div>
               ) : showFreeShipNudge ? (
@@ -109,6 +110,7 @@ export function AbandonedCartPopup() {
                   <Truck className="w-4 h-4 text-orange-600 shrink-0" />
                   <p className="text-xs font-bold text-orange-700 leading-tight">
                     Free shipping over {formatPrice(freeShippingThreshold)} — you're only {formatPrice(remainingForFreeShip)} away!
+                    <span className="block mt-1 text-[10px] opacity-80">🎁 Get FREE delivery on orders over {formatPrice(freeShippingThreshold)}!</span>
                   </p>
                 </div>
               ) : null}

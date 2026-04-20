@@ -218,6 +218,9 @@ export default function DesignStudio() {
   // Restore draft on mount (runs once)
   useEffect(() => {
     try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isEdit = searchParams.get("edit") === "1";
+
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw) as Partial<DraftPayload>;
@@ -248,7 +251,11 @@ export default function DesignStudio() {
             forceHistoryTick(t => t + 1);
             setHasDraft(true);
             setSaveStatus("saved");
-            toast({ title: "Draft restored", description: "We brought back your last design." });
+            if (isEdit) {
+              toast({ title: "Design Restored", description: "Your design has been restored for editing." });
+            } else {
+              toast({ title: "Draft restored", description: "We brought back your last design." });
+            }
           }
         }
       }
@@ -262,6 +269,18 @@ export default function DesignStudio() {
   // Auto-save draft when layers / product / color / size change (debounced)
   useEffect(() => {
     if (!draftRestoredRef.current) return;
+
+    // Check URL for edit mode on mount (only if not already handled)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("edit") === "1" && !window.location.hash.includes("notified")) {
+      toast({ 
+        title: "✨ Edit mode active", 
+        description: "Your design has been restored for editing.",
+      });
+      // Prevent multiple toasts on re-renders
+      window.location.hash = "notified";
+    }
+
     if (layers.length === 0) {
       // Nothing meaningful to save — clear any prior draft so a refresh starts fresh.
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
@@ -637,6 +656,18 @@ export default function DesignStudio() {
         ? (settings.studioMugPrice || 799)
         : (settings.studioTshirtPrice || 1099);
 
+      // Save full session for cart re-edit
+      const sessionId = Date.now().toString(36);
+      try {
+        localStorage.setItem(`studio_session_${sessionId}`, JSON.stringify({
+          version: 1,
+          layers,
+          productId: selectedProduct.id,
+          selectedColor,
+          selectedSize,
+        }));
+      } catch { /* quota exceeded — re-edit won't be available but cart works fine */ }
+
       addToCart({
         productId: 0,
         name: `Custom ${selectedProduct.name}`,
@@ -648,6 +679,7 @@ export default function DesignStudio() {
         customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
         customNote: JSON.stringify({
           studioDesign: true,
+          sessionId,
           product: selectedProduct.name,
           category: selectedProduct.category,
           color: selectedColor.name,
@@ -660,7 +692,7 @@ export default function DesignStudio() {
       });
 
       toast({ title: "✓ Added to cart!", description: `Custom ${selectedProduct.name} (${selectedColor.name}) is ready.` });
-      // Draft is now in the cart — clear local draft so a refresh doesn't restore it.
+      // Draft is now saved per-session — clear main draft key so a fresh visit starts clean.
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
       setHasDraft(false);
       setSaveStatus("idle");

@@ -12,9 +12,31 @@ interface CartLineProps {
   onChangeQuantity: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
   onCloseDrawer: () => void;
+  removeFromCart: (id: string) => void;
 }
 
-const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCloseDrawer }: CartLineProps) {
+const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCloseDrawer, removeFromCart }: CartLineProps) {
+  const [, setLocation] = useLocation();
+  const studioMeta = (() => {
+    if (!item.customNote) return null;
+    try {
+      const p = JSON.parse(item.customNote);
+      if (p?.studioDesign) return p;
+    } catch {}
+    return null;
+  })();
+
+  const handleReedit = () => {
+    if (!studioMeta?.sessionId) return;
+    const sessionRaw = localStorage.getItem(`studio_session_${studioMeta.sessionId}`);
+    if (sessionRaw) {
+      localStorage.setItem("trynex-design-draft-v1", sessionRaw);
+      removeFromCart(item.id);
+      onCloseDrawer();
+      setLocation("/design-studio?edit=1");
+    }
+  };
+
   return (
     <motion.div
       key={item.id}
@@ -56,25 +78,45 @@ const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCl
             </span>
           )}
         </div>
+        
+        {studioMeta && (
+          <button
+            onClick={handleReedit}
+            className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 text-[10px] font-bold hover:bg-orange-100 transition-colors"
+          >
+            ✏️ Re-edit
+          </button>
+        )}
+
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white">
-            <button
-              onClick={() => onChangeQuantity(item.id, -1)}
-              className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
-              style={{ width: '36px', height: '36px' }}
-              aria-label="Decrease quantity"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <span className="font-black w-8 text-center text-sm text-gray-900 select-none">{item.quantity}</span>
-            <button
-              onClick={() => onChangeQuantity(item.id, +1)}
-              className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
-              style={{ width: '36px', height: '36px' }}
-              aria-label="Increase quantity"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white">
+              <button
+                onClick={() => onChangeQuantity(item.id, -1)}
+                className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
+                style={{ width: '36px', height: '36px' }}
+                aria-label="Decrease quantity"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="font-black w-8 text-center text-sm text-gray-900 select-none">{item.quantity}</span>
+              <button
+                onClick={() => onChangeQuantity(item.id, +1)}
+                className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
+                style={{ width: '36px', height: '36px' }}
+                aria-label="Increase quantity"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+            {studioMeta?.sessionId && (
+              <button
+                onClick={handleReedit}
+                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 px-2 py-1 rounded bg-orange-50 w-fit"
+              >
+                ✏️ Re-edit
+              </button>
+            )}
           </div>
           <span className="font-black text-sm text-gray-900">{formatPrice(item.price * item.quantity)}</span>
         </div>
@@ -250,6 +292,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         onChangeQuantity={changeQuantity}
                         onRemove={removeFromCart}
                         onCloseDrawer={onClose}
+                        removeFromCart={removeFromCart}
                       />
                     ))}
                   </AnimatePresence>

@@ -164,7 +164,7 @@ import { useLocation } from "wouter";
           )}
 
           {/* Image */}
-          <div className="relative aspect-[4/5] overflow-hidden" style={{ background: '#f9f5f2' }}>
+          <div className="relative aspect-[4/5] overflow-hidden" style={{ background: '#f9f5f2', aspectRatio: '4/5' }}>
             {product.imageUrl ? (
               <>
                 {!imgLoaded && (
