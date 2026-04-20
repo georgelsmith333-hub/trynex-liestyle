@@ -9,8 +9,15 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { useListAdminCustomers, useListAdminGuestCustomers, type AdminCustomer } from "@workspace/api-client-react";
-import { UserCircle } from "lucide-react";
+import {
+  useListAdminCustomers,
+  useListAdminGuestCustomers,
+  useConvertGuestCustomer,
+  useDeleteGuestCustomer,
+  type AdminCustomer,
+} from "@workspace/api-client-react";
+import { UserCircle, UserCheck, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const DISTRICT_COLORS = [
   "#E85D04", "#FB8500", "#f97316", "#ea580c", "#d97706",
@@ -51,6 +58,9 @@ export default function AdminCustomers() {
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "spent" | "orders">("recent");
   const [tab, setTab] = useState<"buyers" | "guests">("buyers");
+  const convertGuest = useConvertGuestCustomer();
+  const deleteGuest = useDeleteGuestCustomer();
+  const { toast } = useToast();
 
   if (isLoading) return <AdminLayout><Loader fullScreen /></AdminLayout>;
 
@@ -221,6 +231,7 @@ export default function AdminCustomers() {
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Spent</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Order</th>
                       <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Created</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -241,6 +252,45 @@ export default function AdminCustomers() {
                           ) : "—"}
                         </td>
                         <td className="px-5 py-3 text-xs text-gray-400">{formatDate(g.createdAt || "")}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              title="Convert to full account"
+                              onClick={async () => {
+                                const email = window.prompt(`Convert guest "${g.name}" — enter the customer's real email:`);
+                                if (!email) return;
+                                const password = window.prompt("Set a temporary password (min 6 chars). They can change it later.");
+                                if (!password) return;
+                                try {
+                                  await convertGuest.mutateAsync({ id: g.id, email: email.trim(), password, name: g.name });
+                                  toast({ title: "Converted to full account", description: `${email} is now a registered customer.` });
+                                } catch (e: any) {
+                                  toast({ title: "Convert failed", description: e?.message || "Try again", variant: "destructive" });
+                                }
+                              }}
+                              className="p-1.5 rounded-md text-emerald-600 hover:bg-emerald-50"
+                            >
+                              <UserCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete guest account"
+                              onClick={async () => {
+                                if (!window.confirm(`Delete guest #${String(g.guestSequence ?? "").padStart(4, "0")}? This cannot be undone.`)) return;
+                                try {
+                                  await deleteGuest.mutateAsync({ id: g.id });
+                                  toast({ title: "Guest deleted" });
+                                } catch (e: any) {
+                                  toast({ title: "Delete failed", description: e?.message || "Try again", variant: "destructive" });
+                                }
+                              }}
+                              className="p-1.5 rounded-md text-red-500 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

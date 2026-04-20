@@ -646,6 +646,33 @@ export const useListAdminGuestCustomers = () => {
   });
 };
 
+export const useConvertGuestCustomer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, email, password, name }: { id: number; email: string; password: string; name?: string }) =>
+      customFetch<{ success: boolean }>(`/api/admin/guest-customers/${id}/convert`, {
+        method: "POST",
+        body: JSON.stringify({ email, password, name }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/admin/guest-customers"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/customers"] });
+    },
+  });
+};
+
+export const useDeleteGuestCustomer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) =>
+      customFetch<{ success: boolean }>(`/api/admin/guest-customers/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/admin/guest-customers"] });
+    },
+  });
+};
+
 // ─── Backup Hooks ─────────────────────────────────────────────────────────────
 
 export const getExportBackupUrl = () => `/api/backup/export`;

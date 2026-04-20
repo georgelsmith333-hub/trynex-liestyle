@@ -383,4 +383,78 @@ router.get("/admin/guest-customers", requireAdmin, async (req, res) => {
   }
 });
 
+// Convert a guest account into a full registered account.
+// Body: { email, password, name? } — email becomes the real login.
+router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "validation_error", message: "Invalid id" });
+      return;
+    }
+    const { email, password, name } = (req.body ?? {}) as { email?: string; password?: string; name?: string };
+    if (!email || !password) {
+      res.status(400).json({ error: "validation_error", message: "email and password are required" });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({ error: "validation_error", message: "Password must be at least 6 characters" });
+      return;
+    }
+    const emailLc = email.toLowerCase().trim();
+    const taken = await db.select().from(customersTable).where(eq(customersTable.email, emailLc)).limit(1);
+    if (taken.length > 0 && taken[0].id !== id) {
+      res.status(409).json({ error: "conflict", message: "An account with this email already exists" });
+      return;
+    }
+    const SALT = process.env.CUSTOMER_SALT || "trynex_customer_2024";
+    const passwordHash = crypto.createHash("sha256").update(password + SALT).digest("hex");
+    const updates: Record<string, unknown> = {
+      email: emailLc,
+      passwordHash,
+      isGuest: false,
+      verified: true,
+      updatedAt: new Date(),
+    };
+    if (name && name.trim()) updates.name = name.trim();
+
+    const [updated] = await db.update(customersTable)
+      .set(updates)
+      .where(eq(customersTable.id, id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "not_found", message: "Customer not found" });
+      return;
+    }
+    res.json({ success: true, customer: { id: updated.id, name: updated.name, email: updated.email, isGuest: updated.isGuest } });
+  } catch (err) {
+    req.log.error({ err }, "Failed to convert guest");
+    res.status(500).json({ error: "internal_error", message: "Failed to convert guest account" });
+  }
+});
+
+router.delete("/admin/guest-customers/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "validation_error", message: "Invalid id" });
+      return;
+    }
+    const [existing] = await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Customer not found" });
+      return;
+    }
+    if (!existing.isGuest) {
+      res.status(400).json({ error: "bad_request", message: "Refusing to delete a non-guest account from this endpoint" });
+      return;
+    }
+    await db.delete(customersTable).where(eq(customersTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete guest");
+    res.status(500).json({ error: "internal_error", message: "Failed to delete guest account" });
+  }
+});
+
 export default router;
