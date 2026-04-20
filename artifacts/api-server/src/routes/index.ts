@@ -19,6 +19,7 @@ import removeBgRouter from "./removeBg";
 import testimonialsRouter from "./testimonials";
 import deploymentRouter from "./deployment";
 import hampersRouter from "./hampers";
+import abandonedCartRouter from "./abandonedCart";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(removeBgRouter);
 router.use(testimonialsRouter);
 router.use(deploymentRouter);
 router.use(hampersRouter);
+router.use(abandonedCartRouter);
 
 export default router;

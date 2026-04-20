@@ -64,15 +64,11 @@ const ASPECT = 1;
 const BASE = 1000;
 
 export const PRODUCTS: DesignProduct[] = [
-  { id: "white-tshirt",     name: "White T-Shirt",     category: "tshirt",     garmentColor: "#F5F5F3",
+  { id: "white-tshirt",     name: "Unisex T-Shirt",    category: "tshirt",     garmentColor: "#F5F5F3",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: TSHIRT_PZ,
     frontSrc: "/mockups/white-tshirt-front.png", backSrc: "/mockups/white-tshirt-back.png" },
-  { id: "black-tshirt",     name: "Black T-Shirt",     category: "tshirt",     garmentColor: "#1a1a1a",
-    description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: TSHIRT_PZ,
-    frontSrc: "/mockups/black-tshirt-front.png", backSrc: "/mockups/black-tshirt-back.png" },
-  { id: "white-longsleeve", name: "White Long Sleeve", category: "longsleeve", garmentColor: "#F5F5F3",
+  { id: "white-longsleeve", name: "Unisex Long Sleeve", category: "longsleeve", garmentColor: "#F5F5F3",
     description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: LONGSLEEVE_PZ,
     frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
@@ -119,7 +115,7 @@ export const PRODUCTS: DesignProduct[] = [
 // take the colour. The white card behind the SVG stays white. If you ever
 // need to regenerate the cutouts, run remove_image_background_tool against
 // the originals (white-*.png) and save as *-cutout.png.
-const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
+export const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
   tshirt:     { front: "/mockups/white-tshirt-front-cutout.png",     back: "/mockups/white-tshirt-back-cutout.png" },
   longsleeve: { front: "/mockups/white-longsleeve-front-cutout.png", back: "/mockups/white-longsleeve-back-cutout.png" },
   hoodie:     { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },

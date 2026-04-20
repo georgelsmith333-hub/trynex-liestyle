@@ -7,7 +7,7 @@ export function verifyCustomerToken(token: string): { id: number; email: string;
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string; role: string };
     if (decoded.role !== "customer") return null;
     return decoded;
-  } catch {
+  } catch (err) {
     return null;
   }
 }

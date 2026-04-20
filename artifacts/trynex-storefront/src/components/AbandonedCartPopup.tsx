@@ -13,8 +13,8 @@ export function AbandonedCartPopup() {
   const [dismissed, setDismissed] = useState(false);
   const [location] = useLocation();
   const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
-  const promoCode = settings.exitIntentPromoCode || "";
-  const promoDiscount = settings.exitIntentPromoDiscount || "10%";
+  const promoCode = settings.exitIntentPromoCode || "WELCOME5";
+  const promoDiscount = settings.exitIntentPromoDiscount || "৳100";
   const remainingForFreeShip = Math.max(0, freeShippingThreshold - subtotal);
   const showFreeShipNudge = subtotal > 0 && subtotal < freeShippingThreshold;
 

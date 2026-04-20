@@ -6,9 +6,11 @@ import { useCartState, useCartActions, type CartItem } from "@/context/CartConte
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FreeShippingProgress } from "@/components/FreeShippingProgress";
+
+const CartViewer3D = lazy(() => import("@/components/CartViewer3D"));
 
 interface LineProps {
   item: CartItem;
@@ -90,102 +92,104 @@ const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, on
 });
 
 const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, onRemove }: LineProps) {
+  const [show3D, setShow3D] = useState(false);
+
+  const studioMeta = (() => {
+    if (!item.customNote) return null;
+    try {
+      const p = JSON.parse(item.customNote);
+      if (p?.studioDesign) return p;
+    } catch {}
+    return null;
+  })();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -30, height: 0 }}
-      className="flex gap-5 p-4 rounded-2xl"
+      className="rounded-2xl overflow-hidden"
       style={{ background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0" style={{ background: '#f3f4f6' }}>
-        <img
-          src={item.imageUrl || `https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop`}
-          alt={item.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          decoding="async"
-          width={112}
-          height={112}
-        />
-      </div>
-      <div className="flex-1 flex flex-col justify-between min-w-0">
-        <div className="flex justify-between items-start gap-3">
-          <div className="min-w-0">
-            <Link href={`/product/${item.productId}`} className="font-bold text-base leading-tight hover:text-orange-600 transition-colors block truncate text-gray-900">
-              {item.name}
-            </Link>
-            <div className="flex flex-wrap gap-2 mt-1.5">
-              {item.size && (
-                <span className="text-xs px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f3f4f6', color: '#6b7280' }}>
-                  Size: {item.size}
-                </span>
-              )}
-              {item.color && (
-                <span className="text-xs px-2 py-0.5 rounded-md font-semibold capitalize" style={{ background: '#f3f4f6', color: '#6b7280' }}>
-                  {item.color}
-                </span>
-              )}
-            </div>
-            {(() => {
-              if (!item.customNote) return null;
-              let parsed: any = null;
-              try { parsed = JSON.parse(item.customNote); } catch {}
-              if (parsed && typeof parsed === "object" && parsed.studioDesign) {
-                const layers = Number(parsed.layerCount) || 0;
-                return (
-                  <p className="text-xs mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-orange-700 bg-orange-50">
+      <div className="flex gap-5 p-4">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0" style={{ background: '#f3f4f6' }}>
+          <img
+            src={item.imageUrl || `https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop`}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            width={112}
+            height={112}
+          />
+        </div>
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          <div className="flex justify-between items-start gap-3">
+            <div className="min-w-0">
+              <Link href={`/product/${item.productId}`} className="font-bold text-base leading-tight hover:text-orange-600 transition-colors block truncate text-gray-900">
+                {item.name}
+              </Link>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {item.size && (
+                  <span className="text-xs px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                    Size: {item.size}
+                  </span>
+                )}
+                {item.color && (
+                  <span className="text-xs px-2 py-0.5 rounded-md font-semibold capitalize" style={{ background: '#f3f4f6', color: '#6b7280' }}>
+                    {item.color}
+                  </span>
+                )}
+              </div>
+              {studioMeta && (
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-orange-700 bg-orange-50">
                     <Sparkles className="w-3 h-3" />
-                    Custom design{layers ? ` · ${layers} layer${layers === 1 ? '' : 's'}` : ''}
-                  </p>
-                );
-              }
-              if (parsed && typeof parsed === "object") return null;
-              return (
-                <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
-                  "{item.customNote}"
-                </p>
-              );
-            })()}
-            {item.customImages && item.customImages.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-2">
-                <ImageIcon className="w-3 h-3 text-orange-400 shrink-0" />
-                <div className="flex gap-1">
-                  {item.customImages.slice(0, 4).map((img, idx) => (
-                    <img key={idx} src={img} alt={`Design ${idx + 1}`}
-                      loading="lazy" decoding="async" width={32} height={32}
-                      className="w-8 h-8 rounded-md object-cover border border-gray-200" />
-                  ))}
-                  {item.customImages.length > 4 && (
-                    <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                      +{item.customImages.length - 4}
-                    </div>
+                    Custom design{studioMeta.layerCount ? ` · ${studioMeta.layerCount} layer${studioMeta.layerCount === 1 ? '' : 's'}` : ''}
+                  </span>
+                  {item.customImages && item.customImages.length > 0 && (
+                    <button
+                      onClick={() => setShow3D(v => !v)}
+                      className="text-[11px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors"
+                      style={{ background: show3D ? '#fff4ee' : '#f3f4f6', color: show3D ? '#E85D04' : '#374151', border: '1px solid', borderColor: show3D ? '#fdd5b4' : '#e5e7eb' }}
+                    >
+                      <span>View in 3D</span>
+                      {show3D ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+              {!studioMeta && (() => {
+                if (!item.customNote) return null;
+                try { const p = JSON.parse(item.customNote); if (typeof p === "object") return null; } catch {}
+                return (
+                  <p className="text-xs mt-2 italic text-gray-400 border-l-2 border-orange-200 pl-2 pr-2 truncate">
+                    "{item.customNote}"
+                  </p>
+                );
+              })()}
+            </div>
+            <button
+              onClick={() => onRemove(item.id)}
+              aria-label="Remove item" className="touch-target rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => onRemove(item.id)}
-            aria-label="Remove item" className="touch-target rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
 
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
-            <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-            <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
+              <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
+              <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
           </div>
-          <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
         </div>
-      </div>
     </motion.div>
   );
 });

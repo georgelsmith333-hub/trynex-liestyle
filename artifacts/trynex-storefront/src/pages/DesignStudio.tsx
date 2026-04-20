@@ -21,9 +21,9 @@ import {
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
-  STICKERS,
+  STICKERS, BASE_BY_CATEGORY,
 } from "./design-studio/mockups";
-import { composeLayers, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
+import { composeLayers, composeGarmentMockup, composeDesignTexture, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
 
 // Lazy-load the 3D bundle so first-paint stays light.
 const ProductViewer3D = lazy(() => import("./design-studio/ProductViewer3D"));
@@ -585,66 +585,57 @@ export default function DesignStudio() {
     }
     setIsAddingToCart(true);
     try {
-      // Compose snapshot using the shared composer (front face by default).
-      // Always use the FRONT print-zone here — `pz` is face-aware in the editor and
-      // would otherwise leak the back zone into the front snapshot.
       const frontPZ = selectedProduct.printZone;
       const backPZ = selectedProduct.printZoneBack ?? selectedProduct.printZone;
       const frontLayers = layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[];
-      const canvas = document.createElement("canvas");
-      await composeLayers({
-        canvas,
-        baseHeight: selectedProduct.baseHeight,
+      const backLayers  = layers.filter(l => (l.face ?? "front") === "back")  as unknown as ComposerLayer[];
+      const imageCache  = new Map<string, HTMLImageElement>();
+
+      // 1. Full garment + design composite → cart thumbnail (imageUrl)
+      //    Uses the white-cutout PNG so tinting matches the 2D editor exactly.
+      const garmentBase = BASE_BY_CATEGORY[selectedProduct.category];
+      const garmentSrc  = garmentBase?.front ?? selectedProduct.frontSrc;
+      const mockupCanvas = document.createElement("canvas");
+      await composeGarmentMockup({
+        canvas: mockupCanvas,
+        garmentSrc,
+        garmentColor: selectedColor.hex,
         printZone: frontPZ,
         layers: frontLayers,
-        garmentColor: selectedColor.hex,
-        outW: 600,
-        outH: Math.round(600 * selectedProduct.baseHeight / 400),
-        clipToPrintZone: true,
-        blendMode: "multiply",
+        outSize: 800,
+        imageCache,
       });
-      const snapshotUrl = canvas.toDataURL("image/png", 0.85);
+      const mockupUrl = mockupCanvas.toDataURL("image/png", 0.85);
+
+      // 2. Design-only texture (transparent bg, full 1000-unit space)
+      //    Stored in customImages[0] — used by CartViewer3D for the UV texture.
+      const frontTexCanvas = document.createElement("canvas");
+      await composeDesignTexture({
+        canvas: frontTexCanvas,
+        printZone: frontPZ,
+        layers: frontLayers,
+        outSize: 512,
+        imageCache,
+      });
+      const frontTexUrl = frontTexCanvas.toDataURL("image/webp", 0.8);
+
+      // 3. Back-face design texture (if back has layers)
+      let backTexUrl: string | undefined;
+      if (backLayers.length > 0) {
+        const backTexCanvas = document.createElement("canvas");
+        await composeDesignTexture({
+          canvas: backTexCanvas,
+          printZone: backPZ,
+          layers: backLayers,
+          outSize: 512,
+          imageCache,
+        });
+        backTexUrl = backTexCanvas.toDataURL("image/webp", 0.8);
+      }
 
       const displayPrice = isMug
         ? (settings.studioMugPrice || 799)
         : (settings.studioTshirtPrice || 1099);
-
-      // Compress first image layer for storage
-      const firstImage = layers.find((l): l is ImageLayer => l.type === "image");
-      let compressedImage = snapshotUrl;
-      if (firstImage) {
-        try {
-          const c = document.createElement("canvas");
-          const cc = c.getContext("2d");
-          const cimg = new Image();
-          await new Promise<void>((res, rej) => { cimg.onload = () => res(); cimg.onerror = rej; cimg.src = firstImage.src; });
-          const maxDim = 512;
-          const ratio = Math.min(maxDim / cimg.width, maxDim / cimg.height, 1);
-          c.width = Math.round(cimg.width * ratio);
-          c.height = Math.round(cimg.height * ratio);
-          cc?.drawImage(cimg, 0, 0, c.width, c.height);
-          compressedImage = c.toDataURL("image/webp", 0.7);
-        } catch {}
-      }
-
-      // If the design has a back face, also render a back snapshot for the order record.
-      const backLayers = layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[];
-      let backSnapshot: string | undefined;
-      if (backLayers.length > 0) {
-        const backCanvas = document.createElement("canvas");
-        await composeLayers({
-          canvas: backCanvas,
-          baseHeight: selectedProduct.baseHeight,
-          printZone: backPZ,
-          layers: backLayers,
-          garmentColor: selectedColor.hex,
-          outW: 600,
-          outH: Math.round(600 * selectedProduct.baseHeight / 400),
-          clipToPrintZone: true,
-          blendMode: "multiply",
-        });
-        backSnapshot = backCanvas.toDataURL("image/png", 0.85);
-      }
 
       addToCart({
         productId: 0,
@@ -653,11 +644,12 @@ export default function DesignStudio() {
         quantity: 1,
         size: isMug || isCap ? undefined : selectedSize,
         color: selectedColor.name,
-        imageUrl: snapshotUrl,
-        customImages: backSnapshot ? [compressedImage, backSnapshot] : [compressedImage],
+        imageUrl: mockupUrl,
+        customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
         customNote: JSON.stringify({
           studioDesign: true,
           product: selectedProduct.name,
+          category: selectedProduct.category,
           color: selectedColor.name,
           colorHex: selectedColor.hex,
           size: selectedSize,
@@ -932,7 +924,7 @@ export default function DesignStudio() {
             >
               <div
                 className="relative w-full"
-                style={{ aspectRatio: `${selectedProduct.aspect}` }}
+                style={{ aspectRatio: `${selectedProduct.aspect}`, touchAction: "none" }}
               >
                 {viewMode === "3d" && supports3D ? (
                   <div className="absolute inset-0" data-testid="viewer-3d">
@@ -1003,7 +995,7 @@ export default function DesignStudio() {
                       <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx="4" />
                     </clipPath>
                   </defs>
-                  <g clipPath="url(#design-clip)" style={{ mixBlendMode: "multiply" }}>
+                  <g clipPath="url(#design-clip)">
                     {layersRender
                       .filter(({ layer }) => (layer.face ?? "front") === activeFace)
                       .map(({ layer: l, geom: g }) => {
@@ -1021,7 +1013,7 @@ export default function DesignStudio() {
                           />
                         );
                       }
-                      // text
+                      // text — multiply blend so ink looks printed on fabric
                       return (
                         <text key={l.id}
                           data-layer-id={l.id}
@@ -1035,7 +1027,7 @@ export default function DesignStudio() {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           transform={`rotate(${l.transform.rotation}, ${g.cx}, ${g.cy})`}
-                          style={{ cursor: l.locked ? "not-allowed" : "grab", userSelect: "none" }}
+                          style={{ cursor: l.locked ? "not-allowed" : "grab", userSelect: "none", mixBlendMode: "multiply" }}
                         >{l.text}</text>
                       );
                     })}

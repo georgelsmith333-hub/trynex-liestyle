@@ -31,7 +31,7 @@ export function verifyAdminToken(token: string): AdminTokenPayload | null {
     const decoded = jwt.verify(token, adminJwtSecret) as AdminTokenPayload;
     if (!decoded || decoded.role !== "admin") return null;
     return decoded;
-  } catch {
+  } catch (err) {
     return null;
   }
 }
@@ -80,7 +80,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     if (allowedRaw) {
       const allowed = allowedRaw.split(",").map((o) => o.trim()).filter(Boolean);
       const refererOrigin = referer
-        ? (() => { try { return new URL(referer).origin; } catch { return ""; } })()
+        ? (() => { try { return new URL(referer).origin; } catch (err) { return ""; } })()
         : "";
       const ok =
         (origin && allowed.includes(origin)) ||
