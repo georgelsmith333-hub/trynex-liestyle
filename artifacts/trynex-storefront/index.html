@@ -143,7 +143,104 @@
     <script src="https://accounts.google.com/gsi/client" data-cfasync="false" async defer></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- No-JS / pre-hydration splash. React replaces this on mount. If
+           React never mounts (broken bundle, stale SW, network failure)
+           the splash auto-recovers after 10s by unregistering all SWs and
+           reloading with a cache-buster. This guarantees no visitor ever
+           stares at a totally blank white screen. -->
+      <div id="trynex-boot-splash" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#FFF8F3 0%,#FFF4EE 100%);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;padding:24px;">
+        <div style="width:84px;height:84px;border-radius:22px;background:linear-gradient(135deg,#E85D04,#FB8500);color:#fff;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 12px 36px rgba(232,93,4,.3);">T</div>
+        <div style="font-size:20px;font-weight:800;color:#1a1a1a;letter-spacing:-0.01em;">TryNex Lifestyle</div>
+        <div style="font-size:13px;color:#94a3b8;margin-top:6px;">Loading premium custom apparel…</div>
+        <div id="trynex-boot-spinner" style="margin-top:22px;width:30px;height:30px;border:3px solid #FFE0CC;border-top-color:#E85D04;border-radius:50%;animation:trynexSpin .8s linear infinite;"></div>
+        <div id="trynex-boot-stuck" style="display:none;margin-top:24px;max-width:320px;">
+          <div style="font-size:14px;color:#475569;margin-bottom:14px;">This is taking longer than usual. Tap below to refresh — it usually fixes it.</div>
+          <button id="trynex-boot-refresh" type="button" style="background:linear-gradient(135deg,#E85D04,#FB8500);color:#fff;border:0;border-radius:14px;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(232,93,4,.3);">Refresh app</button>
+        </div>
+        <noscript style="margin-top:24px;font-size:13px;color:#64748b;max-width:320px;display:block;">
+          JavaScript is required to use TryNex Lifestyle. Please enable it in your browser settings.
+        </noscript>
+      </div>
+      <style>@keyframes trynexSpin{to{transform:rotate(360deg)}}</style>
+    </div>
+    <script>
+      (function () {
+        // Watchdog: if React hasn't replaced the splash after 10 seconds,
+        // assume a stale Service Worker / chunk-load failure and recover.
+        var stuckTimer = setTimeout(function () {
+          var el = document.getElementById('trynex-boot-stuck');
+          if (el) el.style.display = 'block';
+        }, 10000);
+        var nukeTimer = setTimeout(function () {
+          // Loop guard: never auto-recover from the splash more than twice
+          // per 10-minute window (per tab). After that, leave the splash
+          // visible with the manual Refresh button so we don't churn.
+          var k = 'trynex_splash_recover';
+          var now = Date.now();
+          var attempts = [];
+          try {
+            attempts = JSON.parse(sessionStorage.getItem(k) || '[]')
+              .filter(function (t) { return now - t < 10 * 60 * 1000; });
+          } catch (_) { attempts = []; }
+          if (attempts.length >= 2) {
+            try { console.warn('[trynex-splash] recovery loop guard tripped, leaving manual button'); } catch (_) {}
+            return;
+          }
+          attempts.push(now);
+          try { sessionStorage.setItem(k, JSON.stringify(attempts)); } catch (_) {}
+          tryRecover('watchdog: React did not mount in 18s');
+        }, 18000);
+        // If React mounts (any child added inside #root), cancel the timers.
+        var root = document.getElementById('root');
+        if (root && 'MutationObserver' in window) {
+          var obs = new MutationObserver(function () {
+            // React mounts by replacing the splash with its own children.
+            if (!document.getElementById('trynex-boot-splash')) {
+              clearTimeout(stuckTimer); clearTimeout(nukeTimer); obs.disconnect();
+            }
+          });
+          obs.observe(root, { childList: true, subtree: false });
+        }
+        var btn = document.getElementById('trynex-boot-refresh');
+        if (btn) btn.addEventListener('click', function () {
+          tryRecover('user tapped refresh from splash');
+        });
+        function tryRecover(reason) {
+          try { console.warn('[trynex-splash] recovering:', reason); } catch (_) {}
+          var done = function () {
+            try {
+              var u = new URL(window.location.href);
+              u.searchParams.set('_r', String(Date.now()));
+              window.location.replace(u.toString());
+            } catch (_) { window.location.reload(); }
+          };
+          var pending = 0, finished = false;
+          function maybeDone() { if (--pending <= 0 && !finished) { finished = true; done(); } }
+          try {
+            if ('serviceWorker' in navigator) {
+              pending++;
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                Promise.all(regs.map(function (r) { return r.unregister().catch(function () {}); })).then(maybeDone, maybeDone);
+              }, maybeDone);
+            }
+          } catch (_) {}
+          try {
+            if ('caches' in window) {
+              pending++;
+              caches.keys().then(function (keys) {
+                Promise.all(keys.map(function (k) { return caches.delete(k).catch(function () {}); })).then(maybeDone, maybeDone);
+              }, maybeDone);
+            }
+          } catch (_) {}
+          if (pending === 0) done();
+          // Hard fallback: never wait more than 4s for SW/cache cleanup.
+          setTimeout(function () { if (!finished) { finished = true; done(); } }, 4000);
+        }
+        // Expose for AppErrorBoundary / cache-recovery to reuse.
+        window.__trynexRecover = tryRecover;
+      })();
+    </script>
     <!--
       data-cfasync="false" tells Cloudflare Rocket Loader to leave this script
       alone. Without it, Rocket Loader rewrites type="module" to a synthetic
