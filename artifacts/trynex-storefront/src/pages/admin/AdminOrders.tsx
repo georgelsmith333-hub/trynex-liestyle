@@ -19,6 +19,7 @@ const PAYMENT_LABELS: Record<string, { label: string; color: string }> = {
   cod: { label: "Cash on Delivery", color: "#4ade80" },
   bkash: { label: "bKash", color: "#e2136e" },
   nagad: { label: "Nagad", color: "#f7941d" },
+  upay: { label: "uPay", color: "#0077cc" },
   rocket: { label: "Rocket", color: "#8b2291" },
   card: { label: "Card (Visa/MC)", color: "#2563eb" },
 };
@@ -224,8 +225,8 @@ export default function AdminOrders() {
                   {filteredOrders.map((order, i) => {
                     const Icon = statusIcon(order.status);
                     const pm = PAYMENT_LABELS[order.paymentMethod] || { label: order.paymentMethod, color: '#aaa' };
-                    const payColor = getPaymentStatusColor(order.paymentMethod === 'cod' ? 'cod' : (order.paymentStatus || 'pending'));
-                    const payLabel = order.paymentMethod === 'cod' ? 'COD' : getPaymentStatusLabel(order.paymentStatus || 'pending');
+                    const payColor = getPaymentStatusColor(order.paymentStatus || 'pending');
+                    const payLabel = getPaymentStatusLabel(order.paymentStatus || 'pending');
                     return (
                       <motion.tr
                         key={order.id}
@@ -256,24 +257,17 @@ export default function AdminOrders() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          {order.paymentMethod !== 'cod' ? (
-                            <select
-                              value={order.paymentStatus || 'pending'}
-                              onChange={e => handlePaymentStatusChange(order.id, e.target.value)}
-                              disabled={isUpdatingPayment}
-                              className="text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 outline-none cursor-pointer"
-                              style={{ background: `${payColor}15`, color: payColor }}
-                            >
-                              {PAYMENT_STATUS_OPTS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="text-xs font-bold px-2 py-1 rounded-lg"
-                              style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
-                              COD
-                            </span>
-                          )}
+                          <select
+                            value={order.paymentStatus || 'pending'}
+                            onChange={e => handlePaymentStatusChange(order.id, e.target.value)}
+                            disabled={isUpdatingPayment}
+                            className="text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 outline-none cursor-pointer"
+                            style={{ background: `${payColor}15`, color: payColor }}
+                          >
+                            {PAYMENT_STATUS_OPTS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-4 py-4">
                           <select
@@ -373,24 +367,28 @@ export default function AdminOrders() {
                       {PAYMENT_LABELS[selectedOrder.paymentMethod]?.label || selectedOrder.paymentMethod}
                     </div>
                   </div>
-                  {selectedOrder.paymentMethod !== 'cod' && (
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
-                        <CreditCard className="inline w-3 h-3 mr-1" />Payment Status
-                      </p>
-                      <select
-                        value={selectedOrder.paymentStatus || 'pending'}
-                        onChange={e => handlePaymentStatusChange(selectedOrder.id, e.target.value)}
-                        disabled={isUpdatingPayment}
-                        className="w-full px-3 py-3 rounded-xl text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
-                        style={{ background: 'white', border: '1px solid #e5e7eb', color: '#111827' }}
-                      >
-                        {PAYMENT_STATUS_OPTS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                      <CreditCard className="inline w-3 h-3 mr-1" />Payment Status
+                      {selectedOrder.paymentMethod === 'cod' && (
+                        <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
+                          15% Advance
+                        </span>
+                      )}
+                    </p>
+                    <select
+                      value={selectedOrder.paymentStatus || 'pending'}
+                      onChange={e => handlePaymentStatusChange(selectedOrder.id, e.target.value)}
+                      disabled={isUpdatingPayment}
+                      className="w-full px-3 py-3 rounded-xl text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+                      style={{ background: 'white', border: '1px solid #e5e7eb', color: '#111827' }}
+                    >
+                      {PAYMENT_STATUS_OPTS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {selectedOrder.notes && (
