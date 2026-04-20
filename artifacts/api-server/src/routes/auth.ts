@@ -375,10 +375,13 @@ router.post("/auth/guest", async (req, res) => {
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
       try {
+        // Compute next sequence over ALL rows that ever held a guest_sequence
+        // (including converted accounts, which keep their sequence after
+        // is_guest is flipped to false). This guarantees uniqueness against
+        // the partial unique index on guest_sequence.
         const [last] = await db
           .select({ seq: customersTable.guestSequence })
           .from(customersTable)
-          .where(eq(customersTable.isGuest, true))
           .orderBy(desc(customersTable.guestSequence))
           .limit(1);
         const nextSeq = (last?.seq ?? 0) + 1 + attempt;
