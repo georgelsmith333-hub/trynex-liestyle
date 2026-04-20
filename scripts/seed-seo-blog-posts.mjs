@@ -115,20 +115,26 @@ function buildHtml(post) {
   const intro = `<p>${post.excerpt}</p>
 <p>If you're searching for <strong>${post.keyword}</strong> with reliable quality and fast delivery across Bangladesh, this guide is for you. TryNex Lifestyle has shipped 50,000+ custom orders nationwide since 2023, so we've packed every lesson into one place.</p>`;
 
+  // BlogPost.tsx parser expects <h4> for questions (or <strong> inside <p>),
+  // followed by sibling <p> answers, under an h2/h3 with "FAQ" in it.
+  // It auto-emits FAQPage JSON-LD via SEOHead from those entries — no inline
+  // <script> tags needed (DOMPurify would strip them anyway).
   const faqHtml =
     `<h2>Frequently Asked Questions</h2>` +
-    post.faqs.map((f) => `<h3>${f.q}</h3><p>${f.a}</p>`).join("");
+    post.faqs.map((f) => `<h4>${f.q}</h4><p>${f.a}</p>`).join("");
 
   const linksHtml =
     `<h2>Ready to start?</h2><ul>` +
     internalLinks.map((l) => `<li><a href="${l.href}">${l.text}</a></li>`).join("") +
     `</ul>`;
 
-  const ldHtml = `<script type="application/ld+json">${JSON.stringify(
-    blogPostingLd
-  )}</script><script type="application/ld+json">${JSON.stringify(faqLd)}</script>`;
+  // BlogPost emits BlogPosting JSON-LD itself from post fields; we don't need
+  // to embed JSON-LD here. The blogPostingLd / faqLd literals above are kept
+  // only as a reference of the canonical schema this seed targets.
+  void blogPostingLd;
+  void faqLd;
 
-  return `${intro}${faqHtml}${linksHtml}${ldHtml}`;
+  return `${intro}${faqHtml}${linksHtml}`;
 }
 
 async function main() {

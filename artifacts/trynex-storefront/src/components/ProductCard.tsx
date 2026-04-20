@@ -177,7 +177,7 @@ import { useLocation } from "wouter";
                   height={500}
                   loading={index < 4 ? "eager" : "lazy"}
                   decoding="async"
-                  {...(index === 0 ? { fetchpriority: "high" as any } : {})}
+                  fetchPriority={index === 0 ? "high" : "auto"}
                   onLoad={() => setImgLoaded(true)}
                   className="w-full h-full object-cover"
                   style={{
