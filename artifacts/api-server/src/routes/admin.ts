@@ -404,11 +404,25 @@ router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res)
       return;
     }
     const emailLc = email.toLowerCase().trim();
+    // Guard: this endpoint must only operate on guest accounts.
+    const [existing] = await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Customer not found" });
+      return;
+    }
+    if (!existing.isGuest) {
+      res.status(400).json({ error: "bad_request", message: "Only guest accounts can be converted from this endpoint" });
+      return;
+    }
     const taken = await db.select().from(customersTable).where(eq(customersTable.email, emailLc)).limit(1);
     if (taken.length > 0 && taken[0].id !== id) {
       res.status(409).json({ error: "conflict", message: "An account with this email already exists" });
       return;
     }
+    // Migrate historical guest orders so they remain visible under the new email
+    await db.update(ordersTable)
+      .set({ customerEmail: emailLc, customerId: id })
+      .where(eq(ordersTable.customerEmail, existing.email));
     const SALT = process.env.CUSTOMER_SALT || "trynex_customer_2024";
     const passwordHash = crypto.createHash("sha256").update(password + SALT).digest("hex");
     const updates: Record<string, unknown> = {
