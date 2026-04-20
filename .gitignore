@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Generated PDF (excluded from git per project owner)
+docs/TryNex-Lifestyle-Overview.pdf
+
