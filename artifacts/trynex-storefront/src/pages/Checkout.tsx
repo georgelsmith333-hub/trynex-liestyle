@@ -20,6 +20,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/tracking";
 import { getStoredUtm } from "@/hooks/useUtm";
 import { TrustBadges } from "@/components/TrustBadges";
+import { useAuth } from "@/context/AuthContext";
+import { LogIn, UserPlus, X as XIcon } from "lucide-react";
 
 import { BD_UPAZILAS, getDivisionForDistrict, getAllDistricts, getPostCode } from "@/data/bd-addresses";
 import { DeliveryAreaPicker } from "@/components/DeliveryAreaPicker";
@@ -87,10 +89,43 @@ export default function Checkout() {
   const { mutateAsync: createOrder, isPending } = useCreateOrder();
   const formRef = useRef<HTMLFormElement>(null);
 
+  const { customer } = useAuth();
+  const [, navigate] = useLocation();
+  const [hideAuthBanner, setHideAuthBanner] = useState<boolean>(() => {
+    try { return sessionStorage.getItem("checkout_auth_banner_dismissed") === "1"; } catch { return false; }
+  });
+
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: { shippingDistrict: '', shippingUpazila: '', shippingUnion: '', shippingPostCode: '' }
   });
+
+  // Auto-fill name/email/phone for logged-in customers (do NOT pre-fill address)
+  useEffect(() => {
+    if (!customer) return;
+    const fullName = (customer.name || "").trim();
+    const sp = fullName.indexOf(" ");
+    const first = sp > 0 ? fullName.slice(0, sp) : fullName;
+    const last  = sp > 0 ? fullName.slice(sp + 1) : "";
+    if (first && !watch("firstName")) setValue("firstName", first, { shouldValidate: false });
+    if (last  && !watch("lastName"))  setValue("lastName", last,   { shouldValidate: false });
+    if (customer.email && !watch("customerEmail")) setValue("customerEmail", customer.email, { shouldValidate: false });
+    if (customer.phone && !watch("customerPhone")) setValue("customerPhone", customer.phone, { shouldValidate: false });
+  }, [customer, setValue, watch]);
+
+  // Spinner-wheel reward auto-apply at checkout (set by SpinWheel component)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("spin_reward");
+      if (!raw) return;
+      const r = JSON.parse(raw) as { code?: string; usedOn?: string };
+      if (r?.code && !r.usedOn && !promoApplied) {
+        setPromoInput(r.code);
+      }
+    } catch { /* ignore */ }
+    // We intentionally do not depend on promoApplied to avoid loops; runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const keys = Object.keys(errors);
@@ -873,6 +908,44 @@ export default function Checkout() {
               ))}
             </div>
           </div>
+
+          {!customer && !hideAuthBanner && (
+            <div className="mb-6 rounded-2xl border p-4 sm:p-5 flex items-start gap-3 sm:gap-4"
+              style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', borderColor: '#fdba74' }}>
+              <div className="hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0"
+                style={{ background: '#E85D04', color: 'white' }}>
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-sm sm:text-base text-gray-900">
+                  Sign in to save this order &amp; track it easily
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                  Your cart stays — no need to re-enter details next time.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button type="button" onClick={() => navigate("/login?redirect=/checkout")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white"
+                    style={{ background: '#E85D04' }}>
+                    <LogIn className="w-3.5 h-3.5" /> Sign in
+                  </button>
+                  <button type="button" onClick={() => navigate("/signup?redirect=/checkout")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border"
+                    style={{ borderColor: '#E85D04', color: '#E85D04', background: 'white' }}>
+                    <UserPlus className="w-3.5 h-3.5" /> Create account
+                  </button>
+                </div>
+              </div>
+              <button type="button" aria-label="Dismiss"
+                onClick={() => {
+                  setHideAuthBanner(true);
+                  try { sessionStorage.setItem("checkout_auth_banner_dismissed", "1"); } catch {}
+                }}
+                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg transition-colors shrink-0">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-7 space-y-6">

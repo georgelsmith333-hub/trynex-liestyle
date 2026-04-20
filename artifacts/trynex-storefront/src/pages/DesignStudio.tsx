@@ -667,15 +667,18 @@ export default function DesignStudio() {
         ? (settings.studioMugPrice || 799)
         : (settings.studioTshirtPrice || 1099);
 
-      // Save full session for cart re-edit
+      // Save full session for cart re-edit — MUST match the studio's
+      // DraftPayload format exactly (version, color (not selectedColor),
+      // size (not selectedSize)) so the restore effect accepts it.
       const sessionId = Date.now().toString(36);
       try {
         localStorage.setItem(`studio_session_${sessionId}`, JSON.stringify({
-          version: 1,
+          version: DRAFT_VERSION,
           layers,
           productId: selectedProduct.id,
-          selectedColor,
-          selectedSize,
+          color: selectedColor,
+          size: selectedSize,
+          savedAt: Date.now(),
         }));
       } catch { /* quota exceeded — re-edit won't be available but cart works fine */ }
 

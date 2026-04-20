@@ -520,6 +520,17 @@ export default function Account() {
                                   <p className="text-[10px] text-gray-400 capitalize">{order.paymentMethod}</p>
                                 </div>
                               </div>
+
+                              <div className="flex justify-end pt-2 border-t border-gray-100 mt-1">
+                                <Link
+                                  href={`/track?order=${encodeURIComponent(order.orderNumber)}&phone=${encodeURIComponent(customer?.phone || "")}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors hover:bg-orange-50"
+                                  style={{ color: '#E85D04', border: '1px solid #fed7aa' }}
+                                  data-testid={`button-track-order-${order.orderNumber}`}
+                                >
+                                  Track this order <ArrowRight className="w-3 h-3" />
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         ))}

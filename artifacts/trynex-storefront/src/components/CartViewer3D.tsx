@@ -5,8 +5,41 @@
 ════════════════════════════════════════════════════════ */
 import { useMemo, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
+import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+
+/* ── Realistic GLB shirt (shared with the studio) ── */
+function RealisticShirt({ designUrl, garmentColor }: { designUrl?: string; garmentColor: string }) {
+  const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
+  const shirtGeo = useMemo(() => {
+    let g: THREE.BufferGeometry | null = null;
+    scene.traverse(o => {
+      if ((o as THREE.Mesh).isMesh && !g) g = (o as THREE.Mesh).geometry as THREE.BufferGeometry;
+    });
+    return g;
+  }, [scene]);
+  const tex = useMemo(() => {
+    if (!designUrl) return null;
+    const t = new THREE.TextureLoader().load(designUrl);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return t;
+  }, [designUrl]);
+  if (!shirtGeo) return null;
+  return (
+    <group scale={2.6}>
+      <mesh geometry={shirtGeo} castShadow receiveShadow>
+        <meshStandardMaterial color={garmentColor} roughness={0.78} metalness={0.02} />
+      </mesh>
+      {tex && (
+        <mesh geometry={shirtGeo} scale={1.001}>
+          <meshStandardMaterial map={tex} transparent roughness={0.65} depthWrite={false} alphaTest={0.02} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+useGLTF.preload("/models/tshirt.glb");
 
 /* ── Garment panel shape (tee silhouette) ──────────── */
 function useGarmentGeo(width: number, height: number) {
@@ -202,6 +235,8 @@ export default function CartViewer3D({ garmentColor, category, frontTexUrl, back
 
         {isMug ? (
           <MugBody designUrl={frontTexUrl} garmentColor={garmentColor} />
+        ) : category === "tshirt" ? (
+          <RealisticShirt designUrl={frontTexUrl} garmentColor={garmentColor} />
         ) : (
           <>
             <GarmentPanel designUrl={frontTexUrl} garmentColor={garmentColor} side="front" zOffset={0.02} />
