@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { Readable } from "stream";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 // Hand-rolled validator (api-server has no zod dep). Limit upload size to
@@ -22,9 +21,8 @@ const objectStorageService = new ObjectStorageService();
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Returns a presigned URL the client uploads the file to directly.
+ * The active backend (R2 / S3 / Replit sidecar) is auto-detected at runtime.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = parseUploadBody(req.body);
@@ -35,13 +33,12 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 
   try {
     const { name, size, contentType } = parsed.data;
-
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-
     res.json({
       uploadURL,
       objectPath,
+      backend: objectStorageService.getBackendName(),
       metadata: { name, size, contentType },
     });
   } catch (error) {
@@ -51,79 +48,30 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 });
 
 /**
- * GET /storage/public-objects/*
- *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
+ * GET /storage/public-objects/<path>
+ * Serves files from the public area (R2/S3 prefix `public/` or
+ * PUBLIC_OBJECT_SEARCH_PATHS for the Replit sidecar).
  */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
-    const file = await objectStorageService.searchPublicObject(filePath);
-    if (!file) {
-      res.status(404).json({ error: "File not found" });
-      return;
-    }
-
-    const response = await objectStorageService.downloadObject(file);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    await objectStorageService.streamPublicObject(filePath, res);
   } catch (error) {
     req.log.error({ err: error }, "Error serving public object");
-    res.status(500).json({ error: "Failed to serve public object" });
+    if (!res.headersSent) res.status(500).json({ error: "Failed to serve public object" });
   }
 });
 
 /**
- * GET /storage/objects/*
- *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * GET /storage/objects/<id>
+ * Serves a private uploaded object (e.g. the original print-ready design file).
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
-    const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
-
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    await objectStorageService.streamPrivateObject(`/objects/${wildcardPath}`, res);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");
@@ -131,7 +79,32 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       return;
     }
     req.log.error({ err: error }, "Error serving object");
-    res.status(500).json({ error: "Failed to serve object" });
+    if (!res.headersSent) res.status(500).json({ error: "Failed to serve object" });
+  }
+});
+
+/**
+ * GET /storage/objects/sign-download?path=/objects/<id>
+ * Returns a short-lived presigned download URL for the admin
+ * "Download original print file" button. Admin-only.
+ */
+import { requireAdmin } from "../middlewares/adminAuth";
+router.get("/storage/sign-download", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const path = String(req.query.path || "");
+    if (!path.startsWith("/objects/")) {
+      res.status(400).json({ error: "validation_error", message: "path must start with /objects/" });
+      return;
+    }
+    const url = await objectStorageService.getObjectDownloadURL(path, 900);
+    res.json({ url, expiresInSeconds: 900 });
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    req.log.error({ err: error }, "Error signing download URL");
+    res.status(500).json({ error: "Failed to sign download URL" });
   }
 });
 
