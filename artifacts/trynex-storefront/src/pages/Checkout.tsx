@@ -626,7 +626,12 @@ export default function Checkout() {
             <Phone className="w-4 h-4" /> Call Us — {WHATSAPP_NUMBER_LOCAL}
           </a>
 
-          <button onClick={() => setLocation(`/track`)}
+          <button
+            onClick={() => {
+              const oNum = encodeURIComponent(String(createdOrder?.orderNumber || ''));
+              const ph = encodeURIComponent(String(createdOrder?.customerPhone || ''));
+              setLocation(`/track?order=${oNum}&phone=${ph}`);
+            }}
             className="btn-glow w-full py-4 rounded-xl font-bold text-white text-base mb-3"
             style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 6px 24px rgba(232,93,4,0.35)' }}>
             Track My Order

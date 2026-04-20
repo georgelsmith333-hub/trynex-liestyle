@@ -253,16 +253,37 @@ router.get("/orders", requireAdmin, async (req, res) => {
 
 router.post("/orders/track", async (req, res) => {
   try {
-    const { orderNumber, email } = req.body;
-    if (!orderNumber || !email) {
-      res.status(400).json({ error: "validation_error", message: "orderNumber and email are required" });
+    const { orderNumber, email, phone } = req.body;
+    if (!orderNumber) {
+      res.status(400).json({ error: "validation_error", message: "orderNumber is required" });
       return;
     }
-    const [order] = await db.select().from(ordersTable).where(
-      and(eq(ordersTable.orderNumber, orderNumber), eq(ordersTable.customerEmail, email))
-    );
+    // Accept email OR phone — at least one identifier must be provided
+    const identifier = (email || "").trim().toLowerCase();
+    const phoneClean = (phone || "").replace(/\D/g, "").slice(-10);
+    if (!identifier && !phoneClean) {
+      res.status(400).json({ error: "validation_error", message: "email or phone is required" });
+      return;
+    }
+    // Try matching by orderNumber + email first, then fall back to phone
+    let order: typeof ordersTable.$inferSelect | undefined;
+    if (identifier) {
+      [order] = await db.select().from(ordersTable).where(
+        and(eq(ordersTable.orderNumber, orderNumber), eq(ordersTable.customerEmail, identifier))
+      );
+    }
+    if (!order && phoneClean) {
+      // Match by last 10 digits of stored phone
+      const [byPhone] = await db.select().from(ordersTable).where(
+        eq(ordersTable.orderNumber, orderNumber)
+      );
+      if (byPhone) {
+        const storedPhone = (byPhone.customerPhone || "").replace(/\D/g, "").slice(-10);
+        if (storedPhone === phoneClean) order = byPhone;
+      }
+    }
     if (!order) {
-      res.status(404).json({ error: "not_found", message: "Order not found" });
+      res.status(404).json({ error: "not_found", message: "Order not found. Check your order number and contact details." });
       return;
     }
     res.json(mapOrder(order));

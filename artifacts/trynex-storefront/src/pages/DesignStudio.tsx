@@ -782,20 +782,20 @@ export default function DesignStudio() {
                 <Trash2 className="w-3 h-3" /> Clear draft
               </button>
             )}
-            {/* Undo / Redo */}
+            {/* Undo / Redo — hidden on mobile to save space */}
             <button onClick={undo} disabled={!canUndo}
-              className="p-2 rounded-xl text-gray-600 disabled:opacity-30"
+              className="hidden sm:flex p-2 rounded-xl text-gray-600 disabled:opacity-30"
               style={{ background: "#f3f4f6" }} title="Undo (Ctrl+Z)">
               <Undo2 className="w-4 h-4" />
             </button>
             <button onClick={redo} disabled={!canRedo}
-              className="p-2 rounded-xl text-gray-600 disabled:opacity-30"
+              className="hidden sm:flex p-2 rounded-xl text-gray-600 disabled:opacity-30"
               style={{ background: "#f3f4f6" }} title="Redo (Ctrl+Y)">
               <Redo2 className="w-4 h-4" />
             </button>
-            {/* 2D / 3D toggle (visible on mobile too — it's a hero feature) */}
+            {/* 2D / 3D toggle — hidden on mobile (shown below product tabs instead) */}
             {supports3D && (
-              <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
+              <div className="hidden sm:flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
                 <button
                   onClick={() => setViewMode("2d")}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
@@ -824,15 +824,17 @@ export default function DesignStudio() {
               {showPrintZone ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
               Print Zone
             </button>
+            {/* Add to Cart — compact on mobile (icon only + short label) */}
             <motion.button
               onClick={handleAddToCart}
               disabled={layers.length === 0 || isAddingToCart}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40"
               style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.35)" }}
             >
               {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-              Add to Cart
+              <span className="hidden sm:inline">Add to Cart</span>
+              <span className="sm:hidden">Cart</span>
             </motion.button>
           </div>
         </div>
@@ -843,6 +845,40 @@ export default function DesignStudio() {
 
           {/* ═══════ LEFT: MOCKUP CANVAS ═══════ */}
           <div className="flex-1 min-w-0">
+            {/* Mobile 2D/3D toggle — shown only on small screens above mockup */}
+            {supports3D && (
+              <div className="flex sm:hidden items-center justify-between mb-3">
+                <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }}>
+                  <button
+                    onClick={() => setViewMode("2d")}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-colors"
+                    style={{ background: viewMode === "2d" ? "#fff4ee" : "white", color: viewMode === "2d" ? "#E85D04" : "#6b7280" }}
+                  >
+                    <Image2D className="w-3.5 h-3.5" /> 2D
+                  </button>
+                  <button
+                    onClick={() => setViewMode("3d")}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-colors"
+                    style={{ background: viewMode === "3d" ? "#fff4ee" : "white", color: viewMode === "3d" ? "#E85D04" : "#6b7280", borderLeft: "1px solid #e5e7eb" }}
+                  >
+                    <Box className="w-3.5 h-3.5" /> 3D
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={undo} disabled={!canUndo}
+                    className="p-2 rounded-xl text-gray-500 disabled:opacity-30"
+                    style={{ background: "#f3f4f6" }} title="Undo">
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={redo} disabled={!canRedo}
+                    className="p-2 rounded-xl text-gray-500 disabled:opacity-30"
+                    style={{ background: "#f3f4f6" }} title="Redo">
+                    <Redo2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Product tabs (scrollable on mobile) */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
               {PRODUCTS.map(prod => (

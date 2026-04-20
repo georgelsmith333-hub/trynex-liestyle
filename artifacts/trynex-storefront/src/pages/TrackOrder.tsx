@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useTrackOrder } from "@workspace/api-client-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { OrderSkeleton } from "@/components/ui/skeleton";
 import {
@@ -57,40 +56,81 @@ function getOrderStepIndex(status: string): number {
   return map[status] ?? 0;
 }
 
+type TrackBody = { orderNumber: string; email?: string; phone?: string };
+
+async function fetchTrack(body: TrackBody, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(getApiUrl('/api/orders/track'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (res.ok) return await res.json();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function buildTrackBody(oNum: string, identifier: string): TrackBody {
+  const isEmail = identifier.includes("@");
+  return isEmail
+    ? { orderNumber: oNum.toUpperCase(), email: identifier.toLowerCase().trim() }
+    : { orderNumber: oNum.toUpperCase(), phone: identifier.trim() };
+}
+
 export default function TrackOrder() {
   const settings = useSiteSettings();
   const [orderNumber, setOrderNumber] = useState("");
-  const [email, setEmail] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [trackError, setTrackError] = useState(false);
   const [liveOrderData, setLiveOrderData] = useState<Record<string, unknown> | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const didAutoTrack = useRef(false);
+  const identifierRef = useRef("");
 
-  const { mutateAsync: track, data: order, isPending, error, reset } = useTrackOrder();
-
+  // Auto-track when redirected from order completion (URL has ?order=&phone= or ?order=&email=)
   useEffect(() => {
-    if (order) {
-      setLiveOrderData(order as unknown as Record<string, unknown>);
+    if (didAutoTrack.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const oNum = (params.get("order") || params.get("orderNumber") || "").toUpperCase();
+    const identifier = params.get("phone") || params.get("email") || "";
+    if (oNum && identifier) {
+      didAutoTrack.current = true;
+      setOrderNumber(oNum);
+      setEmailOrPhone(identifier);
+      identifierRef.current = identifier;
+      setHasSearched(true);
+      setIsPending(true);
+      setTrackError(false);
+      const ctrl = new AbortController();
+      fetchTrack(buildTrackBody(oNum, identifier), ctrl.signal).then(d => {
+        if (d) setLiveOrderData(d);
+        else setTrackError(true);
+      }).finally(() => setIsPending(false));
+      return () => ctrl.abort();
     }
-  }, [order]);
+    return undefined;
+  }, []);
 
+  // Live polling every 12 seconds once we have order data
   useEffect(() => {
     if (liveOrderData && liveOrderData.orderNumber) {
       setIsPolling(true);
       const poll = async () => {
-        try {
-          const res = await fetch(getApiUrl('/api/orders/track'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderNumber: liveOrderData.orderNumber, email: email || (liveOrderData as Record<string, unknown>).customerEmail })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setLiveOrderData(data);
-          }
-        } catch { /* polling error ignored */ }
+        const id = identifierRef.current || emailOrPhone;
+        if (!id) return;
+        const d = await fetchTrack(
+          buildTrackBody(String(liveOrderData.orderNumber), id),
+          AbortSignal.timeout(10000)
+        );
+        if (d) setLiveOrderData(d);
       };
-      pollingRef.current = setInterval(poll, 30000);
+      pollingRef.current = setInterval(poll, 12000);
       return () => {
         if (pollingRef.current) clearInterval(pollingRef.current);
         setIsPolling(false);
@@ -99,13 +139,28 @@ export default function TrackOrder() {
     return undefined;
   }, [liveOrderData?.orderNumber]);
 
-  const handleTrack = async (e: React.FormEvent) => {
+  const handleTrack = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const oNum = orderNumber.trim().toUpperCase();
+    const id = emailOrPhone.trim();
+    if (!oNum || !id) return;
+    identifierRef.current = id;
     setHasSearched(true);
+    setIsPending(true);
+    setTrackError(false);
     setLiveOrderData(null);
     if (pollingRef.current) clearInterval(pollingRef.current);
-    await track({ data: { orderNumber, email: email || 'noemail@trynex.com' } }).catch(() => {});
-  };
+    const d = await fetchTrack(buildTrackBody(oNum, id), AbortSignal.timeout(15000));
+    if (d) {
+      setLiveOrderData(d);
+      setTrackError(false);
+    } else {
+      setTrackError(true);
+    }
+    setIsPending(false);
+  }, [orderNumber, emailOrPhone]);
+
+  const error = trackError;
 
   const displayOrder = liveOrderData as Record<string, unknown> | null;
   const stepIdx = displayOrder ? getOrderStepIndex(displayOrder.status as string) : -1;
@@ -178,19 +233,20 @@ export default function TrackOrder() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">
-                    Email Address (used at checkout)
+                    Email or Phone Number *
                   </label>
                   <input
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
+                    required
+                    type="text"
+                    inputMode="text"
+                    autoComplete="off"
                     autoCapitalize="off"
                     autoCorrect="off"
                     spellCheck={false}
                     enterKeyHint="search"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    placeholder="your@email.com or 01XXXXXXXXX"
+                    value={emailOrPhone}
+                    onChange={e => setEmailOrPhone(e.target.value)}
                     className={inputClass}
                     style={inputStyle}
                   />
@@ -198,7 +254,7 @@ export default function TrackOrder() {
               </div>
               <button
                 type="submit"
-                disabled={isPending || !orderNumber}
+                disabled={isPending || !orderNumber || !emailOrPhone}
                 className="btn-glow w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2.5 text-base disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 6px 24px rgba(232,93,4,0.35)' }}
               >
