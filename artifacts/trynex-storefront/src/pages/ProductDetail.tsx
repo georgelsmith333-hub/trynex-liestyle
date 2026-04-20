@@ -260,8 +260,8 @@ export default function ProductDetail() {
   const isSlug = !isNumeric && !!id && id.length > 0;
 
   const { data: productFromHook, isLoading: hookLoading, error: hookError } = useGetProduct(isNumeric ? numericId : 0, {
-    query: { enabled: isNumeric, retry: 2, staleTime: 30000 } as any
-  });
+    query: { enabled: isNumeric, retry: 2, staleTime: 30000 }
+  } as any);
 
   const [slugProduct, setSlugProduct] = useState<any>(null);
   const [slugLoading, setSlugLoading] = useState(isSlug);
@@ -285,10 +285,20 @@ export default function ProductDetail() {
   const isValidId = isNumeric || isSlug;
 
   const { data: relatedData } = useListProducts(
-    { limit: 4, categoryId: product?.categoryId || undefined },
+    { limit: 4, category: product?.categoryId ? String(product.categoryId) : undefined } as any,
     { query: { enabled: !!product, staleTime: 60000 } as any }
   );
   const relatedProducts = (relatedData?.products || []).filter(p => p.id !== productId).slice(0, 4);
+
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    if (!productId) return;
+    fetch(getApiUrl(`/api/reviews/${productId}`))
+      .then(res => res.json())
+      .then(data => setStats(data.stats || null))
+      .catch(() => {});
+  }, [productId]);
 
   const [, navigate] = useLocation();
   const { addToCart } = useCartActions();
@@ -512,25 +522,26 @@ export default function ProductDetail() {
             "@context": "https://schema.org",
             "@type": "Product",
             "name": product.name,
-            "description": product.description || `Premium ${product.name} from TryNex Lifestyle`,
+            "description": product.description || `Buy ${product.name} from TryNex Lifestyle. Premium quality, fast delivery across Bangladesh.`,
             "image": product.imageUrl || "",
-            "sku": String(product.id),
-            "brand": { "@type": "Brand", "name": "TryNex Lifestyle" },
+            "sku": `TN-${product.id}`,
+            "brand": { "@type": "Brand", "name": "TryNex" },
             "offers": {
               "@type": "Offer",
               "priceCurrency": "BDT",
               "price": product.discountPrice || product.price,
               "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-              "seller": { "@type": "Organization", "name": "TryNex Lifestyle" },
               "url": `https://trynexshop.com/product/${product.id}`,
+              "itemCondition": "https://schema.org/NewCondition",
+              "seller": { "@type": "Organization", "name": "TryNex Lifestyle" }
             },
-            ...(product.reviewCount && product.reviewCount > 0 ? {
+            ...(stats?.total > 0 ? {
               "aggregateRating": {
                 "@type": "AggregateRating",
-                "ratingValue": rating,
-                "reviewCount": product.reviewCount,
-              },
-            } : {}),
+                "ratingValue": stats.average || rating,
+                "reviewCount": stats.total
+              }
+            } : {})
           },
           {
             "@context": "https://schema.org",

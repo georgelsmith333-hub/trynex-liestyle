@@ -405,7 +405,7 @@ router.post("/orders", async (req, res) => {
     // Studio items: price is derived server-side from settings; client price is ignored
     const studioOrderItems = studioItems.map((item: any) => {
       let note: any = {};
-      try { note = JSON.parse(item.customNote ?? "{}"); } catch {}
+      try { note = JSON.parse(item.customNote ?? "{}"); } catch (err) { logger.warn({ err }, "Failed to parse customNote"); }
       // Determine product type from the studio note to apply the correct price
       const isMug = (note.product ?? "").toLowerCase().includes("mug");
       const serverPrice = isMug ? studioMugPrice : studioTshirtPrice;
@@ -599,12 +599,11 @@ router.post("/orders", async (req, res) => {
           const [referral] = await tx
             .select()
             .from(referralsTable)
-            .where(eq(referralsTable.code, promoCodeNormalized));
+            .where(eq(referralsTable.referralCode, promoCodeNormalized));
 
           if (
             !referral ||
-            !referral.active ||
-            (referral.maxUses && referral.maxUses > 0 && (referral.totalUses ?? 0) >= referral.maxUses)
+            !referral.active
           ) {
             throw new Error("PROMO_INVALID");
           }
@@ -613,17 +612,17 @@ router.post("/orders", async (req, res) => {
             throw new Error("SELF_REFERRAL");
           }
 
-          const discountPct = referral.discountPercent || 10;
+          const discountPct = 10;
           validatedPromoDiscount = Math.round(subtotal * discountPct / 100);
-          validatedPromoCode = referral.code;
+          validatedPromoCode = referral.referralCode;
 
           await tx
             .update(referralsTable)
             .set({
-              totalUses: sql`COALESCE(total_uses, 0) + 1`,
+              usedCount: sql`COALESCE(used_count, 0) + 1`,
               totalEarnings: sql`COALESCE(total_earnings, 0) + ${Math.round(subtotal * 0.10)}`,
             })
-            .where(eq(referralsTable.code, referral.code));
+            .where(eq(referralsTable.referralCode, referral.referralCode));
         }
 
         validatedPromoDiscount = Math.min(validatedPromoDiscount, subtotal + shippingCost);
@@ -657,8 +656,8 @@ router.post("/orders", async (req, res) => {
     const mapped = mapOrder(order);
     res.status(201).json(mapped);
 
-    sendWhatsAppNotification(mapped).catch(() => {});
-    checkLowStock().catch(() => {});
+    sendWhatsAppNotification(mapped).catch((err) => logger.warn({ err }, "WhatsApp notification failed (fire-and-forget)"));
+    checkLowStock().catch((err) => logger.warn({ err }, "checkLowStock failed (fire-and-forget)"));
     sendMetaCAPIEvent({
       eventName: "Purchase",
       orderId: mapped.orderNumber,
@@ -672,7 +671,7 @@ router.post("/orders", async (req, res) => {
       })),
       email: mapped.customerEmail,
       phone: mapped.customerPhone,
-    }).catch(() => {});
+    }).catch((err) => logger.warn({ err }, "Meta CAPI event failed (fire-and-forget)"));
   } catch (err: any) {
     if (err?.message === "PROMO_INVALID") {
       res.status(400).json({ error: "promo_invalid", message: "Promo code is invalid, expired, or has reached its usage limit" });
@@ -753,7 +752,7 @@ router.put("/orders/:id/status", requireAdmin, async (req, res) => {
     const mapped = mapOrder(order);
     res.json(mapped);
 
-    sendStatusUpdateNotification(mapped, status).catch(() => {});
+    sendStatusUpdateNotification(mapped, status).catch((err) => logger.warn({ err }, "sendStatusUpdateNotification failed (fire-and-forget)"));
   } catch (err) {
     req.log.error({ err }, "Failed to update order status");
     res.status(500).json({ error: "internal_error", message: "Failed to update order status" });

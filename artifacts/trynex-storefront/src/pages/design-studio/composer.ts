@@ -31,21 +31,18 @@ export type ComposerLayer = ComposerImageLayer | ComposerTextLayer;
 export interface ComposerPrintZone { x: number; y: number; w: number; h: number; }
 
 interface ComposeOptions {
-  /** target canvas (the function will set width/height to outW × outH) */
   canvas: HTMLCanvasElement;
-  /** 400-wide source coordinate space height of the garment */
+  /** The coordinate space height — for the unified 1000×1000 viewBox this is 1000 */
   baseHeight: number;
   printZone: ComposerPrintZone;
   layers: ComposerLayer[];
-  /** garment fill color; pass `null` for a transparent background (texture overlay use case) */
+  /** garment fill color; pass `null` for a transparent background */
   garmentColor: string | null;
   outW: number;
   outH: number;
-  /** pre-loaded image cache (src → HTMLImageElement) to avoid reload thrash */
   imageCache?: Map<string, HTMLImageElement>;
-  /** when true, only paint inside the print zone (matches DesignStudio clipPath) */
   clipToPrintZone?: boolean;
-  /** "multiply" (default) makes ink react with garment color; "source-over" for naked print */
+  /** blend mode for TEXT layers (multiply gives fabric-ink feel); image layers always use source-over so photos are not tinted */
   blendMode?: GlobalCompositeOperation;
 }
 
@@ -81,7 +78,8 @@ function layerGeom(l: ComposerLayer, pz: ComposerPrintZone) {
 
 /**
  * Compose layers onto a canvas. All async image loads are awaited.
- * Returns the same canvas for chaining.
+ * Coordinate space: unified 1000×1000 (matches SVG viewBox "0 0 1000 1000").
+ * Image layers always use source-over (no tinting); text layers use blendMode (default "multiply").
  */
 export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasElement> {
   const { canvas, baseHeight, printZone, layers, garmentColor, outW, outH, imageCache, clipToPrintZone = true, blendMode = "multiply" } = opts;
@@ -90,11 +88,10 @@ export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasEle
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  // The 2D editor uses a 400-wide coordinate space (baseHeight tall) for its garment.
-  const sx = outW / 400;
+  // Scale from the 1000×1000 coordinate space to canvas pixels
+  const sx = outW / baseHeight;
   const sy = outH / baseHeight;
 
-  // Clear & fill
   ctx.clearRect(0, 0, outW, outH);
   if (garmentColor) {
     ctx.fillStyle = garmentColor;
@@ -118,12 +115,14 @@ export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasEle
     if (l.type === "image") {
       try {
         const img = await loadImage(l.src, imageCache);
-        ctx.globalCompositeOperation = blendMode;
+        // Always source-over for photos — multiply would tint them with garment color
+        ctx.globalCompositeOperation = "source-over";
         ctx.drawImage(img, -(g.w * sx) / 2, -(g.h * sy) / 2, g.w * sx, g.h * sy);
       } catch {
         /* missing image — skip */
       }
     } else {
+      ctx.globalCompositeOperation = blendMode;
       ctx.fillStyle = l.color;
       ctx.font = `${l.fontStyle} ${l.fontWeight} ${Math.round(l.fontSize * l.transform.scale * sy)}px ${l.fontFamily}`;
       ctx.textAlign = "center";
@@ -134,6 +133,136 @@ export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasEle
   }
 
   if (clipToPrintZone) ctx.restore();
+
+  return canvas;
+}
+
+/**
+ * Compose a full garment + design snapshot for the cart thumbnail.
+ * Draws: garment photo → color tint (if non-white) → design layers on top.
+ * Uses the 1000×1000 coordinate space matching the SVG viewBox.
+ */
+export async function composeGarmentMockup(opts: {
+  canvas: HTMLCanvasElement;
+  garmentSrc: string;
+  garmentColor: string;
+  printZone: ComposerPrintZone;
+  layers: ComposerLayer[];
+  outSize: number;
+  imageCache?: Map<string, HTMLImageElement>;
+}): Promise<HTMLCanvasElement> {
+  const { canvas, garmentSrc, garmentColor, printZone, layers, outSize, imageCache } = opts;
+  canvas.width = outSize;
+  canvas.height = outSize;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const s = outSize / 1000;
+
+  ctx.clearRect(0, 0, outSize, outSize);
+
+  // 1. Draw garment PNG
+  try {
+    const garmentImg = await loadImage(garmentSrc, imageCache);
+    ctx.drawImage(garmentImg, 0, 0, outSize, outSize);
+
+    // 2. Multiply-tint for non-white colors (matches GarmentSVG in mockups.tsx)
+    const r = parseInt(garmentColor.slice(1, 3), 16) || 0;
+    const g = parseInt(garmentColor.slice(3, 5), 16) || 0;
+    const b = parseInt(garmentColor.slice(5, 7), 16) || 0;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    if (luminance < 0.92) {
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = garmentColor;
+      ctx.fillRect(0, 0, outSize, outSize);
+      ctx.globalCompositeOperation = "source-over";
+    }
+  } catch {
+    ctx.fillStyle = garmentColor;
+    ctx.fillRect(0, 0, outSize, outSize);
+  }
+
+  // 3. Draw design layers at their correct 1000-unit positions
+  for (const layer of layers) {
+    if (!layer.visible) continue;
+    const geom = layerGeom(layer, printZone);
+    const cx = geom.cx * s;
+    const cy = geom.cy * s;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+    ctx.globalAlpha = layer.transform.opacity;
+
+    if (layer.type === "image") {
+      try {
+        const img = await loadImage(layer.src, imageCache);
+        const w = geom.w * s;
+        const h = geom.h * s;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      } catch {}
+    } else {
+      const fs = Math.round(layer.fontSize * layer.transform.scale * s);
+      ctx.fillStyle = layer.color;
+      ctx.font = `${layer.fontStyle} ${layer.fontWeight} ${fs}px ${layer.fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(layer.text, 0, 0);
+    }
+    ctx.restore();
+  }
+
+  return canvas;
+}
+
+/**
+ * Compose just the design as a texture for the 3D viewer.
+ * Transparent background; design placed at its 1000×1000 coordinate position.
+ * The output covers the full 1000-unit space so it UV-maps correctly onto the garment mesh.
+ */
+export async function composeDesignTexture(opts: {
+  canvas: HTMLCanvasElement;
+  printZone: ComposerPrintZone;
+  layers: ComposerLayer[];
+  outSize: number;
+  imageCache?: Map<string, HTMLImageElement>;
+}): Promise<HTMLCanvasElement> {
+  const { canvas, printZone, layers, outSize, imageCache } = opts;
+  canvas.width = outSize;
+  canvas.height = outSize;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const s = outSize / 1000;
+
+  ctx.clearRect(0, 0, outSize, outSize);
+
+  for (const layer of layers) {
+    if (!layer.visible) continue;
+    const geom = layerGeom(layer, printZone);
+    const cx = geom.cx * s;
+    const cy = geom.cy * s;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+    ctx.globalAlpha = layer.transform.opacity;
+
+    if (layer.type === "image") {
+      try {
+        const img = await loadImage(layer.src, imageCache);
+        const w = geom.w * s;
+        const h = geom.h * s;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      } catch {}
+    } else {
+      const fs = Math.round(layer.fontSize * layer.transform.scale * s);
+      ctx.fillStyle = layer.color;
+      ctx.font = `${layer.fontStyle} ${layer.fontWeight} ${fs}px ${layer.fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(layer.text, 0, 0);
+    }
+    ctx.restore();
+  }
 
   return canvas;
 }

@@ -39,7 +39,8 @@ router.get("/public-stats", async (_req, res) => {
     }
 
     res.json({ todayOrders, totalOrders, minutesSinceLastOrder });
-  } catch {
+  } catch (err) {
+    req.log.warn({ err }, "Failed to get public stats");
     res.json({ todayOrders: 0, totalOrders: 0, minutesSinceLastOrder: null });
   }
 });

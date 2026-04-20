@@ -31,28 +31,29 @@ export default function Products() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: categoriesData } = useListCategories();
+  const categories = categoriesData?.categories || [];
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const categorySlug = params.get("category");
-    if (categorySlug && categoriesData) {
-      const match = categoriesData.find(
+    if (categorySlug && categories.length > 0) {
+      const match = categories.find(
         (c) => c.slug?.toLowerCase() === categorySlug.toLowerCase() ||
                c.name?.toLowerCase().replace(/\s+/g, '-') === categorySlug.toLowerCase()
       );
       if (match) setActiveCategory(match.id);
     }
-  }, [categoriesData]);
+  }, [categories]);
 
   const { data: productsData, isLoading } = useListProducts({
     search: search || undefined,
-    categoryId: activeCategory,
+    category: activeCategory ? String(activeCategory) : undefined,
     limit: 48
   });
 
   const products = productsData?.products || [];
 
-  const sortedProducts = [...products].sort((a, b) => {
+  const sortedProducts = [...products].sort((a: any, b: any) => {
     if (sort === "price-asc") return (a.discountPrice || a.price) - (b.discountPrice || b.price);
     if (sort === "price-desc") return (b.discountPrice || b.price) - (a.discountPrice || a.price);
     if (sort === "name") return a.name.localeCompare(b.name);
@@ -60,21 +61,39 @@ export default function Products() {
     return 0;
   });
 
+  const activeCategoryData = useMemo(() => {
+    if (!activeCategory || categories.length === 0) return null;
+    return categories.find((c: any) => c.id === activeCategory);
+  }, [activeCategory, categories]);
+
+  const jsonLd = useMemo(() => {
+    const items = [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://trynexshop.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://trynexshop.com/products" },
+    ];
+    if (activeCategoryData) {
+      items.push({
+        "@type": "ListItem",
+        "position": 3,
+        "name": activeCategoryData.name,
+        "item": `https://trynexshop.com/products?category=${activeCategoryData.slug || activeCategoryData.name.toLowerCase().replace(/\s+/g, '-')}`
+      });
+    }
+    return {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": items,
+    };
+  }, [activeCategoryData]);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <SEOHead
-        title="Shop All Products"
-        description="Browse premium custom T-shirts, Hoodies, Mugs & Caps from TryNex Lifestyle. Best prices in Bangladesh with fast delivery to all 64 districts."
-        canonical="/products"
-        keywords="buy custom tshirt bangladesh, premium hoodie bd, custom mug dhaka, branded cap bangladesh"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://trynexshop.com/" },
-            { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://trynexshop.com/products" },
-          ],
-        }}
+        title={activeCategoryData ? `${activeCategoryData.name} Collection` : "Shop All Products"}
+        description={activeCategoryData ? `Browse our ${activeCategoryData.name} collection. Premium quality, best prices in Bangladesh.` : "Browse premium custom T-shirts, Hoodies, Mugs & Caps from TryNex Lifestyle. Best prices in Bangladesh with fast delivery to all 64 districts."}
+        canonical={activeCategoryData ? `/products?category=${activeCategoryData.slug || activeCategoryData.name.toLowerCase().replace(/\s+/g, '-')}` : "/products"}
+        keywords={activeCategoryData ? `${activeCategoryData.name.toLowerCase()}, buy ${activeCategoryData.name.toLowerCase()} bangladesh` : "buy custom tshirt bangladesh, premium hoodie bd, custom mug dhaka, branded cap bangladesh"}
+        jsonLd={jsonLd}
       />
       <Navbar />
 
@@ -173,7 +192,7 @@ export default function Products() {
                       <span>All Products</span>
                       <span className="text-xs font-bold opacity-60">{productsData?.total ?? 0}</span>
                     </button>
-                    {categoriesData?.map((cat) => (
+                    {categories.map((cat: any) => (
                       <button
                         key={cat.id}
                         onClick={() => setActiveCategory(cat.id)}
