@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { SEOHead } from "@/components/SEOHead";
 import { useCart } from "@/context/CartContext";
-import { useCreateOrder, CreateOrderRequestPaymentMethod } from "@workspace/api-client-react";
+import { useCreateOrder } from "@workspace/api-client-react";
 import { formatPrice, getApiUrl } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -383,7 +383,7 @@ export default function Checkout() {
           setServerWaking(true);
         }
         try {
-          order = await createOrder({ data: orderPayload });
+          order = await createOrder(orderPayload as any);
           lastErr = undefined;
           break;
         } catch (e) {
