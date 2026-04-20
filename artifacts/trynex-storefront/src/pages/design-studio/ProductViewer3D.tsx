@@ -7,7 +7,7 @@
 ════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
+import { OrbitControls, Environment, ContactShadows, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import {
   composeLayers,
@@ -161,6 +161,60 @@ function Mug({ wrapTex, garmentColor }: { wrapTex: THREE.CanvasTexture | null; g
   );
 }
 
+/* ──────────── REAL 3D T-SHIRT (GLB MESH) ─────────────
+   Replaces the flat-plane garment for the tshirt category.
+   Uses a real apparel mesh with proper sleeve/collar geometry,
+   fabric folds and realistic UV mapping baked into the GLB.    */
+function RealisticShirt({
+  texture,
+  garmentColor,
+}: {
+  texture: THREE.CanvasTexture | null;
+  garmentColor: string;
+}) {
+  const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
+
+  // Find first mesh in the GLB (the shirt body)
+  const shirtGeo = useMemo(() => {
+    let geo: THREE.BufferGeometry | null = null;
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh && !geo) {
+        geo = (obj as THREE.Mesh).geometry as THREE.BufferGeometry;
+      }
+    });
+    return geo;
+  }, [scene]);
+
+  if (!shirtGeo) return null;
+
+  return (
+    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={2.6}>
+      {/* base shirt — garment color */}
+      <mesh geometry={shirtGeo} castShadow receiveShadow>
+        <meshStandardMaterial
+          color={garmentColor}
+          roughness={0.78}
+          metalness={0.02}
+        />
+      </mesh>
+      {/* design overlay — slightly inflated to avoid z-fighting */}
+      {texture && (
+        <mesh geometry={shirtGeo} scale={1.001}>
+          <meshStandardMaterial
+            map={texture}
+            transparent
+            roughness={0.65}
+            metalness={0}
+            depthWrite={false}
+            alphaTest={0.02}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
+useGLTF.preload("/models/tshirt.glb");
+
 /* ──────────── TEE / LONGSLEEVE / HOODIE / CAP ──────── */
 /** A single garment "panel" — a slightly soft rounded plane with a shape mask
    matching the silhouette of the product. Done with a custom rounded-rect shape. */
@@ -293,6 +347,7 @@ export default function ProductViewer3D({
   activeFace = "front",
 }: ProductViewer3DProps) {
   const isMug = product.category === "mug";
+  const isTshirt = product.category === "tshirt";
 
   // For the mug, build a wide texture (~ 2π:height ratio) at high resolution
   const mugTex = useFaceTexture(
@@ -339,6 +394,13 @@ export default function ProductViewer3D({
 
         {isMug ? (
           <Mug wrapTex={mugTex} garmentColor={garmentColor} />
+        ) : isTshirt ? (
+          /* Real GLB shirt mesh — back face uses front design too
+             (garment is a single 3D mesh; user can orbit to see back) */
+          <RealisticShirt
+            texture={activeFace === "back" && backTex ? backTex : frontTex}
+            garmentColor={garmentColor}
+          />
         ) : (
           <>
             <GarmentPanel
