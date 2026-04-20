@@ -127,6 +127,16 @@ const PAYMENT_METHODS = [
   },
 ];
 
+/**
+ * 24/7 rolling flash-sale window. The day is split into four 6-hour
+ * blocks (BST): Midnight-6am, 6am-Noon, Noon-6pm, 6pm-Midnight. The
+ * countdown always points to the END of the current block, so a visitor
+ * at any hour sees a live "grab it before it ends" timer. The label
+ * cycles to keep the hero feeling fresh for return visitors.
+ *
+ * (Previously the timer went dormant 12am–6am BST, so 30%+ of late-night
+ *  shoppers saw an inactive 00:00:00 banner — killing urgency.)
+ */
 function getBSTSaleTarget(): { end: Date; label: string; active: boolean } {
   const now = new Date();
   const bstOffset = 6 * 60;
@@ -136,31 +146,28 @@ function getBSTSaleTarget(): { end: Date; label: string; active: boolean } {
   const todayUTCMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const bstMidnightUTC = new Date(todayUTCMidnight.getTime() - bstOffset * 60000);
 
-  const session1Start = 6 * 60;
-  const session1End = 16 * 60;
-  const session2Start = 16 * 60 + 1;
-  const session2End = 23 * 60 + 59;
+  // 6-hour boundaries in BST minutes-of-day
+  const blocks: Array<{ end: number; label: string }> = [
+    { end:  6 * 60, label: "Midnight Flash Sale" },   //  0–6am
+    { end: 12 * 60, label: "Morning Mega Sale" },     //  6am–12pm
+    { end: 18 * 60, label: "Afternoon Hot Deals" },   // 12pm–6pm
+    { end: 24 * 60, label: "Evening Grand Sale" },    //  6pm–12am
+  ];
 
-  if (bstMinutes >= session1Start && bstMinutes < session1End) {
-    return {
-      end: new Date(bstMidnightUTC.getTime() + session1End * 60000),
-      label: "Morning Sale",
-      active: true,
-    };
+  for (const block of blocks) {
+    if (bstMinutes < block.end) {
+      return {
+        end: new Date(bstMidnightUTC.getTime() + block.end * 60000),
+        label: block.label,
+        active: true,
+      };
+    }
   }
-
-  if (bstMinutes >= session2Start && bstMinutes <= session2End) {
-    return {
-      end: new Date(bstMidnightUTC.getTime() + session2End * 60000),
-      label: "Evening Sale",
-      active: true,
-    };
-  }
-
+  // Fallback (shouldn't hit) — point to next midnight
   return {
-    end: new Date(bstMidnightUTC.getTime() + session1Start * 60000 + (bstMinutes >= session2End ? 86400000 : 0)),
-    label: "Next Sale Starts In",
-    active: false,
+    end: new Date(bstMidnightUTC.getTime() + 24 * 60 * 60000),
+    label: "Flash Sale",
+    active: true,
   };
 }
 
@@ -906,62 +913,132 @@ export default function Home() {
                 </MagneticButton>
               </motion.div>
 
-              {/* Mobile-only compact product visual */}
+              {/* Mobile-only PREMIUM bestseller showcase — clickable, animated,
+                   3D-ish (parallax tilt + floating depth), drives shoppers
+                   straight into the catalog/design studio. Replaces the
+                   previous static "TN 4.9 Bestseller" card the user flagged
+                   as flat & uninspiring. */}
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="lg:hidden mx-auto mb-6 w-full max-w-[360px]"
-                aria-hidden="true"
+                initial={{ opacity: 0, y: 24, rotateX: -8 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                transition={{ duration: 0.7, delay: 0.4, type: "spring", stiffness: 90 }}
+                whileHover={{ y: -4, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="lg:hidden mx-auto mb-6 w-full max-w-[380px]"
+                style={{ perspective: "800px", transformStyle: "preserve-3d" }}
               >
-                <div
-                  className="relative flex items-center gap-3 rounded-2xl overflow-hidden p-3"
-                  style={{
-                    height: '96px',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #fff8f2 100%)',
-                    boxShadow: '0 12px 28px rgba(232,93,4,0.14), 0 2px 8px rgba(0,0,0,0.05)',
-                    border: '1px solid rgba(232,93,4,0.14)',
-                  }}
+                <Link
+                  href="/products"
+                  className="group block"
+                  data-testid="hero-bestseller-card"
+                  aria-label="Shop our bestselling Premium Custom Tee"
                 >
                   <div
-                    className="absolute top-0 left-0 right-0 h-[3px]"
-                    style={{ background: 'linear-gradient(90deg, #E85D04, #FB8500, #fbd580)' }}
-                  />
-                  <div
-                    className="relative flex-shrink-0 flex items-center justify-center rounded-xl"
+                    className="relative overflow-hidden rounded-3xl p-4"
                     style={{
-                      width: '72px',
-                      height: '72px',
-                      background: 'linear-gradient(145deg, #fff4ee, #ffe8d4)',
-                      border: '1px solid rgba(232,93,4,0.12)',
+                      background: "linear-gradient(135deg, #ffffff 0%, #fff4ea 50%, #ffe6d2 100%)",
+                      boxShadow:
+                        "0 20px 40px -10px rgba(232,93,4,0.30), 0 8px 16px -4px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+                      border: "1px solid rgba(232,93,4,0.18)",
                     }}
                   >
-                    <svg width="56" height="56" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path d="M60 50 L30 90 L55 100 L55 185 L165 185 L165 100 L190 90 L160 50 C155 55 140 65 110 65 C80 65 65 55 60 50Z" fill="#F97316" opacity="0.95" />
-                      <path d="M80 55 Q110 75 140 55 Q130 62 110 65 Q90 62 80 55Z" fill="#EA580C" />
-                      <path d="M75 70 Q110 68 145 70 L148 185 L72 185Z" fill="rgba(255,255,255,0.08)" />
-                      <text x="110" y="135" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="22" fill="white" opacity="0.95">TN</text>
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black text-white"
-                        style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}
+                    {/* Animated shimmer sweep */}
+                    <span
+                      className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"
+                      style={{
+                        background:
+                          "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.65) 50%, transparent 70%)",
+                      }}
+                    />
+                    {/* Glowing accent ribbon */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-[3px]"
+                      style={{
+                        background: "linear-gradient(90deg, #E85D04, #FB8500, #ffd166, #FB8500, #E85D04)",
+                        backgroundSize: "200% 100%",
+                        animation: "ribbonShine 3s linear infinite",
+                      }}
+                    />
+
+                    <div className="relative flex items-center gap-4">
+                      {/* Floating 3D-styled tee illustration */}
+                      <motion.div
+                        animate={{ y: [0, -3, 0], rotateZ: [-1.5, 1.5, -1.5] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="relative flex-shrink-0 flex items-center justify-center rounded-2xl"
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          background: "linear-gradient(145deg, #fff4ee, #ffd9b8)",
+                          border: "1px solid rgba(232,93,4,0.18)",
+                          boxShadow:
+                            "inset 0 2px 6px rgba(255,255,255,0.9), 0 6px 14px rgba(232,93,4,0.18)",
+                        }}
                       >
-                        <Star className="w-2.5 h-2.5 fill-white" />
-                        4.9
-                      </span>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate">
-                        Bestseller
-                      </span>
+                        <svg width="62" height="62" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                          <defs>
+                            <linearGradient id="teeGrad" x1="0" y1="0" x2="1" y2="1">
+                              <stop offset="0%" stopColor="#FB8500" />
+                              <stop offset="100%" stopColor="#E85D04" />
+                            </linearGradient>
+                          </defs>
+                          <path d="M60 50 L30 90 L55 100 L55 185 L165 185 L165 100 L190 90 L160 50 C155 55 140 65 110 65 C80 65 65 55 60 50Z" fill="url(#teeGrad)" />
+                          <path d="M80 55 Q110 75 140 55 Q130 62 110 65 Q90 62 80 55Z" fill="rgba(0,0,0,0.18)" />
+                          <path d="M75 70 Q110 68 145 70 L148 185 L72 185Z" fill="rgba(255,255,255,0.10)" />
+                          <text x="110" y="138" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="26" fill="white" opacity="0.95">TN</text>
+                        </svg>
+                        {/* Sparkle */}
+                        <span
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full"
+                          style={{
+                            background: "radial-gradient(circle, #fff 0%, #ffd166 50%, transparent 70%)",
+                            animation: "sparkle 2s ease-in-out infinite",
+                          }}
+                        />
+                      </motion.div>
+
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black text-white"
+                            style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 2px 6px rgba(232,93,4,0.4)" }}
+                          >
+                            <Star className="w-2.5 h-2.5 fill-white" /> 4.9
+                          </span>
+                          <span
+                            className="inline-block px-2 py-0.5 rounded-md text-[9px] font-black text-white uppercase tracking-wider"
+                            style={{ background: "linear-gradient(135deg, #dc2626, #f97316)" }}
+                          >
+                            🔥 Hot
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                            #1 Bestseller
+                          </span>
+                        </div>
+                        <p className="text-base font-black text-gray-900 leading-tight">
+                          Premium Custom Tee
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] font-bold line-through text-gray-400">৳899</span>
+                          <span className="text-sm font-black" style={{ color: "var(--color-primary)" }}>
+                            ৳599
+                          </span>
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md text-white" style={{ background: "#16a34a" }}>
+                            -33%
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-0.5 font-medium">
+                          Tap to shop &nbsp;<span className="text-orange-500">→</span>
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm font-black text-gray-900 truncate">Premium Custom Tee</p>
-                    <p className="text-[11px] font-bold mt-0.5" style={{ color: 'var(--color-primary)' }}>
-                      Starting ৳599
-                    </p>
+
+                    <style>{`
+                      @keyframes ribbonShine { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+                      @keyframes sparkle { 0%, 100% { opacity: 0.4; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+                    `}</style>
                   </div>
-                </div>
+                </Link>
               </motion.div>
 
               {/* Feature mini-badges */}

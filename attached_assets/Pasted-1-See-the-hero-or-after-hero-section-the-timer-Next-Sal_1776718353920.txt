@@ -1,0 +1,26 @@
+1. See the hero or after hero section the timer : Next Sale Starts In
+
+0
+0
+HRS
+
+0
+0
+MIN
+
+0
+0 - this thing ive coded like it will start everyday bangladeshi time 6:00 am to 11:59 pm but it should be run like 24 hour but after every 6am/ 6pm every 12pm/12am it should be change the times okay, so it wil be more good and if any user visit after 12:00 or anytime they see to grab with the orffers which will atttrack more customer i hope because the timers of shop the sale is off right now because in bd its 2:32 am and its off from 12:am or after 11:59 pm which is not drive us more sales because lots of customer can do visit beetweet that 11:59pm/12:00am - 5:59am/6:00am so you should make it great more. And then---
+
+2nd. Just below to the design studio at hero section or below of that you can see: TN
+4.9
+Bestseller
+Premium Custom Tee
+
+Starting ৳599.  This should be changes to somrthing relative,  working, great, impressive, best, premium,  animated, 3d realistic and click working to redirect to the user or something like that type will atttrack or can drive us more sales so you should implement that too. 
+
+
+
+After that see problem no. 3 : at user account. orders - track this order button not working directly to be tracked and also filled up with the user account mobile number/mail and the ordered item tracking which order they will gonna try to track that will be auto filled with the item tracking number + mobile/mai of client but if only a account have already customer not for the visitor or guests but guest modes also have that until the user delete sites data or other things and when ordering as u knw account creating prompt will surely show also and also accept to make a order like as a guest but which will also realistically account creating type which will be guest account creating and it will be like: guestaccount0001
+guestaccount0002
+Like that type for every new user if they do not wanted to create manual account or if they not interested to signin or signup using direct facebook or google gmail login then they can also do using the - lets order in guest mode
+And there will be a checkpoint to automaticaautomatically save the guest account username to give them random like i described above and also give their password as same as username too,  and those accounts will also to be saved in our admin panels and accounts sections in guest accounts and also in admin panel there should be all pages, all things all lotsle and big all things completely do work as needed and we can do all things changes developments or new page or new categories or more extra more powerful things needed to be done from ourside from admin panel but make sure that in admin panel our site no one can hack and just delete withoit realtime 2factor authentication approval and other things will block them until its actually me i will not get my number verification code before done the changes or in mail also or the google authenticator code also lile that type things also needed and not only these more things and more powerful shits needed what actually admin can love and like to work on that because you will think everyside to make everything great at frontend for users and also do same powerful features for user or visitors and working things for admin and editors or what u say developer. Anyway without those lots of more things i hope there is left to do fix and i need you do that and do not make  anything left so a real senior fully expert developer will also like got stuck by seeing your work i need like that because you are more expert from them fr every sides od thinking planning implementing and fixing creating visiting doing researching and everything a to z.  So things full a to z. Frontend to backend everything you follow check and give me all things as working like bullet proof and then send me overview of latest with full complete website and recheck all things actually included of full website and then also delete that from repo because any one can then hack or copy us so but u give me that in chat + u also be sure that nothing like that rest relying on replit also and my site are fully independent and working on Frontend = Cloudflare and  Backend- Render+UptimeRobot and other all things everything is working and nothing at we are on replit or anyehere else and so we can do push after all the changes and all things verifiying that works we can finish our works. Thanks.

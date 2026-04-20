@@ -523,7 +523,19 @@ export default function Account() {
 
                               <div className="flex justify-end pt-2 border-t border-gray-100 mt-1">
                                 <Link
-                                  href={`/track?order=${encodeURIComponent(order.orderNumber)}&phone=${encodeURIComponent(customer?.phone || "")}`}
+                                  // Auto-fill: prefer phone, fall back to email
+                                  // so the tracking page can auto-submit even
+                                  // for users who never set a phone number.
+                                  href={(() => {
+                                    const id = customer?.phone?.trim();
+                                    const email = customer?.email?.trim();
+                                    const param = id
+                                      ? `phone=${encodeURIComponent(id)}`
+                                      : email
+                                      ? `email=${encodeURIComponent(email)}`
+                                      : "";
+                                    return `/track?order=${encodeURIComponent(order.orderNumber)}${param ? `&${param}` : ""}`;
+                                  })()}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors hover:bg-orange-50"
                                   style={{ color: '#E85D04', border: '1px solid #fed7aa' }}
                                   data-testid={`button-track-order-${order.orderNumber}`}
