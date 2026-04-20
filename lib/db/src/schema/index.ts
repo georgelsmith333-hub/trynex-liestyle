@@ -99,6 +99,8 @@ export const customersTable = pgTable("customers", {
   facebookId: text("facebook_id").unique(),
   avatar: text("avatar"),
   verified: boolean("verified").default(false),
+  isGuest: boolean("is_guest").default(false).notNull(),
+  guestSequence: integer("guest_sequence"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

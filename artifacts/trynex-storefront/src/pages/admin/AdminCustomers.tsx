@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { useListAdminCustomers, type AdminCustomer } from "@workspace/api-client-react";
+import { useListAdminCustomers, useListAdminGuestCustomers, type AdminCustomer } from "@workspace/api-client-react";
+import { UserCircle } from "lucide-react";
 
 const DISTRICT_COLORS = [
   "#E85D04", "#FB8500", "#f97316", "#ea580c", "#d97706",
@@ -45,9 +46,11 @@ export default function AdminCustomers() {
   const { data, isLoading, error } = useListAdminCustomers({
     request: { headers: getAuthHeaders() },
   });
+  const { data: guestData, isLoading: guestsLoading } = useListAdminGuestCustomers();
   const [search, setSearch] = useState("");
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "spent" | "orders">("recent");
+  const [tab, setTab] = useState<"buyers" | "guests">("buyers");
 
   if (isLoading) return <AdminLayout><Loader fullScreen /></AdminLayout>;
 
@@ -171,6 +174,81 @@ export default function AdminCustomers() {
           </div>
         )}
 
+        <div className="flex gap-2 border-b border-gray-200">
+          {([
+            { id: "buyers", label: `Buyers (${data.totalCustomers})`, icon: Users },
+            { id: "guests", label: `Guest Accounts${guestData ? ` (${guestData.totalGuests})` : ""}`, icon: UserCircle },
+          ] as const).map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${
+                tab === t.id ? "border-orange-500 text-orange-600" : "border-transparent text-gray-400 hover:text-gray-700"
+              }`}
+            >
+              <t.icon className="w-4 h-4" /> {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "guests" ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Guest Checkout Accounts</h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Auto-created when buyers click "Continue as Guest" — synthetic email
+                <code className="mx-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">guestaccountNNNN@trynex.guest</code>
+                lets them track orders without registering.
+              </p>
+            </div>
+            {guestsLoading ? (
+              <div className="p-12 text-center"><Loader /></div>
+            ) : !guestData || guestData.guests.length === 0 ? (
+              <div className="p-12 text-center">
+                <UserCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-400 font-semibold">No guest accounts yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr className="text-left">
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">#</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Name</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Email</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Phone</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Orders</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Spent</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Order</th>
+                      <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {guestData.guests.map(g => (
+                      <tr key={g.id} className="hover:bg-orange-50/30">
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500">#{String(g.guestSequence ?? "").padStart(4, "0")}</td>
+                        <td className="px-5 py-3 font-bold text-gray-900">{g.name}</td>
+                        <td className="px-5 py-3 text-xs text-gray-500">{g.email}</td>
+                        <td className="px-5 py-3 text-xs text-gray-700">{g.phone || "—"}</td>
+                        <td className="px-5 py-3 font-bold text-gray-900">{g.totalOrders}</td>
+                        <td className="px-5 py-3 font-bold text-orange-600">{formatPrice(g.totalSpent)}</td>
+                        <td className="px-5 py-3 text-xs text-gray-700">
+                          {g.lastOrderNumber ? (
+                            <span>
+                              <span className="font-bold">{g.lastOrderNumber}</span>
+                              <span className="text-gray-400 ml-1">{g.lastOrderStatus}</span>
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-gray-400">{formatDate(g.createdAt || "")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
@@ -304,6 +382,7 @@ export default function AdminCustomers() {
             </div>
           )}
         </div>
+        )}
 
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
           <div className="flex items-start gap-3">

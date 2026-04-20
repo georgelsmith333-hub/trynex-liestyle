@@ -89,7 +89,8 @@ export default function Checkout() {
   const { mutateAsync: createOrder, isPending } = useCreateOrder();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { customer } = useAuth();
+  const { customer, loginAsGuest } = useAuth();
+  const [guestLoading, setGuestLoading] = useState(false);
   const [, navigate] = useLocation();
   const [hideAuthBanner, setHideAuthBanner] = useState<boolean>(() => {
     try { return sessionStorage.getItem("checkout_auth_banner_dismissed") === "1"; } catch { return false; }
@@ -938,6 +939,28 @@ export default function Checkout() {
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border"
                     style={{ borderColor: '#E85D04', color: '#E85D04', background: 'white' }}>
                     <UserPlus className="w-3.5 h-3.5" /> Create account
+                  </button>
+                  <button type="button"
+                    disabled={guestLoading}
+                    onClick={async () => {
+                      setGuestLoading(true);
+                      const fn = (watch("firstName") || "").trim();
+                      const ln = (watch("lastName") || "").trim();
+                      const phone = (watch("customerPhone") || "").trim();
+                      const r = await loginAsGuest({
+                        name: [fn, ln].filter(Boolean).join(" ") || undefined,
+                        phone: phone || undefined,
+                      });
+                      setGuestLoading(false);
+                      if (!r.success) {
+                        toast({ title: "Guest checkout failed", description: r.error || "Try again.", variant: "destructive" });
+                      } else {
+                        toast({ title: "Continuing as guest", description: "We'll create a guest account so you can track this order." });
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold disabled:opacity-60"
+                    style={{ background: '#f3f4f6', color: '#374151' }}>
+                    {guestLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Continue as Guest
                   </button>
                 </div>
               </div>

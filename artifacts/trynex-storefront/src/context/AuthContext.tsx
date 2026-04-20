@@ -7,6 +7,7 @@ interface CustomerProfile {
   email: string;
   phone: string | null;
   avatar: string | null;
+  isGuest?: boolean;
 }
 
 interface AuthContextType {
@@ -17,6 +18,7 @@ interface AuthContextType {
   register: (data: { name: string; email: string; phone?: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
   loginWithFacebook: (accessToken: string) => Promise<{ success: boolean; error?: string }>;
+  loginAsGuest: (info?: { name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -130,6 +132,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginAsGuest = async (info?: { name?: string; phone?: string }) => {
+    try {
+      const { ok, data } = await apiPost(getApiUrl("/auth/guest"), (info ?? {}) as Record<string, unknown>);
+      if (!ok) return { success: false, error: (data.message as string) || "Guest sign-in failed" };
+      setToken(data.token as string);
+      const c = data.customer as CustomerProfile;
+      setCustomer({ ...c, isGuest: true });
+      return { success: true };
+    } catch {
+      return { success: false, error: "Could not connect to server. Please check your internet and try again." };
+    }
+  };
+
   const updateProfile = async (profileData: { name?: string; phone?: string }) => {
     const token = getToken();
     if (!token) return { success: false, error: "Not authenticated" };
@@ -169,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       loginWithGoogle,
       loginWithFacebook,
+      loginAsGuest,
       updateProfile,
       logout,
     }}>

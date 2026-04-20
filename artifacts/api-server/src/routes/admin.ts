@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable, adminTable } from "@workspace/db";
+import { db, ordersTable, productsTable, adminTable, customersTable } from "@workspace/db";
 import { eq, sql, desc, lte, asc } from "drizzle-orm";
 import * as crypto from "crypto";
 import { signToken, requireAdmin } from "../middlewares/adminAuth";
@@ -333,6 +333,53 @@ router.get("/admin/customers", requireAdmin, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to get customers");
     res.status(500).json({ error: "internal_error", message: "Failed to get customers" });
+  }
+});
+
+// Guest customers (created via /api/auth/guest) — admin visibility.
+// Joins to orders by customer email so we can show order activity.
+router.get("/admin/guest-customers", requireAdmin, async (req, res) => {
+  try {
+    const guests = await db
+      .select()
+      .from(customersTable)
+      .where(eq(customersTable.isGuest, true))
+      .orderBy(desc(customersTable.guestSequence));
+
+    const enriched = await Promise.all(guests.map(async (g: typeof customersTable.$inferSelect) => {
+      const orders = await db
+        .select()
+        .from(ordersTable)
+        .where(eq(ordersTable.customerEmail, g.email))
+        .orderBy(desc(ordersTable.createdAt));
+      const totalSpent = orders.reduce((s: number, o: typeof ordersTable.$inferSelect) => s + parseFloat(String(o.total)), 0);
+      const last = orders[0];
+      return {
+        id: g.id,
+        guestSequence: g.guestSequence,
+        name: g.name,
+        email: g.email,
+        phone: g.phone,
+        createdAt: g.createdAt?.toISOString(),
+        totalOrders: orders.length,
+        totalSpent,
+        lastOrderAt: last?.createdAt?.toISOString() || null,
+        lastOrderNumber: last?.orderNumber || null,
+        lastOrderStatus: last?.status || null,
+        shippingDistrict: last?.shippingDistrict || null,
+        shippingCity: last?.shippingCity || null,
+        shippingAddress: last?.shippingAddress || null,
+      };
+    }));
+
+    res.json({
+      totalGuests: enriched.length,
+      withOrders: enriched.filter((g: { totalOrders: number }) => g.totalOrders > 0).length,
+      guests: enriched,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to load guest customers");
+    res.status(500).json({ error: "internal_error", message: "Failed to load guest customers" });
   }
 });
 

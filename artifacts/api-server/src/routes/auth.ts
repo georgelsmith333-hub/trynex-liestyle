@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, customersTable } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { eq, or, desc } from "drizzle-orm";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
 
@@ -360,6 +360,75 @@ router.put("/auth/change-password", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Change password failed");
     res.status(500).json({ error: "internal_error", message: "Failed to change password" });
+  }
+});
+
+// Create a guest account (no password, synthetic email) so the buyer can
+// place orders & track them without registering. Sequence is monotonic and
+// the email collision is guarded by a retry on the unique index.
+router.post("/auth/guest", async (req, res) => {
+  try {
+    const { name, phone } = (req.body ?? {}) as { name?: string; phone?: string };
+    const safeName = (name?.trim() || "Guest");
+
+    const MAX_TRIES = 5;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+      try {
+        const [last] = await db
+          .select({ seq: customersTable.guestSequence })
+          .from(customersTable)
+          .where(eq(customersTable.isGuest, true))
+          .orderBy(desc(customersTable.guestSequence))
+          .limit(1);
+        const nextSeq = (last?.seq ?? 0) + 1 + attempt;
+        const padded = String(nextSeq).padStart(4, "0");
+        const guestEmail = `guestaccount${padded}@trynex.guest`;
+
+        const [customer] = await db.insert(customersTable).values({
+          name: `${safeName} #${padded}`,
+          email: guestEmail,
+          phone: phone?.trim() || null,
+          isGuest: true,
+          guestSequence: nextSeq,
+          verified: false,
+        }).returning();
+
+        const token = signCustomerToken({ id: customer.id, email: customer.email });
+        const isProduction = process.env.NODE_ENV === "production";
+        res.cookie("customer_token", token, {
+          httpOnly: true,
+          sameSite: isProduction ? "none" : "lax",
+          secure: isProduction,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        });
+        res.json({
+          success: true,
+          token,
+          customer: {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            avatar: customer.avatar,
+          },
+          isGuest: true,
+          guestSequence: nextSeq,
+        });
+        return;
+      } catch (err: any) {
+        lastErr = err;
+        // Unique violation on email — retry with a higher sequence
+        if (err?.code === "23505" || /duplicate key|unique/i.test(String(err?.message))) {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr ?? new Error("Could not allocate guest sequence");
+  } catch (err) {
+    req.log.error({ err }, "Guest account creation failed");
+    res.status(500).json({ error: "internal_error", message: "Could not create guest account" });
   }
 });
 

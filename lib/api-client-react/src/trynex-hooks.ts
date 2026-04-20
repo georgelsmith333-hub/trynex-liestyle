@@ -619,6 +619,33 @@ export const useListAdminCustomers = () => {
   });
 };
 
+export interface AdminGuestCustomer {
+  id: number;
+  guestSequence: number | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt: string | null;
+  lastOrderNumber: string | null;
+  lastOrderStatus: string | null;
+  shippingDistrict: string | null;
+  shippingCity: string | null;
+  shippingAddress: string | null;
+}
+
+export const useListAdminGuestCustomers = () => {
+  return useQuery({
+    queryKey: ["/api/admin/guest-customers"],
+    queryFn: () =>
+      customFetch<{ totalGuests: number; withOrders: number; guests: AdminGuestCustomer[] }>(
+        "/api/admin/guest-customers"
+      ),
+  });
+};
+
 // ─── Backup Hooks ─────────────────────────────────────────────────────────────
 
 export const getExportBackupUrl = () => `/api/backup/export`;
