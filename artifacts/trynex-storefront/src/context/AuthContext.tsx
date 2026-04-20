@@ -145,9 +145,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const username = data.username as string | undefined;
         const password = data.password as string | undefined;
         if (username && password) {
+          // Store both the synthetic email (used by /auth/login) and the
+          // username so the buyer can sign back in with either identifier.
           localStorage.setItem(
             "trynex_guest_credentials",
-            JSON.stringify({ id: data.id, username, password, createdAt: new Date().toISOString() }),
+            JSON.stringify({
+              id: data.id,
+              username,
+              email: c.email,
+              password,
+              createdAt: new Date().toISOString(),
+            }),
           );
         }
       } catch {
