@@ -7,8 +7,57 @@ import { useMemo, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { TSHIRT_PZ } from "@/pages/design-studio/mockups";
 
-/* ── Realistic GLB shirt (shared with the studio) ── */
+/* ── Realistic GLB shirt with planar chest decal that mirrors studio placement ──
+   Instead of mapping the design across the full UV (which scatters it onto sleeves
+   and back), we project a transparent chest plane carrying just the print-zone
+   region. The plane is gently curved to follow the chest contour. */
+function ChestDecal({ designUrl }: { designUrl: string }) {
+  // Chest plane geometry: gently curved (cylindrical-ish) to match shirt body
+  const geo = useMemo(() => {
+    const w = 0.95, h = 1.15, segW = 24, segH = 24;
+    const g = new THREE.PlaneGeometry(w, h, segW, segH);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      // Bend along x-axis (cylinder section) + slight vertical taper
+      const z = -0.08 * (x / (w / 2)) * (x / (w / 2)) + 0.02 * Math.cos((y / h) * Math.PI);
+      pos.setZ(i, z);
+    }
+    pos.needsUpdate = true;
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  const tex = useMemo(() => {
+    const t = new THREE.TextureLoader().load(designUrl);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    // Crop to the t-shirt print-zone region of the 1000×1000 composed texture.
+    // Derived from the SAME TSHIRT_PZ used by the studio so the cart
+    // preview lands the design exactly where the user placed it.
+    // Three.js textures default to flipY=true → v = 1 - y/H (top-down).
+    const H = 1000, W = 1000;
+    t.wrapS = THREE.ClampToEdgeWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+    t.repeat.set(TSHIRT_PZ.w / W, TSHIRT_PZ.h / H);
+    t.offset.set(TSHIRT_PZ.x / W, 1 - (TSHIRT_PZ.y + TSHIRT_PZ.h) / H);
+    return t;
+  }, [designUrl]);
+  return (
+    <mesh geometry={geo} position={[0, 0.05, 0.42]}>
+      <meshStandardMaterial
+        map={tex}
+        transparent
+        alphaTest={0.02}
+        roughness={0.7}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 function RealisticShirt({ designUrl, garmentColor }: { designUrl?: string; garmentColor: string }) {
   const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
   const shirtGeo = useMemo(() => {
@@ -18,24 +67,13 @@ function RealisticShirt({ designUrl, garmentColor }: { designUrl?: string; garme
     });
     return g;
   }, [scene]);
-  const tex = useMemo(() => {
-    if (!designUrl) return null;
-    const t = new THREE.TextureLoader().load(designUrl);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
-    return t;
-  }, [designUrl]);
   if (!shirtGeo) return null;
   return (
     <group scale={2.6}>
       <mesh geometry={shirtGeo} castShadow receiveShadow>
         <meshStandardMaterial color={garmentColor} roughness={0.78} metalness={0.02} />
       </mesh>
-      {tex && (
-        <mesh geometry={shirtGeo} scale={1.001}>
-          <meshStandardMaterial map={tex} transparent roughness={0.65} depthWrite={false} alphaTest={0.02} />
-        </mesh>
-      )}
+      {designUrl && <ChestDecal designUrl={designUrl} />}
     </group>
   );
 }

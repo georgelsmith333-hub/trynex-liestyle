@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import rateLimit from "express-rate-limit";
 import router from "./routes";
@@ -10,6 +11,21 @@ import { verifyAdminToken } from "./middlewares/adminAuth";
 const app: Express = express();
 
 app.set("trust proxy", 1);
+
+// Security headers — protects against clickjacking, MIME sniffing, XSS,
+// referrer leaks, etc. CSP is disabled at the API layer because this
+// service only emits JSON; the storefront sets its own CSP.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: "no-referrer" },
+    hsts: process.env.NODE_ENV === "production"
+      ? { maxAge: 60 * 60 * 24 * 365, includeSubDomains: true, preload: true }
+      : false,
+  }),
+);
 
 app.use(
   pinoHttp({
@@ -135,6 +151,27 @@ const promoLimiter = rateLimit({
   message: { error: "rate_limited", message: "Too many promo requests, please try again later" },
 });
 
+// Order tracking: prevent enumeration attacks (probing TN-XXXXX numbers
+// + phones to leak order details). 20 lookups / 5 min per IP is plenty
+// for a real customer who's just refreshing their tracking page.
+const trackLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", message: "Too many tracking requests. Please wait a few minutes." },
+});
+
+// Public-read endpoints: prevents bot scraping abuse without affecting
+// legitimate users (200 reads / 5 min per IP = ~40/min).
+const publicReadLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", message: "Slow down — too many requests." },
+});
+
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
@@ -144,6 +181,14 @@ app.use("/api/admin/reset-password", adminLoginLimiter);
 app.post("/api/orders", orderLimiter);
 app.use("/api/promo-codes/validate", promoLimiter);
 app.use("/api/promo-codes/exit-intent", promoLimiter);
+app.use("/api/orders/track", trackLimiter);
+// Public-read limiter is applied to whole prefixes so it covers
+// list, detail, and related-item routes (e.g. /api/products/:id,
+// /api/blog/:id/related, /api/reviews/:productId).
+app.use("/api/products", publicReadLimiter);
+app.use("/api/categories", publicReadLimiter);
+app.use("/api/blog", publicReadLimiter);
+app.use("/api/reviews", publicReadLimiter);
 
 app.use("/api", (_req, res, next) => {
   const url = _req.originalUrl;

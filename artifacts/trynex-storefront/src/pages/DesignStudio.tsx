@@ -13,7 +13,7 @@ import {
   Upload, RotateCcw, Trash2, ShoppingCart,
   ZoomIn, ZoomOut, RotateCw, Move, Ruler,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
-  Scissors, Info, Eye, EyeOff, Loader2,
+  Scissors, Info, Eye, EyeOff, Loader2, Wand2,
   Type, Layers as LayersIcon, Sparkles,
   Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
   Image as ImageIcon, Plus, Check, CloudUpload,
@@ -395,26 +395,45 @@ export default function DesignStudio() {
     commitLayers(next);
   }, [layers, commitLayers]);
 
-  /* ── File upload ───────────────────────────────────── */
+  /* ── File upload — bulletproof: handles same-file re-pick, decode failures,
+        oversized images (>10MB), unreadable files, and races. ───────────── */
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please upload a JPG or PNG image.", variant: "destructive" });
+      toast({ title: "Invalid file", description: "Please upload a JPG, PNG, or WebP image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum 10MB. Please compress or resize the image first.", variant: "destructive" });
       return;
     }
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onerror = () => toast({ title: "Couldn't read file", description: "The file may be corrupted. Try another image.", variant: "destructive" });
+    reader.onload = async (e) => {
       const src = e.target?.result as string;
+      if (!src || typeof src !== "string") {
+        toast({ title: "Upload failed", description: "Couldn't read the image. Please try again.", variant: "destructive" });
+        return;
+      }
       const img = new Image();
-      img.onload = () => {
-        const layer: ImageLayer = {
-          id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
-          type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
-          visible: true, locked: false, transform: { ...ZERO_TRANSFORM },
-        };
-        addLayer(layer);
-        setActiveTab("layers");
+      const ok = await new Promise<boolean>((resolve) => {
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+      });
+      // Use img.decode() as a second guarantee that pixel data is ready
+      try { await img.decode?.(); } catch {}
+      if (!ok || !img.naturalWidth || !img.naturalHeight) {
+        toast({ title: "Image unreadable", description: "Try a different file (JPG/PNG/WebP).", variant: "destructive" });
+        return;
+      }
+      const layer: ImageLayer = {
+        id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
+        type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+        visible: true, locked: false, transform: { ...ZERO_TRANSFORM },
       };
-      img.src = src;
+      addLayer(layer);
+      setActiveTab("layers");
+      toast({ title: "Image added", description: "Drag to position, pinch to scale." });
     };
     reader.readAsDataURL(file);
   };
@@ -464,6 +483,68 @@ export default function DesignStudio() {
       });
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  /* ── HD Upscale — 2× resolution with bicubic + unsharp-mask sharpening.
+        Runs in-browser using canvas; no server cost. Helps low-res photos
+        print sharper at large sizes. */
+  const [isUpscaling, setIsUpscaling] = useState(false);
+  const handleUpscale = async () => {
+    if (!selectedLayer || selectedLayer.type !== "image") return;
+    setIsUpscaling(true);
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = selectedLayer.src; });
+      try { await img.decode?.(); } catch {}
+
+      // Cap output at 4096 to stay browser-safe
+      const maxOut = 4096;
+      const scale = Math.min(2, maxOut / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+
+      // Two-pass bicubic-ish upscale via intermediate canvas (browser implementation
+      // varies, but enabling imageSmoothingQuality:"high" gives bicubic on most engines)
+      const c1 = document.createElement("canvas");
+      c1.width = w; c1.height = h;
+      const ctx1 = c1.getContext("2d")!;
+      ctx1.imageSmoothingEnabled = true;
+      ctx1.imageSmoothingQuality = "high";
+      ctx1.drawImage(img, 0, 0, w, h);
+
+      // Unsharp mask: blur copy, subtract from original to find edges, add back to sharpen
+      const c2 = document.createElement("canvas");
+      c2.width = w; c2.height = h;
+      const ctx2 = c2.getContext("2d")!;
+      (ctx2 as any).filter = "blur(1.2px)";
+      ctx2.drawImage(c1, 0, 0);
+      (ctx2 as any).filter = "none";
+
+      const orig = ctx1.getImageData(0, 0, w, h);
+      const blur = ctx2.getImageData(0, 0, w, h);
+      const amount = 0.6; // sharpening strength
+      for (let i = 0; i < orig.data.length; i += 4) {
+        for (let k = 0; k < 3; k++) {
+          const o = orig.data[i + k], b = blur.data[i + k];
+          const v = o + amount * (o - b);
+          orig.data[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+      }
+      ctx1.putImageData(orig, 0, 0);
+      const dataUrl = c1.toDataURL("image/png");
+      const newImg = new Image();
+      await new Promise<void>((res, rej) => { newImg.onload = () => res(); newImg.onerror = rej; newImg.src = dataUrl; });
+      updateLayer(selectedLayer.id, l => l.type === "image"
+        ? { ...l, src: dataUrl, naturalW: newImg.naturalWidth, naturalH: newImg.naturalHeight }
+        : l, true);
+      toast({ title: "✨ Upscaled to HD", description: `Now ${w}×${h}px — sharper for large prints.` });
+    } catch (err) {
+      console.error("[upscale]", err);
+      toast({ title: "Upscale failed", description: "Try a smaller image or different format.", variant: "destructive" });
+    } finally {
+      setIsUpscaling(false);
     }
   };
 
@@ -1236,13 +1317,21 @@ export default function DesignStudio() {
                           <img src={selectedLayer.src} alt="Preview" className="w-full h-20 object-contain rounded-lg"
                             style={{ background: "repeating-conic-gradient(#ccc 0% 25%,#f0f0f0 0% 50%) 0 0/16px 16px" }} />
                         </div>
-                        <button onClick={handleRemoveBg} disabled={isRemoving}
+                        <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
                           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
                           style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
                         >
                           {isRemoving
                             ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
                             : <><Scissors className="w-4 h-4" /> Remove Background</>}
+                        </button>
+                        <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
+                          style={{ background: "linear-gradient(135deg,#FEF3C7,#FDE68A)", color: "#92400E", border: "1px solid #FCD34D" }}
+                        >
+                          {isUpscaling
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Upscaling…</>
+                            : <><Wand2 className="w-4 h-4" /> Upscale to HD (2×)</>}
                         </button>
                       </>
                     )}
