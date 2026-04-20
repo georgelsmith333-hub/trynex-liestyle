@@ -11,6 +11,7 @@
   "private": true,
   "devDependencies": {
     "pdfkit": "^0.18.0",
+    "pg": "^8.20.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   }

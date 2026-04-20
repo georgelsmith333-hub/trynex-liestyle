@@ -225,4 +225,7 @@ app.use("/api", (_req, res, next) => {
 
 app.use("/api", router);
 
+import sitemapRouter from "./routes/sitemap";
+app.use("/", sitemapRouter);
+
 export default app;

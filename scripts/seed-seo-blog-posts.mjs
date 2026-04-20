@@ -84,41 +84,13 @@ const internalLinks = [
 ];
 
 function buildHtml(post) {
-  const today = new Date().toISOString();
-  const blogPostingLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.excerpt,
-    keywords: post.keyword,
-    inLanguage: "en-BD",
-    datePublished: today,
-    dateModified: today,
-    author: { "@type": "Organization", name: AUTHOR },
-    publisher: {
-      "@type": "Organization",
-      name: "TryNex Lifestyle",
-      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` },
-    },
-    mainEntityOfPage: { "@type": "WebPage", "@id": `${SITE_URL}/blog/${post.slug}` },
-  };
-  const faqLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: post.faqs.map((f) => ({
-      "@type": "Question",
-      name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
-
+  // BlogPost.tsx already emits BlogPosting JSON-LD from row fields and
+  // FAQPage JSON-LD from <h4>question</h4><p>answer</p> pairs found
+  // beneath an h2/h3 heading containing "FAQ". So we only need clean HTML
+  // here — DOMPurify would strip any inline <script> tags anyway.
   const intro = `<p>${post.excerpt}</p>
 <p>If you're searching for <strong>${post.keyword}</strong> with reliable quality and fast delivery across Bangladesh, this guide is for you. TryNex Lifestyle has shipped 50,000+ custom orders nationwide since 2023, so we've packed every lesson into one place.</p>`;
 
-  // BlogPost.tsx parser expects <h4> for questions (or <strong> inside <p>),
-  // followed by sibling <p> answers, under an h2/h3 with "FAQ" in it.
-  // It auto-emits FAQPage JSON-LD via SEOHead from those entries — no inline
-  // <script> tags needed (DOMPurify would strip them anyway).
   const faqHtml =
     `<h2>Frequently Asked Questions</h2>` +
     post.faqs.map((f) => `<h4>${f.q}</h4><p>${f.a}</p>`).join("");
@@ -127,12 +99,6 @@ function buildHtml(post) {
     `<h2>Ready to start?</h2><ul>` +
     internalLinks.map((l) => `<li><a href="${l.href}">${l.text}</a></li>`).join("") +
     `</ul>`;
-
-  // BlogPost emits BlogPosting JSON-LD itself from post fields; we don't need
-  // to embed JSON-LD here. The blogPostingLd / faqLd literals above are kept
-  // only as a reference of the canonical schema this seed targets.
-  void blogPostingLd;
-  void faqLd;
 
   return `${intro}${faqHtml}${linksHtml}`;
 }
