@@ -500,11 +500,44 @@ export default function AdminOrders() {
                                 const layers = Number(parsed.layerCount) || 0;
                                 const front = Number(parsed.frontLayerCount) || 0;
                                 const back = Number(parsed.backLayerCount) || 0;
+                                const originals: string[] = Array.isArray(parsed.originalAssetUrls) ? parsed.originalAssetUrls : [];
                                 return (
-                                  <p className="text-xs text-primary/70 mt-1">
-                                    Custom studio design · {layers} layer{layers === 1 ? '' : 's'}
-                                    {(front || back) ? ` (${front} front, ${back} back)` : ''}
-                                  </p>
+                                  <>
+                                    <p className="text-xs text-primary/70 mt-1">
+                                      Custom studio design · {layers} layer{layers === 1 ? '' : 's'}
+                                      {(front || back) ? ` (${front} front, ${back} back)` : ''}
+                                    </p>
+                                    {originals.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {originals.map((path, idx) => (
+                                          <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(path)}`), {
+                                                  headers: getAuthHeaders(),
+                                                });
+                                                if (!r.ok) {
+                                                  toast({ title: "Download failed", description: `Server returned ${r.status}`, variant: "destructive" });
+                                                  return;
+                                                }
+                                                const data = await r.json();
+                                                if (data?.url) window.open(data.url, "_blank", "noopener,noreferrer");
+                                                else toast({ title: "Download failed", description: "Missing URL in response", variant: "destructive" });
+                                              } catch (err) {
+                                                toast({ title: "Download failed", description: String(err), variant: "destructive" });
+                                              }
+                                            }}
+                                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                                            title={path}
+                                          >
+                                            ⬇ Original {idx + 1}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
                                 );
                               }
                               if (parsed && typeof parsed === "object" && parsed.hamper) return null;
