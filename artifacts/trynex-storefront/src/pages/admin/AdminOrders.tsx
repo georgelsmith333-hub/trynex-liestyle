@@ -479,7 +479,59 @@ export default function AdminOrders() {
 
                 {/* Items */}
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Items</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Items</p>
+                    {(() => {
+                      const allOriginals: { itemIdx: number; path: string }[] = [];
+                      (selectedOrder.items ?? []).forEach((it: any, idx: number) => {
+                        if (!it.customNote) return;
+                        try {
+                          const parsed = JSON.parse(it.customNote);
+                          if (parsed?.studioDesign && Array.isArray(parsed.originalAssetUrls)) {
+                            parsed.originalAssetUrls.forEach((p: string) => allOriginals.push({ itemIdx: idx, path: p }));
+                          }
+                        } catch {}
+                      });
+                      if (allOriginals.length === 0) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              toast({ title: "Preparing zip...", description: `Bundling ${allOriginals.length} files from ${selectedOrder.orderNumber || "order"}` });
+                              const JSZip = (await import("jszip")).default;
+                              const zip = new JSZip();
+                              for (let i = 0; i < allOriginals.length; i++) {
+                                const { itemIdx, path: p } = allOriginals[i];
+                                const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(p)}`), { headers: getAuthHeaders() });
+                                if (!r.ok) continue;
+                                const j = await r.json();
+                                if (!j?.url) continue;
+                                const blob = await (await fetch(j.url)).blob();
+                                const ext = (p.split(".").pop() || "bin").split("?")[0];
+                                zip.file(`item-${itemIdx + 1}/design-${i + 1}.${ext}`, blob);
+                              }
+                              const out = await zip.generateAsync({ type: "blob" });
+                              const url = URL.createObjectURL(out);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${selectedOrder.orderNumber || "order"}-originals.zip`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                              toast({ title: "Zip ready", description: `Downloaded ${allOriginals.length} files` });
+                            } catch (err) {
+                              toast({ title: "Zip failed", description: String(err), variant: "destructive" });
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-black bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                        >
+                          ⬇ Download all originals (zip) · {allOriginals.length}
+                        </button>
+                      );
+                    })()}
+                  </div>
                   <div className="space-y-2">
                     {(selectedOrder.items ?? []).map((item: any, i: number) => (
                       <div key={i} className="p-3 rounded-xl"

@@ -131,7 +131,7 @@ router.get("/robots.txt", (_req, res) => {
     "Disallow: /login",
     "Disallow: /signup",
     "",
-    `Sitemap: ${SITE_URL}/api/sitemap.xml`,
+    `Sitemap: ${SITE_URL}/sitemap.xml`,
   ].join("\n");
 
   res.header("Content-Type", "text/plain");

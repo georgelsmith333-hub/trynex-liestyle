@@ -47,7 +47,7 @@ After every Render deploy, complete these three steps to keep search engines fre
 
 1. **Google Search Console** — open https://search.google.com/search-console, select the `trynexshop.com` property, go to Sitemaps, and submit `https://trynexshop.com/sitemap.xml`. Then use the URL Inspection tool on the homepage and request indexing.
 2. **Bing Webmaster Tools** — open https://www.bing.com/webmasters, select the property, go to Sitemaps, and submit `https://trynexshop.com/sitemap.xml`. Use Submit URLs to push the homepage and any new product/blog URLs.
-3. **Render env vars** — confirm `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `JWT_SECRET`, `ADMIN_PASSWORD`, and `DATABASE_URL` are all set on the Render service so storage uploads, signed downloads, and admin login work in production.
+3. **Render env vars** — confirm `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `JWT_SECRET`, `ADMIN_JWT_SECRET` (must be distinct from `JWT_SECRET`; production auth refuses to start without it), `ADMIN_PASSWORD`, and `DATABASE_URL` are all set on the Render service so storage uploads, signed downloads, and admin login work in production.
 
 ## External Dependencies
 
