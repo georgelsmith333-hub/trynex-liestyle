@@ -173,6 +173,11 @@ import { useLocation } from "wouter";
                 <img
                   src={product.imageUrl}
                   alt={product.name}
+                  width={400}
+                  height={500}
+                  loading={index < 4 ? "eager" : "lazy"}
+                  decoding="async"
+                  {...(index === 0 ? { fetchpriority: "high" as any } : {})}
                   onLoad={() => setImgLoaded(true)}
                   className="w-full h-full object-cover"
                   style={{
@@ -180,10 +185,6 @@ import { useLocation } from "wouter";
                     transform: hovered ? 'scale(1.06)' : 'scale(1)',
                     transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.25s ease',
                   }}
-                  loading="lazy"
-                  decoding="async"
-                  width="400"
-                  height="500"
                 />
               </>
             ) : (

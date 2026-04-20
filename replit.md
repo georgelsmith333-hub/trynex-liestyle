@@ -41,6 +41,14 @@ The platform is built as a pnpm workspace monorepo using TypeScript.
 -   **SEO & Performance**: Canonical domain `https://trynexshop.com`, per-route SEO with unique titles, descriptions, and canonicals. Structured data (JSON-LD) for key pages. Optimized LCP and Core Web Vitals through image preloading, explicit dimensions, font subsetting, and API preconnects. Dynamic sitemap and robots.txt.
 -   **Cart Performance**: Optimized with split contexts, debounced `localStorage` writes, and memoized components to minimize re-renders.
 
+## Search-Engine Submission Checklist (post-deploy)
+
+After every Render deploy, complete these three steps to keep search engines fresh:
+
+1. **Google Search Console** — open https://search.google.com/search-console, select the `trynexshop.com` property, go to Sitemaps, and submit `https://trynexshop.com/sitemap.xml`. Then use the URL Inspection tool on the homepage and request indexing.
+2. **Bing Webmaster Tools** — open https://www.bing.com/webmasters, select the property, go to Sitemaps, and submit `https://trynexshop.com/sitemap.xml`. Use Submit URLs to push the homepage and any new product/blog URLs.
+3. **Render env vars** — confirm `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `JWT_SECRET`, `ADMIN_PASSWORD`, and `DATABASE_URL` are all set on the Render service so storage uploads, signed downloads, and admin login work in production.
+
 ## External Dependencies
 
 -   **Hosting**: Cloudflare Pages (storefront), Render (API server).

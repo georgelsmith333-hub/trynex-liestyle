@@ -509,6 +509,43 @@ export default function AdminOrders() {
                                     </p>
                                     {originals.length > 0 && (
                                       <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {originals.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                toast({ title: "Preparing zip...", description: `Bundling ${originals.length} files` });
+                                                const JSZip = (await import("jszip")).default;
+                                                const zip = new JSZip();
+                                                for (let i = 0; i < originals.length; i++) {
+                                                  const p = originals[i];
+                                                  const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(p)}`), { headers: getAuthHeaders() });
+                                                  if (!r.ok) continue;
+                                                  const j = await r.json();
+                                                  if (!j?.url) continue;
+                                                  const blob = await (await fetch(j.url)).blob();
+                                                  const ext = (p.split(".").pop() || "bin").split("?")[0];
+                                                  zip.file(`design-${i + 1}.${ext}`, blob);
+                                                }
+                                                const out = await zip.generateAsync({ type: "blob" });
+                                                const url = URL.createObjectURL(out);
+                                                const a = document.createElement("a");
+                                                a.href = url;
+                                                a.download = `order-originals-${Date.now()}.zip`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                URL.revokeObjectURL(url);
+                                                toast({ title: "Zip ready", description: `Downloaded ${originals.length} files` });
+                                              } catch (err) {
+                                                toast({ title: "Zip failed", description: String(err), variant: "destructive" });
+                                              }
+                                            }}
+                                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 transition-colors"
+                                          >
+                                            ⬇ Download all originals (zip)
+                                          </button>
+                                        )}
                                         {originals.map((path, idx) => (
                                           <button
                                             key={idx}

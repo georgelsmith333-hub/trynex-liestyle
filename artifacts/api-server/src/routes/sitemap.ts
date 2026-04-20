@@ -64,9 +64,9 @@ router.get("/sitemap.xml", async (_req, res) => {
       xml += `    <lastmod>${today}</lastmod>\n`;
       xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
       xml += `    <priority>${page.priority}</priority>\n`;
-      if (page.loc === "/") {
-        xml += `    <xhtml:link rel="alternate" hreflang="en-BD" href="${SITE_URL}/"/>\n`;
-      }
+      xml += `    <xhtml:link rel="alternate" hreflang="en-BD" href="${SITE_URL}${page.loc}"/>\n`;
+      xml += `    <xhtml:link rel="alternate" hreflang="bn-BD" href="${SITE_URL}${page.loc}"/>\n`;
+      xml += `    <xhtml:link rel="alternate" hreflang="x-default" href="${SITE_URL}${page.loc}"/>\n`;
       xml += `  </url>\n`;
     }
 
