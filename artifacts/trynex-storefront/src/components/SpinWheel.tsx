@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift, Sparkles, X, Copy, Check } from "lucide-react";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 type Prize = {
   id: string;
   label: string;
   short: string;
+  emoji?: string;
   code?: string;
   weight: number;
   color: string;
@@ -14,13 +16,13 @@ type Prize = {
 };
 
 const PRIZES: Prize[] = [
-  { id: "miss1",     label: "Better luck next time", short: "Try Again", weight: 30, color: "#1f2937", textColor: "#fff" },
-  { id: "off5",      label: "5% off your next order", short: "5% OFF",   code: "SPIN5",      weight: 15, color: "#fb923c" },
-  { id: "miss2",     label: "Better luck next time", short: "Try Again", weight: 30, color: "#374151", textColor: "#fff" },
-  { id: "off10",     label: "10% off your next order", short: "10% OFF", code: "SPIN10",     weight: 10, color: "#f97316" },
-  { id: "freedeliv", label: "Free delivery on ৳1500+", short: "Free Delivery", code: "FREEDELIV", weight: 5,  color: "#22c55e" },
-  { id: "off15",     label: "15% off your next order", short: "15% OFF", code: "SPIN15",     weight: 5,  color: "#ea580c" },
-  { id: "super",     label: "SUPER DEAL: Free delivery + 10% off", short: "SUPER DEAL", code: "SUPERDEAL", weight: 5,  color: "#dc2626", textColor: "#fff", message: "Jackpot!" },
+  { id: "miss1",     label: "Better luck next time", short: "TRY AGAIN",     emoji: "💔", weight: 30, color: "#1f2937", textColor: "#ffffff" },
+  { id: "off5",      label: "5% off your next order", short: "5% OFF",       emoji: "🎉", code: "SPIN5",     weight: 15, color: "#fb923c", textColor: "#ffffff" },
+  { id: "miss2",     label: "Better luck next time", short: "TRY AGAIN",     emoji: "💔", weight: 30, color: "#0f172a", textColor: "#ffffff" },
+  { id: "off10",     label: "10% off your next order", short: "10% OFF",     emoji: "🔥", code: "SPIN10",    weight: 10, color: "#f97316", textColor: "#ffffff" },
+  { id: "freedeliv", label: "Free delivery on ৳1500+", short: "FREE\nDELIVERY", emoji: "🚚", code: "FREEDELIV", weight: 5, color: "#16a34a", textColor: "#ffffff" },
+  { id: "off15",     label: "15% off your next order", short: "15% OFF",     emoji: "💎", code: "SPIN15",    weight: 5,  color: "#ea580c", textColor: "#ffffff" },
+  { id: "super",     label: "SUPER DEAL: Free delivery + 10% off", short: "SUPER\nDEAL", emoji: "🏆", code: "SUPERDEAL", weight: 5, color: "#dc2626", textColor: "#ffffff", message: "Jackpot!" },
 ];
 
 const SLICES = PRIZES.length;
@@ -42,18 +44,22 @@ function todayKey(): string {
 }
 
 const STORAGE_LAST_SPIN = "spin_last_date";
-const STORAGE_SHOWN     = "spin_modal_shown_v1";
+const STORAGE_SHOWN     = "spin_modal_shown_v2";
 const STORAGE_REWARD    = "spin_reward";
 
 interface Props {
-  /** When true, opens automatically on mount if user hasn't seen it yet. */
   autoOpen?: boolean;
-  /** External trigger to force-open (e.g. from a "Spin to win" button). */
   forceOpen?: boolean;
   onClose?: () => void;
 }
 
 export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose }: Props) {
+  const { settings } = useSiteSettings();
+  const enabled = (settings as any)?.spinWheelEnabled !== false;
+  const delaySeconds = Math.max(1, (settings as any)?.spinWheelDelay ?? 4);
+  const title = (settings as any)?.spinWheelTitle || "Spin & Win an Offer!";
+  const subtitle = (settings as any)?.spinWheelSubtitle || "One free spin — no purchase needed.";
+
   const [open, setOpen] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -61,8 +67,8 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const [copied, setCopied] = useState(false);
   const spunTodayRef = useRef(false);
 
-  // Auto-open once per browser, after a short delay
   useEffect(() => {
+    if (!enabled) return;
     if (forceOpen) { setOpen(true); return; }
     if (!autoOpen) return;
     try {
@@ -71,11 +77,10 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     const t = setTimeout(() => {
       setOpen(true);
       try { localStorage.setItem(STORAGE_SHOWN, "1"); } catch {}
-    }, 4000);
+    }, delaySeconds * 1000);
     return () => clearTimeout(t);
-  }, [autoOpen, forceOpen]);
+  }, [autoOpen, forceOpen, enabled, delaySeconds]);
 
-  // Has the user already spun today?
   useEffect(() => {
     try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}
   }, [open]);
@@ -93,12 +98,9 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
 
     const idx = pickWeighted();
     const prize = PRIZES[idx];
-
-    // Pointer is at top (12 o'clock). Slices are drawn starting at angle 0 going clockwise.
-    // We want slice `idx` centered under the pointer.
     const sliceCenter = idx * SLICE_DEG + SLICE_DEG / 2;
-    const targetAngle = 360 - sliceCenter; // wheel rotation that puts slice center at top
-    const fullSpins = 6 + Math.floor(Math.random() * 3); // 6-8 turns
+    const targetAngle = 360 - sliceCenter;
+    const fullSpins = 6 + Math.floor(Math.random() * 3);
     const finalRotation = rotation + fullSpins * 360 + (targetAngle - (rotation % 360));
 
     setSpinning(true);
@@ -130,7 +132,6 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     } catch {}
   };
 
-  // Build conic-gradient for the wheel slices
   const conicStyle = useMemo(() => {
     const stops: string[] = [];
     PRIZES.forEach((p, i) => {
@@ -141,6 +142,15 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     return { background: `conic-gradient(from 0deg, ${stops.join(", ")})` };
   }, []);
 
+  if (!enabled && !forceOpen) return null;
+
+  const WHEEL_SIZE = 320;
+  const RADIUS = WHEEL_SIZE / 2;
+  // Place each label along its slice's center radius. Labels are rendered
+  // upright by counter-rotating them so they always read horizontally —
+  // text never overlaps because each slice gets its own fixed wedge.
+  const LABEL_RADIUS = RADIUS - 58; // distance from wheel center
+
   return (
     <AnimatePresence>
       {open && (
@@ -149,7 +159,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
           onClick={() => !spinning && close()}
         >
           <motion.div
@@ -165,29 +175,29 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
               onClick={close}
               disabled={spinning}
               aria-label="Close"
-              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors z-10 disabled:opacity-40"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors z-30 disabled:opacity-40 shadow-md"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="px-6 pt-7 pb-3 text-center">
+            <div className="px-6 pt-7 pb-4 text-center">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white"
                 style={{ background: "linear-gradient(90deg, #ea580c, #f97316)" }}>
                 <Sparkles className="w-3 h-3" /> Free Spin
               </div>
-              <h2 className="text-2xl font-black font-display text-gray-900 mt-3">Spin &amp; Win an Offer!</h2>
-              <p className="text-sm text-gray-500 mt-1">One free spin — no purchase needed.</p>
+              <h2 className="text-2xl font-black font-display text-gray-900 mt-3">{title}</h2>
+              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
             </div>
 
-            <div className="relative mx-auto" style={{ width: 320, height: 320 }}>
+            <div className="relative mx-auto" style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}>
               {/* Pointer */}
-              <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-20"
+              <div className="absolute left-1/2 -translate-x-1/2 -top-2 z-20"
                 style={{
                   width: 0, height: 0,
-                  borderLeft: "14px solid transparent",
-                  borderRight: "14px solid transparent",
-                  borderTop: "22px solid #E85D04",
-                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                  borderLeft: "16px solid transparent",
+                  borderRight: "16px solid transparent",
+                  borderTop: "26px solid #E85D04",
+                  filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))",
                 }} />
               {/* Wheel */}
               <motion.div
@@ -200,18 +210,54 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                   boxShadow: "0 0 0 4px #E85D04, 0 14px 30px rgba(0,0,0,0.25)",
                 }}
               >
+                {/* Slice separator lines for clarity */}
+                {PRIZES.map((_, i) => {
+                  const a = i * SLICE_DEG;
+                  return (
+                    <div
+                      key={`sep-${i}`}
+                      className="absolute left-1/2 top-1/2 origin-top"
+                      style={{
+                        width: 1.5,
+                        height: RADIUS - 8,
+                        background: "rgba(255,255,255,0.5)",
+                        transform: `translate(-50%, 0) rotate(${a}deg)`,
+                        transformOrigin: "50% 0",
+                      }}
+                    />
+                  );
+                })}
+                {/* Labels — positioned along slice midline, counter-rotated to read upright */}
                 {PRIZES.map((p, i) => {
-                  const angle = i * SLICE_DEG + SLICE_DEG / 2;
+                  const angleDeg = i * SLICE_DEG + SLICE_DEG / 2; // center of slice
+                  const angleRad = (angleDeg - 90) * Math.PI / 180; // -90 so 0deg points up
+                  const x = RADIUS + LABEL_RADIUS * Math.cos(angleRad);
+                  const y = RADIUS + LABEL_RADIUS * Math.sin(angleRad);
+                  // Counter-rotate so text reads outward from center but stays upright on wheel
+                  // Each label rotates with its slice (so they don't all face up flat) but is readable.
+                  // Use slice angle minus 90 to make text sit perpendicular to radius (tangent style).
                   return (
                     <div
                       key={p.id}
-                      className="absolute left-1/2 top-1/2 origin-[0_0]"
+                      className="absolute select-none pointer-events-none"
                       style={{
-                        transform: `rotate(${angle}deg) translate(-50%, -120px)`,
+                        left: x,
+                        top: y,
+                        transform: `translate(-50%, -50%) rotate(${angleDeg}deg)`,
+                        width: 76,
+                        textAlign: "center",
                       }}
                     >
-                      <div className="text-[10px] font-black uppercase tracking-wider text-center w-20 -translate-x-1/2"
-                        style={{ color: p.textColor || "#1a1a1a", textShadow: p.textColor ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.4)" }}>
+                      <div className="text-base leading-none mb-0.5">{p.emoji}</div>
+                      <div
+                        className="font-black uppercase whitespace-pre-line leading-tight"
+                        style={{
+                          color: p.textColor || "#ffffff",
+                          fontSize: 10,
+                          letterSpacing: "0.05em",
+                          textShadow: "0 1px 3px rgba(0,0,0,0.55), 0 0 1px rgba(0,0,0,0.4)",
+                        }}
+                      >
                         {p.short}
                       </div>
                     </div>
@@ -219,16 +265,17 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                 })}
               </motion.div>
               {/* Hub */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center z-10"
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full flex items-center justify-center z-10"
                 style={{
                   background: "radial-gradient(circle at 30% 30%, #fff, #f3f4f6)",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.25), inset 0 -2px 4px rgba(0,0,0,0.1)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.1)",
+                  border: "3px solid #fff",
                 }}>
-                <Gift className="w-6 h-6 text-orange-500" />
+                <Gift className="w-7 h-7 text-orange-500" />
               </div>
             </div>
 
-            <div className="px-6 pb-6 pt-4 text-center">
+            <div className="px-6 pb-6 pt-5 text-center">
               {!result ? (
                 <>
                   <button

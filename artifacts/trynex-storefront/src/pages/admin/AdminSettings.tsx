@@ -457,6 +457,60 @@ export default function AdminSettings() {
           </Field>
         </SectionCard>
 
+        <SectionCard icon={Zap} title="Spin-the-Wheel Offer Game" iconColor="#ea580c">
+          <Field label="Enable Spin-the-Wheel Popup" full>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" {...register("spinWheelEnabled")} className="w-5 h-5 rounded accent-orange-500" />
+              <span className="text-sm font-medium text-gray-700">Show the spin-the-wheel popup once per visitor on the home page</span>
+            </label>
+            <p className="text-xs text-gray-400 mt-2">
+              Built-in prizes (always work, no setup needed): <strong>SPIN5</strong> (5% off), <strong>SPIN10</strong> (10% off), <strong>SPIN15</strong> (15% off), <strong>FREEDELIV</strong> (free delivery on ৳1500+), <strong>SUPERDEAL</strong> (free delivery + 10% off on ৳1500+). 60% chance of "Try Again" so margins stay safe.
+            </p>
+          </Field>
+          <Field label="Auto-Open Delay (seconds)" full={false}>
+            <input type="number" {...register("spinWheelDelay", { valueAsNumber: true })} className={inputClass} style={inputStyle} placeholder="4" min="1" max="30" />
+            <p className="text-xs text-gray-400 mt-1">How many seconds after the home page loads before the popup appears.</p>
+          </Field>
+          <Field label="Headline" full={false}>
+            <input {...register("spinWheelTitle")} className={inputClass} style={inputStyle} placeholder="Spin & Win an Offer!" />
+          </Field>
+          <Field label="Subtitle" full>
+            <input {...register("spinWheelSubtitle")} className={inputClass} style={inputStyle} placeholder="One free spin — no purchase needed." />
+          </Field>
+        </SectionCard>
+
+        <SectionCard icon={Search} title="SEO Defaults & Auto-SEO" iconColor="#16a34a">
+          <Field label="Default Page Title" full>
+            <input {...register("seoDefaultTitle")} className={inputClass} style={inputStyle} placeholder="TryNex Lifestyle — Custom Apparel & Gifts in Bangladesh" />
+            <p className="text-xs text-gray-400 mt-1">Used on every page that doesn't set its own title. Keep under 60 characters for best Google ranking.</p>
+          </Field>
+          <Field label="Default Meta Description" full>
+            <textarea {...register("seoDefaultDescription")} className={inputClass} style={{ ...inputStyle, minHeight: 80 }} placeholder="Design and order custom T-shirts, hoodies, mugs..." />
+            <p className="text-xs text-gray-400 mt-1">Shown in Google search results. Keep under 160 characters. New product pages auto-generate descriptions from this template.</p>
+          </Field>
+          <Field label="Default Keywords" full>
+            <input {...register("seoDefaultKeywords")} className={inputClass} style={inputStyle} placeholder="custom t-shirt bangladesh, personalized mug, gift hamper" />
+            <p className="text-xs text-gray-400 mt-1">Comma-separated. Modern Google ignores these but Bing & Yandex still use them.</p>
+          </Field>
+          <Field label="Default Social Share Image (URL)" full>
+            <input {...register("seoOgImage")} className={inputClass} style={inputStyle} placeholder="https://trynexshop.com/og.jpg" />
+            <p className="text-xs text-gray-400 mt-1">Shown when someone shares your link on Facebook, WhatsApp, Twitter, LinkedIn. Recommended: 1200×630 PNG/JPG.</p>
+          </Field>
+          <Field label="Twitter / X Handle" full={false}>
+            <input {...register("seoTwitterHandle")} className={inputClass} style={inputStyle} placeholder="@trynexshop" />
+          </Field>
+          <div className="rounded-xl p-3 border border-green-200 bg-green-50">
+            <p className="text-xs font-bold text-green-800 mb-1">Auto-SEO is active</p>
+            <p className="text-xs text-green-700 leading-relaxed">
+              ✓ All product pages auto-generate meta tags + structured data (rich snippets)<br/>
+              ✓ Sitemap.xml regenerates automatically when you add products or blog posts<br/>
+              ✓ Robots.txt exposes the sitemap to Google, Bing, and other crawlers<br/>
+              ✓ Open Graph tags inserted on every page for clean social shares<br/>
+              ✓ Canonical URLs prevent duplicate-content penalties
+            </p>
+          </div>
+        </SectionCard>
+
         <SectionCard icon={BarChart3} title="Meta CAPI (Server-Side Events)" iconColor="#1877F2">
           <Field label="Meta Conversions API Token" full>
             {siteSettings.metaCapiTokenConfigured && (

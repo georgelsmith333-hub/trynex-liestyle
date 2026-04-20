@@ -4,6 +4,7 @@ import { eq, and, desc, sql, inArray, lte } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
 import { logger } from "../lib/logger";
+import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
 
 class StockOutError extends Error {
   constructor(
@@ -589,7 +590,21 @@ router.post("/orders", async (req, res) => {
       let validatedPromoCode: string | null = null;
       let validatedPromoDiscount = 0;
 
+      // Apply virtual spin-wheel promos before consulting DB
+      let virtualFreeShipping = false;
       if (promoCodeNormalized) {
+        const virtual = getVirtualPromo(promoCodeNormalized);
+        if (virtual) {
+          if (virtual.minOrderAmount && subtotal < virtual.minOrderAmount) {
+            throw new Error("PROMO_INVALID");
+          }
+          const { discount, freeShipping } = calcVirtualDiscount(virtual, subtotal, shippingCost);
+          validatedPromoCode = virtual.code;
+          validatedPromoDiscount = discount;
+          virtualFreeShipping = freeShipping;
+        }
+      }
+      if (promoCodeNormalized && !validatedPromoCode) {
         const [promo] = await tx
           .select()
           .from(promoCodesTable)
@@ -649,7 +664,8 @@ router.post("/orders", async (req, res) => {
         validatedPromoDiscount = Math.min(validatedPromoDiscount, subtotal + shippingCost);
       }
 
-      const total = Math.max(0, subtotal + shippingCost - validatedPromoDiscount);
+      const effectiveShipping = virtualFreeShipping ? 0 : shippingCost;
+      const total = Math.max(0, subtotal + effectiveShipping - validatedPromoDiscount);
 
       const [created] = await tx.insert(ordersTable).values({
         orderNumber: generateOrderNumber(),
