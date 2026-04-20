@@ -102,13 +102,33 @@ function useFaceTexture(face: FacePayload | undefined, garmentColor: string | nu
 }
 
 /* ──────────────────────── MUG ──────────────────────── */
+/** Realistic ceramic mug:
+ *  - solid (closed-bottom) cylinder body so liquid color isn't visible inside
+ *  - inner liner (back-side cylinder) for a hollow look from above
+ *  - top rim ring
+ *  - PROPER handle as a swept tube along a CatmullRom curve so both ends
+ *    actually attach to the mug wall (the previous TorusGeometry was a flat
+ *    ring rotated awkwardly, which read as "broken" from any non-front angle)
+ */
 function Mug({ wrapTex, garmentColor }: { wrapTex: THREE.CanvasTexture | null; garmentColor: string }) {
   const groupRef = useRef<THREE.Group>(null);
-  // Mug body — open cylinder
-  const bodyGeo = useMemo(() => new THREE.CylinderGeometry(0.7, 0.7, 1.65, 96, 1, true), []);
-  const innerGeo = useMemo(() => new THREE.CylinderGeometry(0.66, 0.66, 1.6, 64, 1, true), []);
-  const bottomGeo = useMemo(() => new THREE.CircleGeometry(0.7, 64), []);
-  const handleGeo = useMemo(() => new THREE.TorusGeometry(0.32, 0.07, 24, 64, Math.PI * 1.3), []);
+  const R = 0.72;          // body radius
+  const H = 1.7;           // body height
+  const bodyGeo = useMemo(() => new THREE.CylinderGeometry(R, R, H, 128, 1, true), []);
+  const innerGeo = useMemo(() => new THREE.CylinderGeometry(R - 0.04, R - 0.04, H - 0.04, 96, 1, true), []);
+  const bottomGeo = useMemo(() => new THREE.CircleGeometry(R - 0.005, 96), []);
+
+  // Handle: a CatmullRom curve from upper attachment to lower attachment,
+  // bowed outward in +X. Tube radius is the handle thickness. Endpoints sit
+  // exactly on the mug wall (x = R), so the join looks seamless.
+  const handleGeo = useMemo(() => {
+    const top = new THREE.Vector3(R - 0.02, 0.45, 0);
+    const out1 = new THREE.Vector3(R + 0.55, 0.40, 0);
+    const out2 = new THREE.Vector3(R + 0.55, -0.40, 0);
+    const bot = new THREE.Vector3(R - 0.02, -0.45, 0);
+    const curve = new THREE.CatmullRomCurve3([top, out1, out2, bot], false, "catmullrom", 0.5);
+    return new THREE.TubeGeometry(curve, 64, 0.08, 18, false);
+  }, []);
 
   useEffect(() => {
     if (wrapTex) {
@@ -122,40 +142,35 @@ function Mug({ wrapTex, garmentColor }: { wrapTex: THREE.CanvasTexture | null; g
   }, [wrapTex]);
 
   return (
-    <group ref={groupRef} position={[0, -0.05, 0]}>
-      {/* outer shell */}
+    <group ref={groupRef} position={[-0.12, -0.05, 0]}>
+      {/* outer ceramic shell */}
       <mesh geometry={bodyGeo} castShadow receiveShadow>
         <meshPhysicalMaterial
           map={wrapTex ?? undefined}
           color={"#ffffff"}
-          roughness={0.25}
-          metalness={0.05}
-          clearcoat={0.6}
-          clearcoatRoughness={0.2}
+          roughness={0.22}
+          metalness={0.02}
+          clearcoat={0.7}
+          clearcoatRoughness={0.15}
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* inner liner */}
+      {/* inner liner — back side only, dark to read as hollow */}
       <mesh geometry={innerGeo}>
-        <meshStandardMaterial color={"#1a1a1a"} side={THREE.BackSide} roughness={0.5} />
+        <meshStandardMaterial color={"#161616"} side={THREE.BackSide} roughness={0.55} />
       </mesh>
-      {/* bottom cap */}
-      <mesh geometry={bottomGeo} position={[0, -0.825, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color={garmentColor} roughness={0.35} />
+      {/* solid bottom (closed mug) */}
+      <mesh geometry={bottomGeo} position={[0, -H / 2 + 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial color={garmentColor} roughness={0.4} />
       </mesh>
-      {/* top rim */}
-      <mesh position={[0, 0.825, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.66, 0.7, 64]} />
-        <meshStandardMaterial color={"#d8d8d8"} roughness={0.3} side={THREE.DoubleSide} />
+      {/* top rim — slim ring covers the wall thickness */}
+      <mesh position={[0, H / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[R - 0.04, R, 96]} />
+        <meshStandardMaterial color={garmentColor} roughness={0.3} side={THREE.DoubleSide} />
       </mesh>
-      {/* handle */}
-      <mesh
-        geometry={handleGeo}
-        position={[0.78, 0, 0]}
-        rotation={[0, Math.PI / 2, Math.PI / 2 - 0.1]}
-        castShadow
-      >
-        <meshPhysicalMaterial color={garmentColor} roughness={0.3} clearcoat={0.4} />
+      {/* handle — swept tube, attaches to the wall at top & bottom */}
+      <mesh geometry={handleGeo} castShadow>
+        <meshPhysicalMaterial color={garmentColor} roughness={0.28} clearcoat={0.55} clearcoatRoughness={0.2} />
       </mesh>
     </group>
   );

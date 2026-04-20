@@ -475,12 +475,34 @@ export default function DesignStudio() {
       };
       img.src = dataUrl;
     } catch (err) {
-      console.error("[bg-removal]", err);
-      toast({
-        title: "Couldn't remove background",
-        description: "Try a different image, or check your internet on first use.",
-        variant: "destructive",
-      });
+      console.warn("[bg-removal] client failed, trying server fallback", err);
+      // ── Server-side fallback (remove.bg via /api/remove-bg) ──
+      // Triggers when the in-browser ONNX model can't download (slow mobile
+      // connection, IndexedDB quota issues, or WebGL/SIMD unsupported). This
+      // is the same image path the user just uploaded, so it's already a
+      // base64 data URL ready to POST.
+      try {
+        const r = await fetch(`${getApiUrl()}/api/remove-bg`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: selectedLayer.src }),
+        });
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.message || "Server bg removal failed");
+        const img = new Image();
+        await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = json.result; });
+        updateLayer(selectedLayer.id, l => l.type === "image"
+          ? { ...l, src: json.result, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
+          : l, true);
+        toast({ title: "✨ Background removed", description: "Used server processing." });
+      } catch (err2) {
+        console.error("[bg-removal] both methods failed", err2);
+        toast({
+          title: "Couldn't remove background",
+          description: (err2 as Error)?.message || "Try a different image, or contact admin to enable server processing.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsRemoving(false);
     }
@@ -702,6 +724,41 @@ export default function DesignStudio() {
       const backLayers  = layers.filter(l => (l.face ?? "front") === "back")  as unknown as ComposerLayer[];
       const imageCache  = new Map<string, HTMLImageElement>();
 
+      // 0. Upload ORIGINAL full-resolution image layers to object storage
+      //    so the admin can download print-ready files later. We do this
+      //    BEFORE compositing so the admin gets the customer's actual
+      //    uploaded photos at full resolution, not the downscaled mockup.
+      //    Failures here are non-fatal: cart still works without uploads.
+      const originalAssetUrls: string[] = [];
+      const imageLayers = layers.filter(l => l.type === "image" && l.visible);
+      for (const layer of imageLayers) {
+        try {
+          const src = (layer as ImageLayer).src;
+          if (!src.startsWith("data:")) continue; // skip already-uploaded
+          const blob = await (await fetch(src)).blob();
+          const reqRes = await fetch(`${getApiUrl()}/api/storage/uploads/request-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: `design-${Date.now()}.png`,
+              size: blob.size,
+              contentType: blob.type || "image/png",
+            }),
+          });
+          if (!reqRes.ok) continue;
+          const { uploadURL, objectPath } = await reqRes.json();
+          const putRes = await fetch(uploadURL, {
+            method: "PUT",
+            headers: { "Content-Type": blob.type || "image/png" },
+            body: blob,
+          });
+          if (putRes.ok && objectPath) originalAssetUrls.push(objectPath);
+        } catch (uploadErr) {
+          console.warn("[upload-original]", uploadErr);
+          /* swallow — cart should still work even if cloud upload is down */
+        }
+      }
+
       // 1. Full garment + design composite → cart thumbnail (imageUrl)
       //    Uses the white-cutout PNG so tinting matches the 2D editor exactly.
       const garmentBase = BASE_BY_CATEGORY[selectedProduct.category];
@@ -772,6 +829,7 @@ export default function DesignStudio() {
         color: selectedColor.name,
         imageUrl: mockupUrl,
         customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
+        originalAssetUrls,
         customNote: JSON.stringify({
           studioDesign: true,
           sessionId,
@@ -783,6 +841,8 @@ export default function DesignStudio() {
           layerCount: layers.length,
           frontLayerCount: frontLayers.length,
           backLayerCount: backLayers.length,
+          // Print-ready originals — admin downloads these to fulfill the order
+          originalAssetUrls,
         }),
       });
 

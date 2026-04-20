@@ -29,6 +29,11 @@ export interface CartItem {
   color?: string;
   customNote?: string;
   customImages?: string[];
+  /** Cloud-storage paths to the customer's ORIGINAL full-resolution uploads
+   *  (the print-ready files). Admins use these to download for production.
+   *  Format: ["/objects/uploads/<uuid>", ...]. Distinct from `customImages`
+   *  which holds compressed dataURLs for in-cart preview only. */
+  originalAssetUrls?: string[];
   hamperPayload?: HamperPayload;
 }
 
