@@ -49,6 +49,14 @@ After every Render deploy, complete these three steps to keep search engines fre
 2. **Bing Webmaster Tools** — open https://www.bing.com/webmasters, select the property, go to Sitemaps, and submit `https://trynexshop.com/sitemap.xml`. Use Submit URLs to push the homepage and any new product/blog URLs.
 3. **Render env vars** — confirm `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `JWT_SECRET`, `ADMIN_JWT_SECRET` (must be distinct from `JWT_SECRET`; production auth refuses to start without it), `ADMIN_PASSWORD`, and `DATABASE_URL` are all set on the Render service so storage uploads, signed downloads, and admin login work in production.
 
+## Incident Log
+
+### April 2026 — Blank homepage on trynexshop.com (P0, resolved)
+- **Symptom:** Returning visitors saw a blank white screen on `/`. Other routes worked.
+- **Root cause:** `vite.config.ts` precaches `/offline.html` via `additionalManifestEntries`, but the file didn't exist in `public/`. Workbox's SW install therefore failed → new SW never activated → the previously installed (broken) SW kept serving cached empty navigation responses.
+- **Fixes shipped:** created `public/offline.html`; added 30s SW self-unregister safety net if `activate` never fires; navigation handler now requires HTML content-type + non-zero body before returning a cached response and falls back to network when offline page is unavailable; pre-hydration brand splash + 18s watchdog in `index.html` so visitors never see a totally blank screen (loop-guarded to 2 attempts / 10 min); bumped `CURRENT_BUILD` to `2026.04.21-blank-homepage-fix-offline-html` to nuke stale SWs for returning visitors.
+- **Prevention:** every release that changes precache entries must (a) verify referenced files exist via `pnpm build`, and (b) bump `CURRENT_BUILD` in `src/lib/cache-recovery.ts`.
+
 ## External Dependencies
 
 -   **Hosting**: Cloudflare Pages (storefront), Render (API server).
