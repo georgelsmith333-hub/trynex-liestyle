@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useListOrders, useUpdateOrderStatus, useUpdatePaymentStatus, UpdateOrderStatusRequestStatus } from "@workspace/api-client-react";
+import { useListOrders } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
-import { getAuthHeaders, formatPrice } from "@/lib/utils";
+import { getAuthHeaders, formatPrice, getApiUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { getListOrdersQueryKey } from "@workspace/api-client-react";
@@ -50,12 +50,7 @@ export default function AdminOrders() {
     }
   );
 
-  const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus({
-    request: { headers: getAuthHeaders() }
-  });
-  const paymentStatusMutation = useUpdatePaymentStatus({
-    request: { headers: getAuthHeaders() }
-  });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (data?.total !== undefined && lastCount !== null && data.total > lastCount) {
@@ -66,27 +61,37 @@ export default function AdminOrders() {
     if (data?.total !== undefined) setLastCount(data.total);
   }, [data?.total]);
 
-  const handleStatusChange = async (id: number, status: UpdateOrderStatusRequestStatus) => {
+  const handleStatusChange = async (id: number, status: string) => {
+    setIsUpdating(true);
     try {
-      await updateStatus({ id, data: { status } });
+      const res = await fetch(getApiUrl(`/api/orders/${id}/status`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "✓ Status updated" });
       if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, status }));
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handlePaymentStatusChange = async (id: number, paymentStatus: string) => {
     setIsUpdatingPayment(true);
     try {
-      await paymentStatusMutation.mutateAsync({
-        id,
-        data: { paymentStatus },
+      const res = await fetch(getApiUrl(`/api/orders/${id}/payment-status`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ paymentStatus }),
       });
+      if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "✓ Payment status updated" });
-      if (selectedOrder?.id === id) setSelectedOrder((prev: Record<string, unknown>) => ({ ...prev, paymentStatus }));
+      if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, paymentStatus }));
     } catch {
       toast({ title: "Failed to update payment status", variant: "destructive" });
     } finally {
@@ -272,7 +277,7 @@ export default function AdminOrders() {
                         <td className="px-4 py-4">
                           <select
                             value={order.status}
-                            onChange={e => handleStatusChange(order.id, e.target.value as UpdateOrderStatusRequestStatus)}
+                            onChange={e => handleStatusChange(order.id, e.target.value)}
                             disabled={isUpdating}
                             className={`text-xs font-bold px-2 py-1.5 rounded-xl border border-gray-200 outline-none cursor-pointer capitalize ${statusClass(order.status)}`}
                             style={{ background: 'white' }}
@@ -497,7 +502,7 @@ export default function AdminOrders() {
                   <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Update Order Status</p>
                   <select
                     value={selectedOrder.status}
-                    onChange={e => handleStatusChange(selectedOrder.id, e.target.value as UpdateOrderStatusRequestStatus)}
+                    onChange={e => handleStatusChange(selectedOrder.id, e.target.value)}
                     className="w-full px-4 py-3 rounded-xl text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                     style={{ background: 'white', border: '1px solid #e5e7eb', color: '#111827' }}
                   >
