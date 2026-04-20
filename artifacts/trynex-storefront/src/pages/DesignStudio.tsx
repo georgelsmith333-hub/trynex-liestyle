@@ -425,30 +425,41 @@ export default function DesignStudio() {
     if (file) handleFileUpload(file);
   };
 
-  /* ── Background removal (only on selected image layer) ── */
+  /* ── Background removal — RUNS IN BROWSER (WASM), zero server load ─
+   * Uses @imgly/background-removal which loads an ONNX model into the
+   * browser the first time it runs (~30MB, cached in IndexedDB after).
+   * No API calls, no server CPU, no per-request cost.                  */
   const handleRemoveBg = async () => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
     setIsRemoving(true);
     try {
-      const res = await fetch(getApiUrl("/api/remove-bg"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: selectedLayer.src }),
+      toast({
+        title: "Removing background…",
+        description: "First run downloads a small AI model (~30MB). Stays cached after.",
       });
-      if (!res.ok) throw new Error("Failed");
-      const { result } = await res.json();
+      const { removeBackground } = await import("@imgly/background-removal");
+      const blob = await removeBackground(selectedLayer.src, {
+        output: { format: "image/png", quality: 0.9 },
+      });
+      const reader = new FileReader();
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
       const img = new Image();
       img.onload = () => {
         updateLayer(selectedLayer.id, l => l.type === "image"
-          ? { ...l, src: result, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
+          ? { ...l, src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
           : l, true);
+        toast({ title: "✨ Background removed", description: "Transparent PNG ready." });
       };
-      img.src = result;
-      toast({ title: "Background removed!", description: "Your image background has been removed." });
-    } catch {
+      img.src = dataUrl;
+    } catch (err) {
+      console.error("[bg-removal]", err);
       toast({
-        title: "Remove background failed",
-        description: "Couldn't remove background. Please add your remove.bg API key in Admin → Settings.",
+        title: "Couldn't remove background",
+        description: "Try a different image, or check your internet on first use.",
         variant: "destructive",
       });
     } finally {
