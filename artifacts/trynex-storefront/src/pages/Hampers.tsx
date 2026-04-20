@@ -37,10 +37,10 @@ export default function Hampers() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEOHead
-        title="Gift Hampers • উপহার হ্যাম্পার"
-        description="Premium curated gift hampers from Bangladesh's #1 lifestyle brand. Birthday, anniversary, corporate gifts, and build-your-own bundles — wrapped and delivered nationwide."
+        title="Gift Hampers | Premium Curated Gifts Bangladesh | উপহার হ্যাম্পার"
+        description="Premium curated gift hampers from Bangladesh's #1 lifestyle brand. Birthday, anniversary, corporate gifts, and build-your-own bundles. কাস্টম গিফট বাংলাদেশ, gift hamper Dhaka."
         canonical="/hampers"
-        keywords="gift hampers bangladesh, gift box, corporate gift, birthday gift, anniversary gift, উপহার হ্যাম্পার"
+        keywords="gift hampers bangladesh, gift box, corporate gift, birthday gift, anniversary gift, উপহার হ্যাম্পার, customized gift Bangladesh, gift hamper Dhaka"
         jsonLd={[
           {
             "@context": "https://schema.org",
@@ -140,7 +140,7 @@ export default function Hampers() {
                       <div className="group cursor-pointer rounded-3xl overflow-hidden bg-white hover:shadow-xl transition-all duration-300"
                         style={{ border: '1px solid #e5e7eb' }}
                       >
-                        <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
+                        <div className="relative aspect-[4/3] overflow-hidden bg-gray-50" style={{ aspectRatio: '4/3' }}>
                           {h.imageUrl ? (
                             <img src={h.imageUrl} alt={`${h.name} gift hamper`}
                               width={600} height={450}

@@ -89,10 +89,10 @@ export default function Products() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <SEOHead
-        title={activeCategoryData ? `${activeCategoryData.name} Collection` : "Shop All Products"}
-        description={activeCategoryData ? `Browse our ${activeCategoryData.name} collection. Premium quality, best prices in Bangladesh.` : "Browse premium custom T-shirts, Hoodies, Mugs & Caps from TryNex Lifestyle. Best prices in Bangladesh with fast delivery to all 64 districts."}
+        title={activeCategoryData ? `${activeCategoryData.name} Collection | TryNex Lifestyle` : "Shop All Products | TryNex Lifestyle"}
+        description={activeCategoryData ? `Browse our ${activeCategoryData.name} collection. Premium quality custom apparel, best prices in Bangladesh. কাস্টম গিফট বাংলাদেশ.` : "Browse premium custom T-shirts, Hoodies, Mugs & Caps from TryNex Lifestyle. Best prices in Bangladesh with fast delivery to all 64 districts. কাস্টম গিফট বাংলাদেশ."}
         canonical={activeCategoryData ? `/products?category=${activeCategoryData.slug || activeCategoryData.name.toLowerCase().replace(/\s+/g, '-')}` : "/products"}
-        keywords={activeCategoryData ? `${activeCategoryData.name.toLowerCase()}, buy ${activeCategoryData.name.toLowerCase()} bangladesh` : "buy custom tshirt bangladesh, premium hoodie bd, custom mug dhaka, branded cap bangladesh"}
+        keywords={activeCategoryData ? `${activeCategoryData.name.toLowerCase()}, buy ${activeCategoryData.name.toLowerCase()} bangladesh, customized gift Bangladesh, gift hamper Dhaka` : "buy custom tshirt bangladesh, premium hoodie bd, custom mug dhaka, branded cap bangladesh, কাস্টম গিফট বাংলাদেশ, customized gift Bangladesh"}
         jsonLd={jsonLd}
       />
       <Navbar />

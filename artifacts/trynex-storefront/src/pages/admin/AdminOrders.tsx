@@ -46,7 +46,7 @@ export default function AdminOrders() {
     { limit: 200, ...(statusFilter !== "all" ? { status: statusFilter } : {}) },
     {
       request: { headers: getAuthHeaders() },
-      query: { refetchInterval: 30000 } as any
+      query: { refetchInterval: 10000 } as any
     }
   );
 
@@ -61,7 +61,16 @@ export default function AdminOrders() {
     if (data?.total !== undefined) setLastCount(data.total);
   }, [data?.total]);
 
+  const patchOrdersCache = (id: number, patch: Record<string, string>) => {
+    queryClient.setQueriesData({ queryKey: getListOrdersQueryKey() }, (old: any) => {
+      if (!old?.orders) return old;
+      return { ...old, orders: old.orders.map((o: any) => o.id === id ? { ...o, ...patch } : o) };
+    });
+  };
+
   const handleStatusChange = async (id: number, status: string) => {
+    patchOrdersCache(id, { status });
+    if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, status }));
     setIsUpdating(true);
     try {
       const res = await fetch(getApiUrl(`/api/orders/${id}/status`), {
@@ -72,8 +81,8 @@ export default function AdminOrders() {
       if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "✓ Status updated" });
-      if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, status }));
     } catch {
+      queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "Update failed", variant: "destructive" });
     } finally {
       setIsUpdating(false);
@@ -81,6 +90,8 @@ export default function AdminOrders() {
   };
 
   const handlePaymentStatusChange = async (id: number, paymentStatus: string) => {
+    patchOrdersCache(id, { paymentStatus });
+    if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, paymentStatus }));
     setIsUpdatingPayment(true);
     try {
       const res = await fetch(getApiUrl(`/api/orders/${id}/payment-status`), {
@@ -91,8 +102,8 @@ export default function AdminOrders() {
       if (!res.ok) throw new Error('Failed');
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "✓ Payment status updated" });
-      if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, paymentStatus }));
     } catch {
+      queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       toast({ title: "Failed to update payment status", variant: "destructive" });
     } finally {
       setIsUpdatingPayment(false);
@@ -158,7 +169,7 @@ export default function AdminOrders() {
               </motion.span>
             )}
           </h1>
-          {lastRefresh && <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 30s · Last: {lastRefresh}</p>}
+          {lastRefresh && <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 10s · Last: {lastRefresh}</p>}
         </div>
         <button
           onClick={() => refetch()}
