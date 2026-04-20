@@ -181,12 +181,14 @@ app.use("/api/admin/reset-password", adminLoginLimiter);
 app.post("/api/orders", orderLimiter);
 app.use("/api/promo-codes/validate", promoLimiter);
 app.use("/api/promo-codes/exit-intent", promoLimiter);
-app.post("/api/orders/track", trackLimiter);
 app.use("/api/orders/track", trackLimiter);
-app.get("/api/products", publicReadLimiter);
-app.get("/api/categories", publicReadLimiter);
-app.get("/api/blog", publicReadLimiter);
-app.get("/api/reviews", publicReadLimiter);
+// Public-read limiter is applied to whole prefixes so it covers
+// list, detail, and related-item routes (e.g. /api/products/:id,
+// /api/blog/:id/related, /api/reviews/:productId).
+app.use("/api/products", publicReadLimiter);
+app.use("/api/categories", publicReadLimiter);
+app.use("/api/blog", publicReadLimiter);
+app.use("/api/reviews", publicReadLimiter);
 
 app.use("/api", (_req, res, next) => {
   const url = _req.originalUrl;

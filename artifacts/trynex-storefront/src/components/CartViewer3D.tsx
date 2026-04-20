@@ -7,6 +7,7 @@ import { useMemo, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { TSHIRT_PZ } from "@/pages/design-studio/mockups";
 
 /* ── Realistic GLB shirt with planar chest decal that mirrors studio placement ──
    Instead of mapping the design across the full UV (which scatters it onto sleeves
@@ -32,12 +33,15 @@ function ChestDecal({ designUrl }: { designUrl: string }) {
     const t = new THREE.TextureLoader().load(designUrl);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;
-    // Crop to the print-zone region of the 1000×1000 composed texture.
-    // Print zone: x=350..650 (u=0.35..0.65), y=380..760 → with flipY, v=0.24..0.62
+    // Crop to the t-shirt print-zone region of the 1000×1000 composed texture.
+    // Derived from the SAME TSHIRT_PZ used by the studio so the cart
+    // preview lands the design exactly where the user placed it.
+    // Three.js textures default to flipY=true → v = 1 - y/H (top-down).
+    const H = 1000, W = 1000;
     t.wrapS = THREE.ClampToEdgeWrapping;
     t.wrapT = THREE.ClampToEdgeWrapping;
-    t.repeat.set(0.30, 0.38);
-    t.offset.set(0.35, 0.24);
+    t.repeat.set(TSHIRT_PZ.w / W, TSHIRT_PZ.h / H);
+    t.offset.set(TSHIRT_PZ.x / W, 1 - (TSHIRT_PZ.y + TSHIRT_PZ.h) / H);
     return t;
   }, [designUrl]);
   return (
