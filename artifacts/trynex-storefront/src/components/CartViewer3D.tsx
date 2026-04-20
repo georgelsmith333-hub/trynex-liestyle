@@ -3,7 +3,7 @@
    Loads pre-composed design texture URLs (stored at cart time)
    so it never needs raw Layer objects — tiny bundle cost.
 ════════════════════════════════════════════════════════ */
-import { useMemo, useRef, Suspense } from "react";
+import { useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -226,8 +226,23 @@ export interface CartViewer3DProps {
 
 export default function CartViewer3D({ garmentColor, category, frontTexUrl, backTexUrl }: CartViewer3DProps) {
   const isMug = category === "mug";
+  const isTshirt = category === "tshirt";
+  const [face, setFace] = useState<"front" | "back">("front");
+  const activeTex = isTshirt && face === "back" && backTexUrl ? backTexUrl : frontTexUrl;
 
   return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    {isTshirt && backTexUrl && (
+      <div style={{ position: "absolute", top: 8, right: 8, zIndex: 2, display: "flex", gap: 4, background: "rgba(255,255,255,0.9)", padding: 3, borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
+        {(["front", "back"] as const).map(f => (
+          <button key={f} onClick={() => setFace(f)}
+            style={{ padding: "4px 10px", borderRadius: 999, border: "none", cursor: "pointer",
+              background: face === f ? "#E85D04" : "transparent", color: face === f ? "#fff" : "#475569" }}>
+            {f === "front" ? "Front" : "Back"}
+          </button>
+        ))}
+      </div>
+    )}
     <Canvas
       shadows
       dpr={[1, 1.5]}
@@ -246,8 +261,8 @@ export default function CartViewer3D({ garmentColor, category, frontTexUrl, back
 
         {isMug ? (
           <MugBody designUrl={frontTexUrl} garmentColor={garmentColor} />
-        ) : category === "tshirt" ? (
-          <RealisticShirt designUrl={frontTexUrl} garmentColor={garmentColor} />
+        ) : isTshirt ? (
+          <RealisticShirt designUrl={activeTex} garmentColor={garmentColor} />
         ) : (
           <>
             <GarmentPanel designUrl={frontTexUrl} garmentColor={garmentColor} side="front" zOffset={0.02} />
@@ -273,5 +288,6 @@ export default function CartViewer3D({ garmentColor, category, frontTexUrl, back
         />
       </Suspense>
     </Canvas>
+    </div>
   );
 }
