@@ -176,6 +176,7 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
 app.use("/api/auth/facebook", authLimiter);
+app.use("/api/auth/guest", authLimiter);
 app.use("/api/admin/login", adminLoginLimiter);
 app.use("/api/admin/reset-password", adminLoginLimiter);
 app.post("/api/orders", orderLimiter);

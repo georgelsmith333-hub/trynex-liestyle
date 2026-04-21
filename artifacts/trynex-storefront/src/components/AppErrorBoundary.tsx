@@ -60,7 +60,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           {this.state.recovering ? "Refreshing…" : "Refresh app"}
         </button>
         <p className="text-xs text-gray-400 mt-6 max-w-xs">
-          If this keeps happening, please contact support at <a className="font-bold text-orange-600 hover:underline" href="https://wa.me/8801XXXXXXXXX">WhatsApp</a>.
+          If this keeps happening, please contact support at <a className="font-bold text-orange-600 hover:underline" href="https://wa.me/8801903426915">WhatsApp</a>.
         </p>
       </div>
     );

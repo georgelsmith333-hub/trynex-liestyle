@@ -41,6 +41,7 @@ async function safeJsonParse(resp: Response): Promise<Record<string, unknown>> {
 async function apiPost(url: string, body: Record<string, unknown>, extraHeaders?: Record<string, string>): Promise<{ ok: boolean; data: Record<string, unknown> }> {
   const resp = await fetch(url, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
