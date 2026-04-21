@@ -6,6 +6,8 @@ import { useCartState, useCartActions, type CartItem } from "@/context/CartConte
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
+import { CartItemThumbnail } from "@/components/CartItemThumbnail";
+import { useCartItemPreview } from "@/hooks/useCartItemPreview";
 import { memo, useState, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FreeShippingProgress } from "@/components/FreeShippingProgress";
@@ -96,6 +98,10 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
   const [show3D, setShow3D] = useState(false);
   const [, setLocation] = useLocation();
 
+  // Single source of truth for both 2D thumbnail and 3D viewer.
+  // CartItemThumbnail consumes the same hook internally.
+  const preview = useCartItemPreview(item);
+
   const studioMeta = (() => {
     if (!item.customNote) return null;
     try {
@@ -124,17 +130,7 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
       style={{ background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
       <div className="flex gap-5 p-4">
-        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shrink-0" style={{ background: '#f3f4f6' }}>
-          <img
-            src={item.imageUrl || `https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop`}
-            alt={item.name}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            decoding="async"
-            width={112}
-            height={112}
-          />
-        </div>
+        <CartItemThumbnail item={item} size={112} />
         <div className="flex-1 flex flex-col justify-between min-w-0">
           <div className="flex justify-between items-start gap-3">
             <div className="min-w-0">
@@ -169,7 +165,7 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
                     </button>
                   )}
 
-                  {item.customImages && item.customImages.length > 0 && (
+                  {preview.frontTexUrl && (
                     <button
                       onClick={() => setShow3D(v => !v)}
                       className="text-[11px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors"
@@ -215,15 +211,15 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
           </div>
         </div>
       </div>
-      {show3D && item.customImages && item.customImages.length > 0 && (
+      {show3D && preview.frontTexUrl && (
         <div className="px-4 pb-4 bg-gray-50/50 border-t border-gray-100">
           <div className="aspect-square w-full max-w-[320px] mx-auto rounded-2xl overflow-hidden mt-4 shadow-inner bg-white border border-gray-200">
             <Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-gray-50"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <CartViewer3D
-                category={(studioMeta?.category as any) || "tshirt"}
-                garmentColor={studioMeta?.colorHex || "#1a1a1a"}
-                frontTexUrl={item.customImages?.[0]}
-                backTexUrl={item.customImages?.[1]}
+                category={preview.category}
+                garmentColor={preview.colorHex}
+                frontTexUrl={preview.frontTexUrl}
+                backTexUrl={preview.backTexUrl}
               />
             </Suspense>
           </div>

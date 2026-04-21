@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/tracking";
 import { getStoredUtm } from "@/hooks/useUtm";
 import { TrustBadges } from "@/components/TrustBadges";
+import { CartItemThumbnail } from "@/components/CartItemThumbnail";
 import { useAuth } from "@/context/AuthContext";
 import { LogIn, UserPlus, X as XIcon } from "lucide-react";
 
@@ -85,6 +86,7 @@ export default function Checkout() {
   const wakingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const snapshotRef = useRef({ total: 0, advance: 0, shipping: 0 });
+  const itemsSnapshotRef = useRef<Array<{ name: string; imageUrl?: string; customNote?: string; customImages?: string[]; quantity: number; price: number; size?: string; color?: string }>>([]);
 
   const { mutateAsync: createOrder, isPending } = useCreateOrder();
   const formRef = useRef<HTMLFormElement>(null);
@@ -459,6 +461,16 @@ export default function Checkout() {
 
       if (wakingTimerRef.current) { clearTimeout(wakingTimerRef.current); wakingTimerRef.current = null; }
       setServerWaking(false);
+      itemsSnapshotRef.current = items.map(i => ({
+        name: i.name,
+        imageUrl: i.imageUrl,
+        customNote: i.customNote,
+        customImages: i.customImages,
+        quantity: i.quantity,
+        price: i.price,
+        size: i.size,
+        color: i.color,
+      }));
       clearCart();
       setStep('gateway');
     } catch (err: any) {
@@ -627,6 +639,28 @@ export default function Checkout() {
             <p className="text-2xl font-black tracking-wider text-orange-600 font-mono">{createdOrder?.orderNumber as string}</p>
             <p className="text-xs text-gray-400 mt-1">Save this number to track your order</p>
           </div>
+
+          {itemsSnapshotRef.current.length > 0 && (
+            <div className="p-4 rounded-2xl mb-4 bg-gray-50 border border-gray-100 text-left">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Your Order</p>
+              <div className="space-y-2">
+                {itemsSnapshotRef.current.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <CartItemThumbnail item={item} size={48} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xs leading-tight truncate text-gray-800">{item.name}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Qty: {item.quantity}
+                        {item.size ? ` · ${item.size}` : ''}
+                        {item.color ? ` · ${item.color}` : ''}
+                      </p>
+                    </div>
+                    <p className="font-bold text-xs text-orange-600 shrink-0">{formatPrice(item.price * item.quantity)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {paymentMode === 'full' ? (
             <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
@@ -1243,10 +1277,7 @@ export default function Checkout() {
                 <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1 mb-6 hide-scrollbar">
                   {items.map(item => (
                     <div key={item.id} className="flex gap-3 items-center">
-                      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-gray-100"
-                        style={{ background: '#f3f4f6' }}>
-                        {item.imageUrl && <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />}
-                      </div>
+                      <CartItemThumbnail item={item} size={56} />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm leading-tight truncate text-gray-800">{item.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">

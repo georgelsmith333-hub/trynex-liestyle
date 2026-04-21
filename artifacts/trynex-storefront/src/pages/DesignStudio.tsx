@@ -857,6 +857,10 @@ export default function DesignStudio() {
           layerCount: layers.length,
           frontLayerCount: frontLayers.length,
           backLayerCount: backLayers.length,
+          // Garment provenance — used by useCartItemPreview fallback composer
+          mockupSrc: garmentSrc,
+          printZone: frontPZ,
+          printZoneBack: selectedProduct.printZoneBack ?? null,
           // Print-ready originals — admin downloads these to fulfill the order
           originalAssetUrls,
         }),

@@ -195,7 +195,12 @@ export async function composeGarmentMockup(opts: {
     ctx.fill();
   }
 
-  // 3. Draw design layers at their correct 1000-unit positions
+  // 3. Draw design layers clipped to the print zone (matches studio editor clipping)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(printZone.x * s, printZone.y * s, printZone.w * s, printZone.h * s);
+  ctx.clip();
+
   for (const layer of layers) {
     if (!layer.visible) continue;
     const geom = layerGeom(layer, printZone);
@@ -224,6 +229,8 @@ export async function composeGarmentMockup(opts: {
     }
     ctx.restore();
   }
+
+  ctx.restore();
 
   return canvas;
 }
@@ -232,6 +239,10 @@ export async function composeGarmentMockup(opts: {
  * Compose just the design as a texture for the 3D viewer.
  * Transparent background; design placed at its 1000×1000 coordinate position.
  * The output covers the full 1000-unit space so it UV-maps correctly onto the garment mesh.
+ *
+ * clipToPrintZone (default true): restricts all design pixels to the print zone rectangle.
+ * This prevents the design from bleeding into sleeve/side UV regions on the 3D mesh,
+ * keeping the design flat inside the front print zone no matter how the camera orbits.
  */
 export async function composeDesignTexture(opts: {
   canvas: HTMLCanvasElement;
@@ -239,8 +250,9 @@ export async function composeDesignTexture(opts: {
   layers: ComposerLayer[];
   outSize: number;
   imageCache?: Map<string, HTMLImageElement>;
+  clipToPrintZone?: boolean;
 }): Promise<HTMLCanvasElement> {
-  const { canvas, printZone, layers, outSize, imageCache } = opts;
+  const { canvas, printZone, layers, outSize, imageCache, clipToPrintZone = true } = opts;
   canvas.width = outSize;
   canvas.height = outSize;
   const ctx = canvas.getContext("2d");
@@ -248,6 +260,13 @@ export async function composeDesignTexture(opts: {
   const s = outSize / 1000;
 
   ctx.clearRect(0, 0, outSize, outSize);
+
+  if (clipToPrintZone) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(printZone.x * s, printZone.y * s, printZone.w * s, printZone.h * s);
+    ctx.clip();
+  }
 
   for (const layer of layers) {
     if (!layer.visible) continue;
@@ -277,6 +296,8 @@ export async function composeDesignTexture(opts: {
     }
     ctx.restore();
   }
+
+  if (clipToPrintZone) ctx.restore();
 
   return canvas;
 }

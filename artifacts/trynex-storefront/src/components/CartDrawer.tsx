@@ -3,6 +3,7 @@ import { useCartState, useCartActions, type CartItem } from "@/context/CartConte
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Sparkles, Truck, Lock, Gift } from "lucide-react";
+import { CartItemThumbnail } from "@/components/CartItemThumbnail";
 import { motion, AnimatePresence } from "framer-motion";
 import { memo, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -47,17 +48,7 @@ const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCl
       className="flex gap-3 p-3 rounded-xl"
       style={{ background: '#fafafa', border: '1px solid #f0f0f0' }}
     >
-      <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-        <img
-          src={item.imageUrl || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=120&h=120&fit=crop'}
-          alt={item.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          decoding="async"
-          width={64}
-          height={64}
-        />
-      </div>
+      <CartItemThumbnail item={item} size={64} />
       <div className="flex-1 min-w-0">
         <Link
           href={`/product/${item.productId}`}

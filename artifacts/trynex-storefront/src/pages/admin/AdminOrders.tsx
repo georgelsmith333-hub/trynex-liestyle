@@ -1,5 +1,6 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useListOrders } from "@workspace/api-client-react";
+import { CartItemThumbnail } from "@/components/CartItemThumbnail";
 import { Loader } from "@/components/ui/Loader";
 import { getAuthHeaders, formatPrice, getApiUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -537,7 +538,9 @@ export default function AdminOrders() {
                       <div key={i} className="p-3 rounded-xl"
                         style={{ background: '#fff8f5', border: '1px solid #fed7aa' }}>
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                            <CartItemThumbnail item={{ imageUrl: item.imageUrl as string | undefined, name: String(item.productName ?? ''), customNote: item.customNote as string | undefined, customImages: item.customImages as string[] | undefined }} size={64} />
+                          <div className="min-w-0 flex-1">
                             <p className="font-bold text-sm">{item.productName}</p>
                             <p className="text-xs text-gray-500">
                               Qty: {item.quantity}
@@ -633,7 +636,8 @@ export default function AdminOrders() {
                               return <p className="text-xs text-primary/70 mt-1">"{item.customNote}"</p>;
                             })()}
                           </div>
-                          <p className="font-black text-primary text-sm">{formatPrice(item.price * item.quantity)}</p>
+                          </div>
+                          <p className="font-black text-primary text-sm shrink-0">{formatPrice(item.price * item.quantity)}</p>
                         </div>
                         {item.customImages && item.customImages.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-orange-100">
