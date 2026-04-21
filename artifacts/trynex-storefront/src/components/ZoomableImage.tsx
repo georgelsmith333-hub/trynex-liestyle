@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Package, ZoomIn, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Package, ZoomIn, ZoomOut, Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
@@ -9,14 +9,23 @@ export type PreviewItem = { src: string; alt: string; isStudio: boolean };
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 
+export type ZoomControls = {
+  scale: number;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+};
+
 export function ZoomableImage({
   src,
   alt,
   onZoomChange,
+  onControlsChange,
 }: {
   src: string;
   alt: string;
   onZoomChange?: (zoomed: boolean) => void;
+  onControlsChange?: (controls: ZoomControls) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -36,6 +45,40 @@ export function ZoomableImage({
   useEffect(() => {
     onZoomChange?.(scale > 1);
   }, [scale, onZoomChange]);
+
+  const zoomCenter = useCallback((nextScale: number) => {
+    const s = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextScale));
+    const ratio = s / scale;
+    const nx = tx * ratio;
+    const ny = ty * ratio;
+    setScale(s);
+    const el = containerRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const maxX = (rect.width * (s - 1)) / 2;
+      const maxY = (rect.height * (s - 1)) / 2;
+      setTx(Math.max(-maxX, Math.min(maxX, nx)));
+      setTy(Math.max(-maxY, Math.min(maxY, ny)));
+    } else {
+      setTx(nx);
+      setTy(ny);
+    }
+  }, [scale, tx, ty]);
+
+  const reset = useCallback(() => {
+    setScale(1);
+    setTx(0);
+    setTy(0);
+  }, []);
+
+  useEffect(() => {
+    onControlsChange?.({
+      scale,
+      zoomIn: () => zoomCenter(scale * 1.4),
+      zoomOut: () => zoomCenter(scale / 1.4),
+      reset,
+    });
+  }, [scale, zoomCenter, reset, onControlsChange]);
 
   const clamp = useCallback((s: number, x: number, y: number) => {
     const el = containerRef.current;
@@ -267,6 +310,10 @@ export function PreviewLightbox({
   const total = items.length;
   const hasMultiple = total > 1;
   const [isZoomed, setIsZoomed] = useState(false);
+  const [controls, setControls] = useState<ZoomControls | null>(null);
+  const zoomPct = Math.round((controls?.scale ?? 1) * 100);
+  const canZoomIn = (controls?.scale ?? 1) < MAX_ZOOM - 0.001;
+  const canZoomOut = (controls?.scale ?? 1) > MIN_ZOOM + 0.001;
 
   const goPrev = useCallback(() => {
     if (index === null || !hasMultiple) return;
@@ -289,7 +336,10 @@ export function PreviewLightbox({
   }, [open, goPrev, goNext]);
 
   useEffect(() => {
-    if (!open) setIsZoomed(false);
+    if (!open) {
+      setIsZoomed(false);
+      setControls(null);
+    }
   }, [open]);
 
   const touchStartX = useRef<number | null>(null);
@@ -329,13 +379,54 @@ export function PreviewLightbox({
               src={current.src}
               alt={current.alt}
               onZoomChange={setIsZoomed}
+              onControlsChange={setControls}
             />
           )}
-          {isZoomed && (
+          {controls && (
             <div
-              className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest select-none pointer-events-none"
+              className={cn(
+                "absolute bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 p-1 rounded-full bg-white/10 backdrop-blur-md text-white shadow-lg transition-opacity",
+                isZoomed ? "opacity-100" : "opacity-0 sm:opacity-100 pointer-events-none sm:pointer-events-auto"
+              )}
+              onClick={(e) => e.stopPropagation()}
+              role="toolbar"
+              aria-label="Image zoom controls"
             >
-              Double-tap to reset
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); controls.zoomOut(); }}
+                disabled={!canZoomOut}
+                className="w-9 h-9 rounded-full hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span
+                className="px-2 min-w-[3.5rem] text-center text-xs font-bold tabular-nums select-none"
+                aria-live="polite"
+                aria-label={`Zoom ${zoomPct} percent`}
+              >
+                {zoomPct}%
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); controls.zoomIn(); }}
+                disabled={!canZoomIn}
+                className="w-9 h-9 rounded-full hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); controls.reset(); }}
+                disabled={!canZoomOut}
+                className="w-9 h-9 ml-0.5 rounded-full hover:bg-white/15 disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Reset zoom to fit"
+                title="Reset to fit"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
             </div>
           )}
           {hasMultiple && (
