@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
-import { getAuthHeaders } from "@/lib/utils";
+import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
-import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag } from "lucide-react";
+import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag, CheckCircle2, XCircle } from "lucide-react";
 
 const inputClass = "w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all placeholder:text-gray-400";
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
@@ -121,6 +121,16 @@ export default function AdminSettings() {
   const [tshirtColorsJson, setTshirtColorsJson] = useState("");
   const [mugColorsJson, setMugColorsJson] = useState("");
 
+  // Remove.bg configured status — fetched from /api/remove-bg/status
+  const [removeBgConfigured, setRemoveBgConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(getApiUrl("/api/remove-bg/status"))
+      .then(r => r.json())
+      .then((d: { configured: boolean }) => setRemoveBgConfigured(d.configured))
+      .catch(() => setRemoveBgConfigured(false));
+  }, []);
+
   useEffect(() => {
     if (settings) {
       reset(settings);
@@ -191,6 +201,11 @@ export default function AdminSettings() {
       await updateSettings({ data: { ...data, studioTshirtColors: tshirtColorsJson, studioMugColors: mugColorsJson } });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({ title: "✓ Settings saved successfully!" });
+      // Refresh remove.bg configured status so the badge reflects any newly-saved key immediately
+      fetch(getApiUrl("/api/remove-bg/status"))
+        .then(r => r.json())
+        .then((d: { configured: boolean }) => setRemoveBgConfigured(d.configured))
+        .catch(() => {});
     } catch {
       toast({ title: "Failed to save settings", variant: "destructive" });
     }
@@ -377,11 +392,20 @@ export default function AdminSettings() {
         {/* Design Studio */}
         <SectionCard icon={Palette} title="Design Studio" iconColor="#E85D04">
           <Field label="Remove.bg API Key" full>
+            {/* Configured / not configured status badge */}
+            {removeBgConfigured !== null && (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-2 ${removeBgConfigured ? "text-green-700" : "text-amber-700"}`}
+                style={{ background: removeBgConfigured ? "#dcfce7" : "#fef3c7", border: `1px solid ${removeBgConfigured ? "#bbf7d0" : "#fde68a"}` }}>
+                {removeBgConfigured
+                  ? <><CheckCircle2 className="w-3.5 h-3.5" /> API key configured — background removal active</>
+                  : <><XCircle className="w-3.5 h-3.5" /> Not configured — background removal will use in-browser AI fallback</>}
+              </div>
+            )}
             <input {...register("removeBgApiKey")} className={inputClass} style={inputStyle} placeholder="Paste new key to update (leave blank to keep current)" type="password" autoComplete="off" />
             <p className="text-xs text-gray-400 mt-1">
               Get a free API key from{" "}
               <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" className="text-orange-500 underline">remove.bg</a>.
-              Free tier gives 50 removals/month. This key is <strong>never exposed publicly</strong> — leave blank to keep the existing key unchanged.
+              Free tier gives 50 removals/month. Leave blank to keep the existing key. When no key is configured, background removal falls back to an in-browser AI model (free, slower).
             </p>
           </Field>
           <Field label="Custom T-Shirt Price (৳)" full={false}>

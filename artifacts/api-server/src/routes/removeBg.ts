@@ -27,6 +27,20 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+/* ── Status endpoint — public, no auth needed ──────────────
+   Returns whether the remove.bg API key is configured so
+   the storefront can show the correct UI state without
+   having to attempt a real removal first.
+─────────────────────────────────────────────────────────── */
+router.get("/remove-bg/status", async (_req: Request, res: Response) => {
+  try {
+    const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "removeBgApiKey"));
+    return res.json({ configured: Boolean(row?.value) });
+  } catch {
+    return res.json({ configured: false });
+  }
+});
+
 router.post("/remove-bg", async (req: Request, res: Response) => {
   try {
     // Rate limit — use req.ip (respects Express trust proxy setting for reverse proxies)
@@ -47,7 +61,7 @@ router.post("/remove-bg", async (req: Request, res: Response) => {
     if (image.length > MAX_PAYLOAD_BYTES) {
       return res.status(413).json({
         error: "image_too_large",
-        message: "Image exceeds the 10 MB limit. Please reduce the image size before uploading.",
+        message: "Image exceeds the 10 MB limit. Try HD-Upscale after resizing the image first.",
       });
     }
 
@@ -60,7 +74,7 @@ router.post("/remove-bg", async (req: Request, res: Response) => {
     if (!apiKey) {
       return res.status(503).json({
         error: "no_api_key",
-        message: "Remove.bg API key not configured. Add it in Admin → Settings → Design Studio.",
+        message: "Background removal isn't configured — admin needs to add a remove.bg key.",
       });
     }
 
@@ -79,11 +93,15 @@ router.post("/remove-bg", async (req: Request, res: Response) => {
     if (!response.ok) {
       const errorText = await response.text();
       req.log?.error?.({ status: response.status, error: errorText }, "remove.bg API error");
+      if (response.status === 402) {
+        return res.status(402).json({
+          error: "quota_exceeded",
+          message: "Remove.bg quota exhausted. Please upgrade the remove.bg plan or wait until next month.",
+        });
+      }
       return res.status(502).json({
         error: "remove_bg_failed",
-        message: response.status === 402
-          ? "Remove.bg API quota exceeded. Please upgrade your remove.bg plan."
-          : "Background removal failed. Please try again.",
+        message: "Background removal failed on the server. Please try again.",
       });
     }
 
@@ -92,7 +110,7 @@ router.post("/remove-bg", async (req: Request, res: Response) => {
     return res.json({ result: resultBase64 });
   } catch (err) {
     req.log?.error?.({ err }, "remove-bg error");
-    return res.status(500).json({ error: "internal_error", message: "Failed to remove background" });
+    return res.status(500).json({ error: "internal_error", message: "Failed to remove background — please try again." });
   }
 });
 

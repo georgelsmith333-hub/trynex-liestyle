@@ -164,6 +164,14 @@ export default function DesignStudio() {
   const [showPrintZone, setShowPrintZone] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  // null = loading, true = configured (remove.bg API key set), false = not configured (will use in-browser fallback)
+  const [removeBgServerConfigured, setRemoveBgServerConfigured] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch(getApiUrl("/api/remove-bg/status"))
+      .then(r => r.json())
+      .then((d: { configured: boolean }) => setRemoveBgServerConfigured(d.configured))
+      .catch(() => setRemoveBgServerConfigured(false));
+  }, []);
 
   /* View mode + active face */
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
@@ -444,20 +452,84 @@ export default function DesignStudio() {
     if (file) handleFileUpload(file);
   };
 
-  /* ── Background removal — RUNS IN BROWSER (WASM), zero server load ─
-   * Uses @imgly/background-removal which loads an ONNX model into the
-   * browser the first time it runs (~30MB, cached in IndexedDB after).
-   * No API calls, no server CPU, no per-request cost.                  */
+  /* ── Background removal ────────────────────────────────────────────
+   * Strategy (server-first, browser-fallback):
+   *   1. POST to /api/remove-bg (uses remove.bg API key from admin settings).
+   *      Fast, high quality.  Returns structured error codes.
+   *   2. If server returns 503 "no_api_key" → fall back to in-browser ONNX
+   *      model (@imgly/background-removal, ~30 MB, cached in IndexedDB).
+   *      Free, runs locally, slower on first run.
+   * Distinct toasts for: no key, quota, rate-limit, too large, success.
+   ─────────────────────────────────────────────────────────────────── */
   const handleRemoveBg = async () => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
     setIsRemoving(true);
+
+    /* Helper — apply a new data-URL to the selected image layer */
+    const applyResult = async (dataUrl: string) => {
+      const img = new Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = dataUrl; });
+      updateLayer(selectedLayer.id, l => l.type === "image"
+        ? { ...l, src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
+        : l, true);
+    };
+
+    /* ── Step 1: Try server (remove.bg API) ── */
+    try {
+      toast({ title: "Removing background…", description: "Processing via server…" });
+      const r = await fetch(getApiUrl("/api/remove-bg"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: selectedLayer.src }),
+      });
+      const json = await r.json().catch(() => ({}));
+
+      if (r.ok) {
+        await applyResult(json.result);
+        toast({ title: "✨ Background removed", description: "Clean cutout ready." });
+        setIsRemoving(false);
+        return;
+      }
+
+      /* Specific error codes — decide whether to fall through to browser or stop */
+      if (json.error === "rate_limited") {
+        toast({ title: "Too many requests", description: "You've reached the removal limit. Please wait an hour and try again.", variant: "destructive" });
+        setIsRemoving(false);
+        return;
+      }
+      if (json.error === "image_too_large") {
+        toast({ title: "Image too large", description: "Please reduce the image below 10 MB. Try HD-Upscale after resizing.", variant: "destructive" });
+        setIsRemoving(false);
+        return;
+      }
+      if (json.error === "no_api_key") {
+        toast({
+          title: "Background removal isn't configured",
+          description: "Admin needs to add a remove.bg API key in Settings → Design Studio. Trying in-browser AI as fallback…",
+        });
+        /* Fall through to browser fallback */
+      } else if (json.error === "quota_exceeded") {
+        toast({ title: "Remove.bg quota exceeded", description: "The monthly quota is exhausted. Switching to in-browser processing…" });
+        /* Fall through to browser fallback */
+      } else {
+        /* Unexpected server error — still try browser as a courtesy */
+        console.warn("[bg-removal] server error, trying browser fallback", r.status, json);
+      }
+      /* All handled or unexpected errors → fall through to browser below */
+    } catch (networkErr) {
+      /* Network-level failure (server unreachable) — try browser */
+      console.warn("[bg-removal] server unreachable, trying browser", networkErr);
+    }
+
+    /* ── Step 2: In-browser ONNX fallback (@imgly/background-removal) ── */
     try {
       toast({
-        title: "Removing background…",
-        description: "First run downloads a small AI model (~30MB). Stays cached after.",
+        title: "Switching to in-browser AI…",
+        description: "First run downloads a ~30 MB model — stays cached after.",
       });
       const { removeBackground } = await import("@imgly/background-removal");
       const blob = await removeBackground(selectedLayer.src, {
+        publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
         output: { format: "image/png", quality: 0.9 },
       });
       const reader = new FileReader();
@@ -466,43 +538,18 @@ export default function DesignStudio() {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      const img = new Image();
-      img.onload = () => {
-        updateLayer(selectedLayer.id, l => l.type === "image"
-          ? { ...l, src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
-          : l, true);
-        toast({ title: "✨ Background removed", description: "Transparent PNG ready." });
-      };
-      img.src = dataUrl;
-    } catch (err) {
-      console.warn("[bg-removal] client failed, trying server fallback", err);
-      // ── Server-side fallback (remove.bg via /api/remove-bg) ──
-      // Triggers when the in-browser ONNX model can't download (slow mobile
-      // connection, IndexedDB quota issues, or WebGL/SIMD unsupported). This
-      // is the same image path the user just uploaded, so it's already a
-      // base64 data URL ready to POST.
-      try {
-        const r = await fetch(`${getApiUrl()}/api/remove-bg`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: selectedLayer.src }),
-        });
-        const json = await r.json();
-        if (!r.ok) throw new Error(json.message || "Server bg removal failed");
-        const img = new Image();
-        await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = json.result; });
-        updateLayer(selectedLayer.id, l => l.type === "image"
-          ? { ...l, src: json.result, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
-          : l, true);
-        toast({ title: "✨ Background removed", description: "Used server processing." });
-      } catch (err2) {
-        console.error("[bg-removal] both methods failed", err2);
-        toast({
-          title: "Couldn't remove background",
-          description: (err2 as Error)?.message || "Try a different image, or contact admin to enable server processing.",
-          variant: "destructive",
-        });
-      }
+      await applyResult(dataUrl);
+      toast({ title: "✨ Background removed", description: "Processed in-browser — transparent PNG ready." });
+    } catch (browserErr) {
+      console.error("[bg-removal] browser fallback failed", browserErr);
+      const isNetworkErr = browserErr instanceof TypeError && browserErr.message.includes("fetch");
+      toast({
+        title: "Background removal unavailable",
+        description: isNetworkErr
+          ? "The AI model couldn't be downloaded. Ask your admin to add a remove.bg API key in Settings."
+          : "Both server and in-browser removal failed. Try a different image.",
+        variant: "destructive",
+      });
     } finally {
       setIsRemoving(false);
     }
@@ -1419,14 +1466,23 @@ export default function DesignStudio() {
                           <img src={selectedLayer.src} alt="Preview" className="w-full h-20 object-contain rounded-lg"
                             style={{ background: "repeating-conic-gradient(#ccc 0% 25%,#f0f0f0 0% 50%) 0 0/16px 16px" }} />
                         </div>
-                        <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
-                          style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
-                        >
-                          {isRemoving
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
-                            : <><Scissors className="w-4 h-4" /> Remove Background</>}
-                        </button>
+                        <div>
+                          <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
+                            style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
+                            title={removeBgServerConfigured === false ? "No remove.bg API key — will use in-browser AI (slower)" : undefined}
+                          >
+                            {isRemoving
+                              ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
+                              : <><Scissors className="w-4 h-4" /> Remove Background</>}
+                          </button>
+                          {removeBgServerConfigured === false && !isRemoving && (
+                            <p className="text-[10px] text-amber-600 mt-1 text-center leading-tight">
+                              Uses in-browser AI — admin can enable cloud processing in{" "}
+                              <a href="/admin/settings" className="underline font-semibold">Settings</a>
+                            </p>
+                          )}
+                        </div>
                         <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
                           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
                           style={{ background: "linear-gradient(135deg,#FEF3C7,#FDE68A)", color: "#92400E", border: "1px solid #FCD34D" }}
