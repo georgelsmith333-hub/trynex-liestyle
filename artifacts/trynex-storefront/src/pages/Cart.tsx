@@ -6,7 +6,7 @@ import { useCartState, useCartActions, type CartItem } from "@/context/CartConte
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
-import { memo, useState, lazy, Suspense } from "react";
+import { memo, useState, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FreeShippingProgress } from "@/components/FreeShippingProgress";
 
@@ -234,6 +234,29 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
   );
 });
 
+function useCutoffCountdown() {
+  // 6:00 PM Bangladesh time (UTC+6) — orders placed before cutoff
+  // ship next business day for ~48h express delivery in metro areas.
+  const computeRemaining = () => {
+    const now = new Date();
+    const bdNow = new Date(now.getTime() + (6 * 60 - now.getTimezoneOffset()) * 60_000);
+    const cutoff = new Date(bdNow);
+    cutoff.setUTCHours(18, 0, 0, 0);
+    if (bdNow.getTime() >= cutoff.getTime()) {
+      cutoff.setUTCDate(cutoff.getUTCDate() + 1);
+    }
+    const diffMs = cutoff.getTime() - bdNow.getTime();
+    const totalMin = Math.max(0, Math.floor(diffMs / 60_000));
+    return { hours: Math.floor(totalMin / 60), minutes: totalMin % 60 };
+  };
+  const [remaining, setRemaining] = useState(computeRemaining);
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(computeRemaining()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return remaining;
+}
+
 export default function Cart() {
   const { items, subtotal } = useCartState();
   const { changeQuantity, removeFromCart, clearCart } = useCartActions();
@@ -241,6 +264,10 @@ export default function Cart() {
   const settings = useSiteSettings();
   const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
   const shippingFee = settings.shippingCost ?? 100;
+  const cutoff = useCutoffCountdown();
+  const cutoffLabel = cutoff.hours > 0
+    ? `${cutoff.hours}h ${cutoff.minutes}m`
+    : `${cutoff.minutes}m`;
 
   const shippingCost = subtotal > 0 && subtotal < freeShippingThreshold ? shippingFee : 0;
   const total = subtotal + shippingCost;
@@ -335,7 +362,9 @@ export default function Cart() {
                     style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}
                   >
                     <Sparkles className="w-4 h-4 shrink-0" style={{ color: '#E85D04' }} />
-                    <span>Checkout in the next few minutes — production starts in 24h, delivered in 3–5 days nationwide.</span>
+                    <span>
+                      Order in the next <strong className="tabular-nums">{cutoffLabel}</strong> for 48-hour express dispatch — production starts at the 6 PM cutoff.
+                    </span>
                   </div>
                   <h3 className="text-xl font-bold font-display mb-6 text-gray-900">Order Summary</h3>
 
