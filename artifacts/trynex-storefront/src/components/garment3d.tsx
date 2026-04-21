@@ -4,43 +4,37 @@
    so the two views always render identically.
 
    GLB models (public/models/):
-     tshirt.glb      → real apparel mesh
+     tshirt.glb      → real apparel mesh (authored UVs ignored — we re-project)
      hoodie.glb      → ExtrudeGeometry body + SphereGeometry hood (2 primitives)
      longsleeve.glb  → ExtrudeGeometry body with long sleeves (1 primitive)
      cap.glb         → SphereGeometry crown + ExtrudeGeometry brim (2 primitives)
      mug.glb         → 5 primitives: body / inner / bottom / rim / handle
 
    ⚠️  Primitive ordering contract: code below destructures meshes[] by fixed index
-   (matching the order emitted by scripts/generate-models.cjs). If models are ever
-   re-exported, verify the generator's addMesh() call order is unchanged, or switch
-   to name-based selection (mesh.name lookup) to avoid silent mismatch.
+   (matching the order emitted by scripts/generate-models.cjs).
 
-   UV contract (garments):
-     UVs are normalised to [0,1] across the XY bounding box of each mesh.
-     Design textures (composeLayers output) also cover a [0,1] UV space
-     (1024×1024 canvas = 1000-unit coordinate space), so the print zone
-     falls in the correct region with no extra UV transform needed.
+   ── Design-overlay UV strategy ──────────────────────────
+   The design canvas is a 1024×1024 (or 2048×768 for mug) texture rendered into
+   a unified 1000-unit coordinate space. To guarantee the design lands on the
+   FRONT of the garment regardless of how the source GLB was UV-unwrapped, we
+   compute a fresh planar-projection UV set from the mesh's local XY positions:
 
-   Design overlay strategy:
-     Front design: same GLB mesh, scale 1.003, THREE.FrontSide
-     Back design:  same GLB mesh in a [0,π,0] rotation, scale 1.003, THREE.FrontSide
-     The Y-rotation makes those polygons' "front normals" face the camera only
-     when orbited to the back — naturally occluded when viewing from the front.
+     u = (x - xMin) / xSize
+     v = 1 − (y - yMin) / ySize        (flip-Y matches THREE flipY default)
 
-   Mug:
-     5 separate primitives loaded via useGLTF; each gets its own material:
-       body   → ceramic PBR + wrap texture (RepeatWrapping)
-       inner  → dark (BackSide) to read as hollow cavity
-       bottom → garment colour, matte
-       rim    → garment colour, slight clearcoat
-       handle → garment colour, clearcoat ceramic
+   Front overlay: planar +Z projection, side=FrontSide (only front polys draw).
+   Back overlay:  same mesh wrapped in a [0, π, 0]-rotated group so its
+                  front-normals only face the camera when orbited to the back.
+                  We mirror U (u → 1 − u) so the rotated text reads correctly.
+
+   The BASE mesh keeps the GLB's authored UVs (or no UVs at all — it only
+   uses a flat color material), so we never touch it.
 ════════════════════════════════════════════════════════ */
 import { useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { useGLTF } from "@react-three/drei";
 
 // Print-zone constants imported for reference / future UV-crop helpers
-// (the design texture already encodes the correct zone via composeLayers)
 export {
   TSHIRT_PZ,
   LONGSLEEVE_PZ,
@@ -63,11 +57,7 @@ export function useUrlTexture(url: string | undefined): THREE.Texture | null {
   }, [url]);
 }
 
-/**
- * Collect all Mesh objects from a GLTF scene in depth-first order.
- * A single-primitive GLTF node loads as THREE.Mesh;
- * a multi-primitive GLTF node loads as THREE.Group with Mesh children.
- */
+/** Collect all Mesh objects from a GLTF scene in depth-first order. */
 function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
   root.traverse((o) => {
@@ -76,14 +66,52 @@ function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
   return meshes;
 }
 
-/* ─────────────────────────────── T-SHIRT (GLB) ───────── */
 /**
- * Renders the tshirt.glb mesh.
- * Front and back design overlays each use THREE.FrontSide:
- *   Front design stays at default orientation — visible from the front.
- *   Back design is in a [0,π,0]-rotated wrapper so its normals face the
- *   camera only when the camera is on the back side of the mesh.
+ * Clone a geometry and override its UVs with a planar +Z projection
+ * normalised to the mesh's local XY bounding box. This guarantees the
+ * design canvas (which spans [0,1] in UV space) lands on the FRONT of the
+ * geometry regardless of how the GLB was authored.
+ *
+ * flipU=true mirrors U so a back-side overlay (whose host group is rotated
+ * 180° around Y) still reads "right way around" when viewed from the back.
  */
+function planarProjectGeometry(
+  src: THREE.BufferGeometry,
+  flipU: boolean = false
+): THREE.BufferGeometry {
+  const geo = src.clone();
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox!;
+  const xMin = bb.min.x;
+  const yMin = bb.min.y;
+  const xSize = (bb.max.x - bb.min.x) || 1;
+  const ySize = (bb.max.y - bb.min.y) || 1;
+
+  const pos = geo.attributes.position;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    let u = (pos.getX(i) - xMin) / xSize;
+    const v = 1 - (pos.getY(i) - yMin) / ySize;
+    if (flipU) u = 1 - u;
+    uv[i * 2] = u;
+    uv[i * 2 + 1] = v;
+  }
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return geo;
+}
+
+/** Hook variant of planarProjectGeometry — memoises by source geometry id. */
+function usePlanarGeometry(
+  src: THREE.BufferGeometry | null | undefined,
+  flipU: boolean = false
+): THREE.BufferGeometry | null {
+  return useMemo(() => {
+    if (!src) return null;
+    return planarProjectGeometry(src, flipU);
+  }, [src, flipU]);
+}
+
+/* ─────────────────────────────── T-SHIRT (GLB) ───────── */
 export function RealisticShirt({
   frontTex,
   backTex,
@@ -95,26 +123,30 @@ export function RealisticShirt({
 }) {
   const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
-  const geo = meshes[0]?.geometry ?? null;
+  const baseGeo = meshes[0]?.geometry ?? null;
 
-  if (!geo) return null;
+  // Re-projected UV variants for front/back overlays
+  const frontGeo = usePlanarGeometry(baseGeo, false);
+  const backGeo = usePlanarGeometry(baseGeo, true);
+
+  if (!baseGeo) return null;
 
   return (
     <group scale={2.6}>
-      <mesh geometry={geo} castShadow receiveShadow>
+      <mesh geometry={baseGeo} castShadow receiveShadow>
         <meshStandardMaterial color={garmentColor} roughness={0.78} metalness={0.02} />
       </mesh>
-      {frontTex && (
-        <mesh geometry={geo} scale={1.003}>
+      {frontTex && frontGeo && (
+        <mesh geometry={frontGeo} scale={1.003}>
           <meshStandardMaterial
             map={frontTex} transparent roughness={0.65} metalness={0}
             depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
           />
         </mesh>
       )}
-      {backTex && (
+      {backTex && backGeo && (
         <group rotation={[0, Math.PI, 0]}>
-          <mesh geometry={geo} scale={1.003}>
+          <mesh geometry={backGeo} scale={1.003}>
             <meshStandardMaterial
               map={backTex} transparent roughness={0.65} metalness={0}
               depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
@@ -128,11 +160,6 @@ export function RealisticShirt({
 useGLTF.preload("/models/tshirt.glb");
 
 /* ─── Shared garment body (hoodie / longsleeve) ────────── */
-/**
- * Renders any multi-part garment GLB.
- * All primitives get garment color; front + back design overlays applied to
- * the body primitive (index 0) only.
- */
 function GarmentGLB({
   modelPath,
   frontTex,
@@ -148,6 +175,10 @@ function GarmentGLB({
 }) {
   const { scene } = useGLTF(modelPath) as { scene: THREE.Group };
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
+  const bodyGeo = meshes[0]?.geometry ?? null;
+
+  const frontGeo = usePlanarGeometry(bodyGeo, false);
+  const backGeo = usePlanarGeometry(bodyGeo, true);
 
   if (meshes.length === 0) return null;
 
@@ -159,19 +190,17 @@ function GarmentGLB({
           <meshStandardMaterial color={garmentColor} roughness={roughness} metalness={0.01} />
         </mesh>
       ))}
-      {/* Front design overlay — body mesh (index 0) only */}
-      {frontTex && (
-        <mesh geometry={meshes[0].geometry} scale={1.003}>
+      {frontTex && frontGeo && (
+        <mesh geometry={frontGeo} scale={1.003}>
           <meshStandardMaterial
             map={frontTex} transparent roughness={roughness - 0.14}
             depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
           />
         </mesh>
       )}
-      {/* Back design overlay */}
-      {backTex && (
+      {backTex && backGeo && (
         <group rotation={[0, Math.PI, 0]}>
-          <mesh geometry={meshes[0].geometry} scale={1.003}>
+          <mesh geometry={backGeo} scale={1.003}>
             <meshStandardMaterial
               map={backTex} transparent roughness={roughness - 0.14}
               depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
@@ -232,6 +261,8 @@ export function CapBody({
 }) {
   const { scene } = useGLTF("/models/cap.glb") as { scene: THREE.Group };
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
+  const crownGeo = meshes[0]?.geometry ?? null;
+  const frontGeo = usePlanarGeometry(crownGeo, false);
 
   if (meshes.length === 0) return null;
 
@@ -243,9 +274,8 @@ export function CapBody({
           <meshStandardMaterial color={garmentColor} roughness={i === 1 ? 0.7 : 0.75} metalness={0.02} />
         </mesh>
       ))}
-      {/* Design on crown (index 0) only */}
-      {frontTex && (
-        <mesh geometry={meshes[0].geometry} scale={1.003}>
+      {frontTex && frontGeo && (
+        <mesh geometry={frontGeo} scale={1.003}>
           <meshStandardMaterial
             map={frontTex} transparent roughness={0.6}
             depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
@@ -258,17 +288,6 @@ export function CapBody({
 useGLTF.preload("/models/cap.glb");
 
 /* ─────────────────────── MUG ─────────────────────────── */
-/**
- * Multi-part ceramic mug loaded from mug.glb (5 primitives):
- *   [0] body   → ceramic PBR + wrap design texture
- *   [1] inner  → dark BackSide material (hollow cavity)
- *   [2] bottom → garment colour, matte
- *   [3] rim    → garment colour, clearcoat
- *   [4] handle → garment colour, clearcoat ceramic
- *
- * The wrap texture covers a 360° band; offset.set(0.25, 0) aligns the
- * print-zone centre to the front-facing side of the cylinder (matching MUG_PZ).
- */
 export function MugBody({
   wrapTex,
   garmentColor,
@@ -295,7 +314,6 @@ export function MugBody({
 
   return (
     <group>
-      {/* body — base ceramic shell, garment colour only (no texture here) */}
       <mesh geometry={bodyGeo} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={garmentColor}
@@ -307,8 +325,6 @@ export function MugBody({
         />
       </mesh>
 
-      {/* design decal — transparent overlay so non-printed pixels leave
-          garment colour visible; confined to the wrap band via UV repeat/offset */}
       {wrapTex && (
         <mesh geometry={bodyGeo} scale={1.001}>
           <meshStandardMaterial
@@ -323,22 +339,18 @@ export function MugBody({
         </mesh>
       )}
 
-      {/* inner liner — dark back-side so the cavity reads as hollow */}
       <mesh geometry={innerGeo}>
         <meshStandardMaterial color={"#161616"} side={THREE.BackSide} roughness={0.55} />
       </mesh>
 
-      {/* solid bottom — garment colour */}
       <mesh geometry={bottomGeo}>
         <meshStandardMaterial color={garmentColor} roughness={0.40} />
       </mesh>
 
-      {/* top rim ring — garment colour, slight clearcoat */}
       <mesh geometry={rimGeo}>
         <meshPhysicalMaterial color={garmentColor} roughness={0.30} clearcoat={0.3} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* handle — garment colour, full clearcoat */}
       <mesh geometry={handleGeo} castShadow>
         <meshPhysicalMaterial color={garmentColor} roughness={0.28} clearcoat={0.55} clearcoatRoughness={0.2} />
       </mesh>

@@ -7,6 +7,7 @@
 import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
+import * as THREE from "three";
 import {
   RealisticShirt,
   LongSleeveBody,
@@ -184,10 +185,15 @@ export default function CartViewer3D({
           <OrbitControls
             enablePan={false}
             enableZoom={true}
+            enableDamping
+            dampingFactor={0.08}
+            rotateSpeed={0.7}
+            zoomSpeed={0.8}
             minDistance={isMug ? 2.4 : 3}
             maxDistance={isMug ? 5 : 6}
             minPolarAngle={Math.PI * 0.25}
             maxPolarAngle={Math.PI * 0.65}
+            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           />
         </Suspense>
       </Canvas>

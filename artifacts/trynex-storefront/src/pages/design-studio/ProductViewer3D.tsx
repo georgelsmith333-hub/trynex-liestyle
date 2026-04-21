@@ -225,10 +225,15 @@ export default function ProductViewer3D({
         <OrbitControls
           enablePan={false}
           enableZoom={true}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.7}
+          zoomSpeed={0.8}
           minDistance={isMug ? 2.4 : 3}
           maxDistance={isMug ? 5 : 6}
           minPolarAngle={Math.PI * 0.25}
           maxPolarAngle={Math.PI * 0.65}
+          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
       </Suspense>
     </Canvas>
