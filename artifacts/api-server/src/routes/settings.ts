@@ -71,7 +71,10 @@ async function buildSettings(map: Record<string, string | null>) {
     googleAdsId: map["googleAdsId"] ?? "",
     siteIcon: map["siteIcon"] ?? "",
     facebookAppId: map["facebookAppId"] ?? "",
-    googleClientId: map["googleClientId"] ?? "",
+    // Fallback to GOOGLE_CLIENT_ID env when the settings row is absent so
+    // one-tap login keeps working under partial misconfig (env set, DB key
+    // not yet added).
+    googleClientId: map["googleClientId"] || process.env.GOOGLE_CLIENT_ID || "",
     googleSiteVerification: map["googleSiteVerification"] ?? "",
     promoBannerTitle: map["promoBannerTitle"] ?? "",
     promoBannerSubtitle: map["promoBannerSubtitle"] ?? "",
