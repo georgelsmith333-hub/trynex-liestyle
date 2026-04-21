@@ -85,6 +85,7 @@ interface SiteSettings {
   seoOgImage: string;
   seoTwitterHandle: string;
   metaCapiTokenConfigured: boolean;
+  heroTypewriterPhrases: string;
   isLoaded: boolean;
 }
 
@@ -186,6 +187,7 @@ const defaults: SiteSettings = {
   seoOgImage: c("seoOgImage") || "",
   seoTwitterHandle: c("seoTwitterHandle") || "",
   metaCapiTokenConfigured: c("metaCapiTokenConfigured") ?? false,
+  heroTypewriterPhrases: c("heroTypewriterPhrases") || "",
   isLoaded: false,
 };
 

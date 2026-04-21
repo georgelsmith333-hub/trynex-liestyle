@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
-const PHRASES: string[] = [
+const DEFAULT_PHRASES: string[] = [
   "ডিজাইন আপনার",
   "We craft it.",
   "Premium 320GSM cotton.",
@@ -99,7 +99,13 @@ export function TypewriterHero() {
   const settings = useSiteSettings();
   const reduced = usePrefersReducedMotion();
 
-  const phrases = useMemo(() => PHRASES.filter(Boolean), []);
+  const phrases = useMemo(() => {
+    const custom = (settings.heroTypewriterPhrases || "")
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    return custom.length > 0 ? custom : DEFAULT_PHRASES.filter(Boolean);
+  }, [settings.heroTypewriterPhrases]);
   const typed = useTypewriter(phrases, { enabled: !reduced });
 
   // Lightweight micro-parallax: translate the background layer slightly on

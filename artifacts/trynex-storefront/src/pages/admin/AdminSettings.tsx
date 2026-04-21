@@ -237,6 +237,18 @@ export default function AdminSettings() {
           <Field label="Hero Subtitle" full>
             <input {...register("heroSubtitle")} className={inputClass} style={inputStyle} placeholder="Elevate your wardrobe with bespoke custom apparel." />
           </Field>
+          <Field label="Hero Typewriter Phrases" full>
+            <textarea
+              {...register("heroTypewriterPhrases")}
+              rows={7}
+              className={inputClass}
+              style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
+              placeholder={"ডিজাইন আপনার\nWe craft it.\nPremium 320GSM cotton.\nDelivered in 48 hours."}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              One phrase per line. The hero headline cycles through these (English &amp; Bangla supported). Leave blank to use the built-in defaults.
+            </p>
+          </Field>
           <Field label="Announcement Bar Text" full>
             <input {...register("announcementBar")} className={inputClass} style={inputStyle} placeholder="🚚 Free delivery on orders above ৳1,500!" />
             <p className="text-xs text-gray-400 mt-1">Separate multiple messages with <code>|</code> — each becomes a ticker item.</p>

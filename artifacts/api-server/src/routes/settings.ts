@@ -45,6 +45,8 @@ const SETTINGS_KEYS = [
   "spinWheelEnabled", "spinWheelDelay", "spinWheelTitle", "spinWheelSubtitle",
   // SEO defaults
   "seoDefaultTitle", "seoDefaultDescription", "seoDefaultKeywords", "seoOgImage", "seoTwitterHandle",
+  // Hero typewriter phrases (newline-separated string; blank = use frontend defaults)
+  "heroTypewriterPhrases",
 ];
 
 async function buildSettings(map: Record<string, string | null>) {
@@ -142,6 +144,8 @@ async function buildSettings(map: Record<string, string | null>) {
     seoDefaultKeywords: map["seoDefaultKeywords"] ?? "custom t-shirt bangladesh, personalized mug, gift hamper, custom hoodie, design studio, trynex",
     seoOgImage: map["seoOgImage"] ?? "",
     seoTwitterHandle: map["seoTwitterHandle"] ?? "",
+    // Hero typewriter phrases — newline-separated string; blank means use frontend defaults
+    heroTypewriterPhrases: map["heroTypewriterPhrases"] ?? "",
     // NOTE: removeBgApiKey is intentionally NOT included here — it is server-only secret
     // NOTE: metaCapiToken is intentionally NOT included — server-only
     // Safe boolean flag: tells admin UI whether the token is configured (no secret exposed)
