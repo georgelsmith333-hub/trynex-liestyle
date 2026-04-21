@@ -104,7 +104,7 @@ router.post("/admin/logout", (req, res) => {
 });
 
 router.get("/admin/me", requireAdmin, async (req, res) => {
-  res.json({ authenticated: true, username: "admin" });
+  res.json({ admin: { id: 1, username: "admin", authenticated: true } });
 });
 
 router.get("/admin/health", requireAdmin, async (req, res) => {

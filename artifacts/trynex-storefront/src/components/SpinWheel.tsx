@@ -55,10 +55,10 @@ interface Props {
 
 export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose }: Props) {
   const settings = useSiteSettings();
-  const enabled = (settings as any)?.spinWheelEnabled !== false;
-  const delaySeconds = Math.max(1, (settings as any)?.spinWheelDelay ?? 4);
-  const title = (settings as any)?.spinWheelTitle || "Spin & Win an Offer!";
-  const subtitle = (settings as any)?.spinWheelSubtitle || "One free spin — no purchase needed.";
+  const enabled = settings.spinWheelEnabled !== false;
+  const delaySeconds = Math.max(1, settings.spinWheelDelay ?? 4);
+  const title = settings.spinWheelTitle || "Spin & Win an Offer!";
+  const subtitle = settings.spinWheelSubtitle || "One free spin — no purchase needed.";
 
   const [open, setOpen] = useState(false);
   const [spinning, setSpinning] = useState(false);
