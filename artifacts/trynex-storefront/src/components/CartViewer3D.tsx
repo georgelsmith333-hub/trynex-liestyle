@@ -22,6 +22,7 @@ import {
   hasWebGL2,
   VIEWER_DEFAULTS,
   VIEWER_FRAMING,
+  VIEWER_FRAMING_BACK,
 } from "./garment3d";
 
 type GarmentCategory = "tshirt" | "longsleeve" | "hoodie" | "mug" | "cap";
@@ -53,12 +54,14 @@ function CameraController({
   const tickRef = useRef(0);
   const INTRO_TICKS = 80;
   const f = VIEWER_FRAMING[category];
+  const b = VIEWER_FRAMING_BACK[category] || {};
   const noBackFace = category === "mug" || category === "cap";
 
   useFrame(({ camera }) => {
     tickRef.current++;
-    const radius = f.radius;
-    const camY   = f.cameraY;
+    const isBack = activeFace === "back" && !noBackFace;
+    const radius = isBack && b.radius !== undefined ? b.radius : f.radius;
+    const camY   = isBack && b.cameraY !== undefined ? b.cameraY : f.cameraY;
 
     if (noBackFace) {
       // Mug: keep auto-rotating indefinitely until user grabs OrbitControls
@@ -79,7 +82,7 @@ function CameraController({
       camera.lookAt(0, 0, 0);
     } else {
       // Garment face lock: lerp toward selected face
-      const targetY = activeFace === "back" ? Math.PI : 0;
+      const targetY = isBack ? Math.PI : 0;
       const cur  = Math.atan2(camera.position.x, camera.position.z);
       const next = cur + (targetY - cur) * 0.08;
       camera.position.x = Math.sin(next) * radius;

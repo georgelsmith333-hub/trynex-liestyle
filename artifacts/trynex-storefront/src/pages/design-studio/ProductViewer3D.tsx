@@ -30,6 +30,7 @@ import {
   hasWebGL2,
   VIEWER_DEFAULTS,
   VIEWER_FRAMING,
+  VIEWER_FRAMING_BACK,
 } from "../../components/garment3d";
 
 interface FacePayload {
@@ -125,15 +126,22 @@ function CameraRig({
   category: "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug";
 }) {
   const f = VIEWER_FRAMING[category];
+  const b = VIEWER_FRAMING_BACK[category] || {};
+  
   // Mug & cap have no separate "back" face — keep them facing front.
   const hasBackFace = category === "tshirt" || category === "longsleeve" || category === "hoodie";
-  const targetY = hasBackFace && activeFace === "back" ? Math.PI : 0;
+  const isBack = hasBackFace && activeFace === "back";
+  
+  const targetY = isBack ? Math.PI : 0;
+  const radius = isBack && b.radius !== undefined ? b.radius : f.radius;
+  const cameraY = isBack && b.cameraY !== undefined ? b.cameraY : f.cameraY;
+
   useFrame(({ camera }) => {
     const cur = Math.atan2(camera.position.x, camera.position.z);
     const next = cur + (targetY - cur) * 0.06;
-    camera.position.x = Math.sin(next) * f.radius;
-    camera.position.z = Math.cos(next) * f.radius;
-    camera.position.y = f.cameraY;
+    camera.position.x = Math.sin(next) * radius;
+    camera.position.z = Math.cos(next) * radius;
+    camera.position.y = cameraY;
     camera.lookAt(0, 0, 0);
   });
   return null;

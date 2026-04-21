@@ -195,10 +195,39 @@ function buildHemisphereOverlay(
 
   // Planar +Z UV projection over the kept-triangles bounding box
   const bb = geo.boundingBox!;
-  const xMin = bb.min.x;
-  const yMin = bb.min.y;
-  const xSize = (bb.max.x - bb.min.x) || 1;
-  const ySize = (bb.max.y - bb.min.y) || 1;
+  let xMin = bb.min.x;
+  let yMin = bb.min.y;
+  let xSize = (bb.max.x - bb.min.x) || 1;
+  let ySize = (bb.max.y - bb.min.y) || 1;
+
+  // Manual UV padding/offset to align the 1000x1000 design canvas with the model's print area.
+  // The goal is that a design at [0,0] in the 1000x1000 space maps to the exact same
+  // real-world location on the garment as it does in the 2D SVG mockup.
+  if (hemisphere === "front") {
+    // Audit-derived offsets for the front face
+    if (src.userData.category === "hoodie") {
+      yMin -= ySize * 0.12;
+      ySize *= 1.18;
+    } else if (src.userData.category === "longsleeve") {
+      yMin -= ySize * 0.05;
+      ySize *= 1.10;
+    } else if (src.userData.category === "cap") {
+      yMin -= ySize * 0.15;
+      ySize *= 1.40;
+    }
+  } else {
+    // Audit-derived offsets for the back face
+    if (src.userData.category === "hoodie") {
+      yMin += ySize * 0.22;
+      ySize *= 1.15;
+    } else if (src.userData.category === "longsleeve") {
+      yMin += ySize * 0.18;
+      ySize *= 1.10;
+    } else if (src.userData.category === "tshirt") {
+      yMin += ySize * 0.12;
+      ySize *= 1.10;
+    }
+  }
 
   const vertCount = newPos.length / 3;
   const uv = new Float32Array(vertCount * 2);
@@ -233,7 +262,11 @@ export function RealisticShirt({
   garmentColor: string;
 }) {
   const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
-  const meshes = useMemo(() => collectMeshes(scene), [scene]);
+  const meshes = useMemo(() => {
+    const ms = collectMeshes(scene);
+    ms.forEach(m => { m.geometry.userData.category = "tshirt"; });
+    return ms;
+  }, [scene]);
   const baseGeo = meshes[0]?.geometry ?? null;
 
   // Hemisphere-filtered overlays — front-facing triangles get the front
@@ -291,7 +324,13 @@ function GarmentGLB({
   roughness?: number;
 }) {
   const { scene } = useGLTF(modelPath) as { scene: THREE.Group };
-  const meshes = useMemo(() => collectMeshes(scene), [scene]);
+  const meshes = useMemo(() => {
+    const ms = collectMeshes(scene);
+    // modelPath starts with "/models/", e.g. "/models/hoodie.glb"
+    const cat = modelPath.split("/").pop()?.split(".")[0];
+    ms.forEach(m => { m.geometry.userData.category = cat; });
+    return ms;
+  }, [scene, modelPath]);
   const bodyGeo = meshes[0]?.geometry ?? null;
 
   const frontGeo = useFrontOverlayGeometry(bodyGeo);
@@ -386,7 +425,11 @@ export function CapBody({
   garmentColor: string;
 }) {
   const { scene } = useGLTF("/models/cap.glb") as { scene: THREE.Group };
-  const meshes = useMemo(() => collectMeshes(scene), [scene]);
+  const meshes = useMemo(() => {
+    const ms = collectMeshes(scene);
+    ms.forEach(m => { m.geometry.userData.category = "cap"; });
+    return ms;
+  }, [scene]);
   const crownGeo = meshes[0]?.geometry ?? null;
   const frontGeo = useFrontOverlayGeometry(crownGeo);
 
@@ -532,6 +575,17 @@ export const VIEWER_FRAMING: Record<ViewerCategory, {
   hoodie:     { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
   cap:        { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
   mug:        { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
+};
+
+/**
+ * Camera framing for BACK views — for some products, the back panel
+ * is framed differently to ensure the print area (upper back)
+ * is perfectly centered in the viewport.
+ */
+export const VIEWER_FRAMING_BACK: Partial<Record<ViewerCategory, Partial<typeof VIEWER_FRAMING["tshirt"]>>> = {
+  hoodie:     { cameraY: 0.70 },
+  longsleeve: { cameraY: 0.35 },
+  tshirt:     { cameraY: 0.35 },
 };
 
 /** Overlay shown while GLB / texture assets are streaming in.
