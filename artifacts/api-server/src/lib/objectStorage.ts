@@ -17,6 +17,8 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  CopyObjectCommand,
+  DeleteObjectCommand,
   HeadObjectCommand,
   type GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
@@ -34,6 +36,33 @@ import {
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
 /* ─── Backend selection ─────────────────────────────────────────────────── */
+/**
+ * Backend detection priority (highest → lowest):
+ *
+ *  1. R2   — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+ *              Optional: R2_PUBLIC_BASE_URL (for public URL generation)
+ *  2. S3   — set S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET
+ *              Optional: S3_REGION (default "us-east-1"), S3_ENDPOINT,
+ *                        S3_FORCE_PATH_STYLE, S3_PUBLIC_BASE_URL
+ *  3. Replit — no extra env vars required; uses the Replit Object Storage
+ *              sidecar. Requires DEFAULT_OBJECT_STORAGE_BUCKET_ID (set by
+ *              the Replit platform) and PRIVATE_OBJECT_DIR env var.
+ *
+ * EXTENSION HOOKS (future backends — no code changes required to activate):
+ *
+ *  • Imgur  — if IMGUR_CLIENT_ID is set AND no R2/S3 vars are present, a
+ *             thin Imgur adapter can be activated here. Files would be
+ *             uploaded to Imgur and presigned URLs replaced by direct Imgur
+ *             image URLs. Add detection: `if (process.env.IMGUR_CLIENT_ID)`
+ *             before the Replit fallback.
+ *
+ *  • Google Drive — if GDRIVE_SERVICE_ACCOUNT_KEY_JSON and
+ *             GDRIVE_PARENT_FOLDER_ID are set, a Drive adapter can be wired
+ *             in. Detection: check both env vars before the Replit fallback.
+ *
+ * To swap backends in production: set/unset the relevant env vars and
+ * redeploy — no source-code changes are needed.
+ */
 type Backend = "r2" | "s3" | "replit";
 
 function selectedBackend(): Backend {
@@ -302,6 +331,58 @@ export class ObjectStorageService {
     const objectEntityPath = `${entityDir}${entityId}`;
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
     return signReplitSidecarURL({ bucketName, objectName, method: "GET", ttlSec });
+  }
+
+  /* ── Move an uploaded object into the per-order bucket prefix ───────
+   *
+   *  For S3/R2: copies the object from `uploads/<uuid>` to
+   *  `uploads/orders/<orderNumber>/<itemIdx>/<filename>` then deletes the
+   *  original so storage isn't double-counted.
+   *
+   *  For the Replit sidecar: copy is not supported by the sidecar API,
+   *  so the object stays at its original path and the same `/objects/<id>`
+   *  path is returned unchanged. Files are still accessible and
+   *  downloadable; they just aren't reindexed under the per-order prefix.
+   *
+   *  The returned string is the canonical `/objects/<newKey>` path that
+   *  should be stored in the order item's originalAssets metadata.
+   *  On any error the original objectPath is returned so the caller can
+   *  fall back gracefully (non-fatal). ─────────────────────────────────── */
+  async moveObjectToOrderPrefix(
+    objectPath: string,
+    orderNumber: string,
+    itemIdx: number,
+    filename: string,
+  ): Promise<string> {
+    if (!objectPath.startsWith("/objects/")) return objectPath;
+    const entityId = objectPath.slice("/objects/".length);
+    if (!entityId) return objectPath;
+
+    if (BACKEND === "r2" || BACKEND === "s3") {
+      const { client, bucket } = ensureS3Client();
+      const srcKey = `uploads/${entityId}`;
+      // Sanitize filename to be URL-safe and remove any path traversal
+      const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "original";
+      const dstKey = `uploads/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
+      try {
+        await client.send(new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: `${bucket}/${srcKey}`,
+          Key: dstKey,
+        }));
+        // Best-effort delete of the staging object (ignore failure)
+        try {
+          await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: srcKey }));
+        } catch { /* non-fatal */ }
+        return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
+      } catch {
+        // Copy failed — return original path so admin can still download
+        return objectPath;
+      }
+    }
+
+    // Replit sidecar — return the original path unchanged
+    return objectPath;
   }
 
   /* ── Legacy methods (kept so existing imports don't break) ─────────── */

@@ -483,12 +483,18 @@ export default function AdminOrders() {
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-black uppercase tracking-widest text-gray-400">Items</p>
                     {(() => {
-                      const allOriginals: { itemIdx: number; path: string }[] = [];
+                      type OrderAsset = { itemIdx: number; path: string; filename?: string };
+                      const allOriginals: OrderAsset[] = [];
                       (selectedOrder.items ?? []).forEach((it: any, idx: number) => {
                         if (!it.customNote) return;
                         try {
                           const parsed = JSON.parse(it.customNote);
-                          if (parsed?.studioDesign && Array.isArray(parsed.originalAssetUrls)) {
+                          if (!parsed?.studioDesign) return;
+                          if (Array.isArray(parsed.originalAssets) && parsed.originalAssets.length > 0) {
+                            parsed.originalAssets.forEach((a: any) => {
+                              if (a?.objectPath) allOriginals.push({ itemIdx: idx, path: a.objectPath, filename: a.filename });
+                            });
+                          } else if (Array.isArray(parsed.originalAssetUrls)) {
                             parsed.originalAssetUrls.forEach((p: string) => allOriginals.push({ itemIdx: idx, path: p }));
                           }
                         } catch {}
@@ -499,18 +505,18 @@ export default function AdminOrders() {
                           type="button"
                           onClick={async () => {
                             try {
-                              toast({ title: "Preparing zip...", description: `Bundling ${allOriginals.length} files from ${selectedOrder.orderNumber || "order"}` });
+                              toast({ title: "Preparing zip…", description: `Bundling ${allOriginals.length} files from ${selectedOrder.orderNumber || "order"}` });
                               const JSZip = (await import("jszip")).default;
                               const zip = new JSZip();
                               for (let i = 0; i < allOriginals.length; i++) {
-                                const { itemIdx, path: p } = allOriginals[i];
+                                const { itemIdx, path: p, filename } = allOriginals[i];
                                 const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(p)}`), { headers: getAuthHeaders() });
                                 if (!r.ok) continue;
                                 const j = await r.json();
                                 if (!j?.url) continue;
                                 const blob = await (await fetch(j.url)).blob();
-                                const ext = (p.split(".").pop() || "bin").split("?")[0];
-                                zip.file(`item-${itemIdx + 1}/design-${i + 1}.${ext}`, blob);
+                                const fname = filename || (() => { const ext = (p.split(".").pop() || "bin").split("?")[0]; return `design-${i + 1}.${ext}`; })();
+                                zip.file(`item-${itemIdx + 1}/${fname}`, blob);
                               }
                               const out = await zip.generateAsync({ type: "blob" });
                               const url = URL.createObjectURL(out);
@@ -555,79 +561,119 @@ export default function AdminOrders() {
                                 const layers = Number(parsed.layerCount) || 0;
                                 const front = Number(parsed.frontLayerCount) || 0;
                                 const back = Number(parsed.backLayerCount) || 0;
-                                const originals: string[] = Array.isArray(parsed.originalAssetUrls) ? parsed.originalAssetUrls : [];
+
+                                // Prefer rich originalAssets metadata; fall back to bare paths for legacy orders
+                                const richAssets: Array<{ objectPath: string; filename?: string; mime?: string; bytes?: number; width?: number; height?: number }> =
+                                  Array.isArray(parsed.originalAssets) && parsed.originalAssets.length > 0
+                                    ? parsed.originalAssets
+                                    : (Array.isArray(parsed.originalAssetUrls) && parsed.originalAssetUrls.length > 0
+                                        ? parsed.originalAssetUrls.map((p: string) => ({ objectPath: p }))
+                                        : []);
+
+                                const formatBytes = (b?: number) => {
+                                  if (!b) return null;
+                                  if (b < 1024) return `${b} B`;
+                                  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
+                                  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+                                };
+
+                                const downloadOriginal = async (path: string, suggestedFilename?: string) => {
+                                  try {
+                                    const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(path)}`), {
+                                      headers: getAuthHeaders(),
+                                    });
+                                    if (!r.ok) {
+                                      toast({ title: "Download failed", description: `Server returned ${r.status}`, variant: "destructive" });
+                                      return;
+                                    }
+                                    const data = await r.json();
+                                    if (!data?.url) { toast({ title: "Download failed", description: "Missing URL in response", variant: "destructive" }); return; }
+                                    const a = document.createElement("a");
+                                    a.href = data.url;
+                                    if (suggestedFilename) a.download = suggestedFilename;
+                                    a.target = "_blank";
+                                    a.rel = "noopener noreferrer";
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                  } catch (err) {
+                                    toast({ title: "Download failed", description: String(err), variant: "destructive" });
+                                  }
+                                };
+
+                                const downloadAllZip = async () => {
+                                  try {
+                                    toast({ title: "Preparing zip…", description: `Bundling ${richAssets.length} files` });
+                                    const JSZip = (await import("jszip")).default;
+                                    const zip = new JSZip();
+                                    for (let i = 0; i < richAssets.length; i++) {
+                                      const asset = richAssets[i];
+                                      const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(asset.objectPath)}`), { headers: getAuthHeaders() });
+                                      if (!r.ok) continue;
+                                      const j = await r.json();
+                                      if (!j?.url) continue;
+                                      const blob = await (await fetch(j.url)).blob();
+                                      const fname = asset.filename || (() => { const ext = (asset.objectPath.split(".").pop() || "bin").split("?")[0]; return `design-${i + 1}.${ext}`; })();
+                                      zip.file(fname, blob);
+                                    }
+                                    const out = await zip.generateAsync({ type: "blob" });
+                                    const url = URL.createObjectURL(out);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `${selectedOrder.orderNumber || "order"}-originals.zip`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                    toast({ title: "Zip ready", description: `Downloaded ${richAssets.length} files` });
+                                  } catch (err) {
+                                    toast({ title: "Zip failed", description: String(err), variant: "destructive" });
+                                  }
+                                };
+
                                 return (
                                   <>
                                     <p className="text-xs text-primary/70 mt-1">
                                       Custom studio design · {layers} layer{layers === 1 ? '' : 's'}
                                       {(front || back) ? ` (${front} front, ${back} back)` : ''}
                                     </p>
-                                    {originals.length > 0 && (
-                                      <div className="mt-2 flex flex-wrap gap-1.5">
-                                        {originals.length > 1 && (
+                                    {richAssets.length > 0 ? (
+                                      <div className="mt-2 space-y-1.5">
+                                        {richAssets.length > 1 && (
                                           <button
                                             type="button"
-                                            onClick={async () => {
-                                              try {
-                                                toast({ title: "Preparing zip...", description: `Bundling ${originals.length} files` });
-                                                const JSZip = (await import("jszip")).default;
-                                                const zip = new JSZip();
-                                                for (let i = 0; i < originals.length; i++) {
-                                                  const p = originals[i];
-                                                  const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(p)}`), { headers: getAuthHeaders() });
-                                                  if (!r.ok) continue;
-                                                  const j = await r.json();
-                                                  if (!j?.url) continue;
-                                                  const blob = await (await fetch(j.url)).blob();
-                                                  const ext = (p.split(".").pop() || "bin").split("?")[0];
-                                                  zip.file(`design-${i + 1}.${ext}`, blob);
-                                                }
-                                                const out = await zip.generateAsync({ type: "blob" });
-                                                const url = URL.createObjectURL(out);
-                                                const a = document.createElement("a");
-                                                a.href = url;
-                                                a.download = `order-originals-${Date.now()}.zip`;
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
-                                                URL.revokeObjectURL(url);
-                                                toast({ title: "Zip ready", description: `Downloaded ${originals.length} files` });
-                                              } catch (err) {
-                                                toast({ title: "Zip failed", description: String(err), variant: "destructive" });
-                                              }
-                                            }}
+                                            onClick={downloadAllZip}
                                             className="px-2 py-1 rounded-lg text-[10px] font-bold bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 transition-colors"
                                           >
-                                            ⬇ Download all originals (zip)
+                                            ⬇ Download all originals (zip) · {richAssets.length}
                                           </button>
                                         )}
-                                        {originals.map((path, idx) => (
-                                          <button
-                                            key={idx}
-                                            type="button"
-                                            onClick={async () => {
-                                              try {
-                                                const r = await fetch(getApiUrl(`/api/storage/sign-download?path=${encodeURIComponent(path)}`), {
-                                                  headers: getAuthHeaders(),
-                                                });
-                                                if (!r.ok) {
-                                                  toast({ title: "Download failed", description: `Server returned ${r.status}`, variant: "destructive" });
-                                                  return;
-                                                }
-                                                const data = await r.json();
-                                                if (data?.url) window.open(data.url, "_blank", "noopener,noreferrer");
-                                                else toast({ title: "Download failed", description: "Missing URL in response", variant: "destructive" });
-                                              } catch (err) {
-                                                toast({ title: "Download failed", description: String(err), variant: "destructive" });
-                                              }
-                                            }}
-                                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
-                                            title={path}
-                                          >
-                                            ⬇ Original {idx + 1}
-                                          </button>
+                                        {richAssets.map((asset, idx) => (
+                                          <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100">
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-[10px] font-bold text-blue-800 truncate" title={asset.filename}>
+                                                {asset.filename || `File ${idx + 1}`}
+                                              </p>
+                                              <p className="text-[9px] text-blue-500 mt-0.5">
+                                                {asset.width && asset.height ? `${asset.width}×${asset.height}px` : null}
+                                                {asset.width && asset.height && asset.bytes ? ' · ' : null}
+                                                {formatBytes(asset.bytes)}
+                                                {asset.mime ? ` · ${asset.mime.split('/')[1]?.toUpperCase() || asset.mime}` : null}
+                                              </p>
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => downloadOriginal(asset.objectPath, asset.filename)}
+                                              className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                              title={`Download original ${idx + 1}`}
+                                            >
+                                              ⬇ Download
+                                            </button>
+                                          </div>
                                         ))}
                                       </div>
+                                    ) : (
+                                      <p className="text-[10px] text-gray-400 mt-1 italic">Original not stored — uploaded before this feature</p>
                                     )}
                                   </>
                                 );

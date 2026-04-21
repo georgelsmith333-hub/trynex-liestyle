@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { useCartActions } from "@/context/CartContext";
+import { useCartActions, type OriginalAsset } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { getApiUrl } from "@/lib/utils";
@@ -729,30 +729,48 @@ export default function DesignStudio() {
       //    BEFORE compositing so the admin gets the customer's actual
       //    uploaded photos at full resolution, not the downscaled mockup.
       //    Failures here are non-fatal: cart still works without uploads.
+      const originalAssets: OriginalAsset[] = [];
       const originalAssetUrls: string[] = [];
       const imageLayers = layers.filter(l => l.type === "image" && l.visible);
       for (const layer of imageLayers) {
         try {
-          const src = (layer as ImageLayer).src;
+          const imgLayer = layer as ImageLayer;
+          const src = imgLayer.src;
           if (!src.startsWith("data:")) continue; // skip already-uploaded
           const blob = await (await fetch(src)).blob();
+          const mime = blob.type || "image/png";
+          const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+          // Sanitize layer name for use as a filename
+          const safeName = (imgLayer.name || "design").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+          const filename = `${safeName}-${Date.now()}.${ext}`;
           const reqRes = await fetch(`${getApiUrl()}/api/storage/uploads/request-url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: `design-${Date.now()}.png`,
+              name: filename,
               size: blob.size,
-              contentType: blob.type || "image/png",
+              contentType: mime,
             }),
           });
           if (!reqRes.ok) continue;
           const { uploadURL, objectPath } = await reqRes.json();
           const putRes = await fetch(uploadURL, {
             method: "PUT",
-            headers: { "Content-Type": blob.type || "image/png" },
+            headers: { "Content-Type": mime },
             body: blob,
           });
-          if (putRes.ok && objectPath) originalAssetUrls.push(objectPath);
+          if (putRes.ok && objectPath) {
+            const asset: OriginalAsset = {
+              objectPath,
+              filename,
+              mime,
+              bytes: blob.size,
+              width: imgLayer.naturalW,
+              height: imgLayer.naturalH,
+            };
+            originalAssets.push(asset);
+            originalAssetUrls.push(objectPath);
+          }
         } catch (uploadErr) {
           console.warn("[upload-original]", uploadErr);
           /* swallow — cart should still work even if cloud upload is down */
@@ -846,6 +864,7 @@ export default function DesignStudio() {
         imageUrl: mockupUrl,
         customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
         originalAssetUrls,
+        originalAssets,
         customNote: JSON.stringify({
           studioDesign: true,
           sessionId,
@@ -861,7 +880,10 @@ export default function DesignStudio() {
           mockupSrc: garmentSrc,
           printZone: frontPZ,
           printZoneBack: selectedProduct.printZoneBack ?? null,
-          // Print-ready originals — admin downloads these to fulfill the order
+          // Print-ready originals — admin downloads these to fulfill the order.
+          // originalAssets has full metadata (filename, mime, bytes, dimensions).
+          // originalAssetUrls is kept for backward compatibility.
+          originalAssets,
           originalAssetUrls,
         }),
       });

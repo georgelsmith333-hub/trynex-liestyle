@@ -18,6 +18,15 @@ export interface HamperPayload {
   isCustom?: boolean;
 }
 
+export interface OriginalAsset {
+  objectPath: string;
+  filename: string;
+  mime: string;
+  bytes: number;
+  width: number;
+  height: number;
+}
+
 export interface CartItem {
   id: string;
   productId: number;
@@ -34,6 +43,10 @@ export interface CartItem {
    *  Format: ["/objects/uploads/<uuid>", ...]. Distinct from `customImages`
    *  which holds compressed dataURLs for in-cart preview only. */
   originalAssetUrls?: string[];
+  /** Rich metadata for each original upload (filename, mime, bytes, dimensions).
+   *  Added after the originalAssetUrls field — legacy cart items may have
+   *  `originalAssetUrls` but no `originalAssets`. */
+  originalAssets?: OriginalAsset[];
   hamperPayload?: HamperPayload;
 }
 

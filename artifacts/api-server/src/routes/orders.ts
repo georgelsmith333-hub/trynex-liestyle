@@ -5,6 +5,9 @@ import { requireAdmin } from "../middlewares/adminAuth";
 import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
 import { logger } from "../lib/logger";
 import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
+import { ObjectStorageService } from "../lib/objectStorage";
+
+const orderStorageService = new ObjectStorageService();
 
 class StockOutError extends Error {
   constructor(
@@ -170,6 +173,50 @@ function generateOrderNumber(): string {
     String(date.getDate()).padStart(2, "0");
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
   return `TN${dateStr}${random}`;
+}
+
+/**
+ * After an order number is known, move each studio item's original uploads
+ * from their staging path (`uploads/<uuid>`) into a per-order prefix
+ * (`uploads/orders/<orderNumber>/<itemIdx>/<filename>`).
+ *
+ * Mutates `studioItems` in-place (updates `customNote` JSON with new paths).
+ * All errors are swallowed — the move is best-effort and must not block the order.
+ */
+async function moveStudioOriginals(
+  studioItems: any[],
+  orderNumber: string,
+): Promise<void> {
+  for (let itemIdx = 0; itemIdx < studioItems.length; itemIdx++) {
+    const item = studioItems[itemIdx];
+    let note: any;
+    try { note = JSON.parse(item.customNote ?? "{}"); } catch { continue; }
+    if (!note?.studioDesign) continue;
+
+    const assets: any[] = Array.isArray(note.originalAssets) ? note.originalAssets : [];
+    if (assets.length === 0) continue;
+
+    const updatedAssets: any[] = [];
+    for (const asset of assets) {
+      if (!asset?.objectPath) { updatedAssets.push(asset); continue; }
+      try {
+        const newPath = await orderStorageService.moveObjectToOrderPrefix(
+          asset.objectPath,
+          orderNumber,
+          itemIdx,
+          asset.filename || "original",
+        );
+        updatedAssets.push({ ...asset, objectPath: newPath });
+      } catch (err) {
+        logger.warn({ err }, "moveStudioOriginals: failed to move asset (non-fatal)");
+        updatedAssets.push(asset);
+      }
+    }
+
+    note.originalAssets = updatedAssets;
+    note.originalAssetUrls = updatedAssets.map((a: any) => a.objectPath);
+    item.customNote = JSON.stringify(note);
+  }
 }
 
 function mapOrder(o: any) {
@@ -537,6 +584,26 @@ router.post("/orders", async (req, res) => {
 
     const orderItems = [...catalogOrderItems, ...studioOrderItems, ...hamperOrderItems];
 
+    // Pre-generate the order number so we can compute per-order storage paths
+    // before the DB transaction. The same value is passed directly to the insert
+    // below — no second call to generateOrderNumber() is made.
+    const preGeneratedOrderNumber = generateOrderNumber();
+
+    // Move studio uploads to per-order bucket prefix (best-effort, non-blocking).
+    // This runs BEFORE the DB transaction intentionally: doing it inside the
+    // transaction would couple S3 calls to DB lock duration, which is worse.
+    //
+    // Orphan risk: if the order creation transaction fails after a successful
+    // move, the relocated objects live under an order prefix that never becomes
+    // a real order. This is accepted: the files are harmless dead storage (no
+    // admin surface exposes them without a matching order record), and an S3/R2
+    // lifecycle rule on `uploads/orders/` can purge unreferenced prefixes after
+    // N days. For a future improvement, consider a post-commit move that reads
+    // the committed orderNumber and patches items JSONB in a second UPDATE.
+    if (studioOrderItems.length > 0) {
+      await moveStudioOriginals(studioOrderItems, preGeneratedOrderNumber);
+    }
+
     const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
 
     let freeThreshold = 1500;
@@ -668,7 +735,7 @@ router.post("/orders", async (req, res) => {
       const total = Math.max(0, subtotal + effectiveShipping - validatedPromoDiscount);
 
       const [created] = await tx.insert(ordersTable).values({
-        orderNumber: generateOrderNumber(),
+        orderNumber: preGeneratedOrderNumber,
         customerName,
         customerEmail,
         customerPhone,
