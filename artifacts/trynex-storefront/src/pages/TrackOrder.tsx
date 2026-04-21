@@ -6,10 +6,12 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { OrderSkeleton } from "@/components/ui/skeleton";
 import {
   Package, Search, Clock, CheckCircle2, Truck, MapPin,
-  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2, Gift, Heart
+  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2, Gift, Heart, ZoomIn, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
+import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 const inputClass = "w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-400";
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
@@ -82,20 +84,21 @@ function buildTrackBody(oNum: string, identifier: string): TrackBody {
 
 function ItemPreviewThumb({ src, alt, isStudio }: { src: string; alt: string; isStudio: boolean }) {
   const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState(false);
   const showImage = !!src && !failed;
-  return (
-    <div
-      className={cn(
-        "rounded-xl overflow-hidden shrink-0 flex items-center justify-center relative",
-        isStudio ? "w-20 h-20" : "w-16 h-16"
-      )}
-      style={{
-        background: isStudio
-          ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
-          : '#f3f4f6',
-        border: isStudio ? '1px solid rgba(232,93,4,0.2)' : '1px solid #e5e7eb',
-      }}
-    >
+  const containerClass = cn(
+    "rounded-xl overflow-hidden shrink-0 flex items-center justify-center relative group",
+    isStudio ? "w-20 h-20" : "w-16 h-16",
+    showImage && "cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+  );
+  const containerStyle = {
+    background: isStudio
+      ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
+      : '#f3f4f6',
+    border: isStudio ? '1px solid rgba(232,93,4,0.2)' : '1px solid #e5e7eb',
+  };
+  const inner = (
+    <>
       {showImage ? (
         <img
           src={src}
@@ -115,7 +118,57 @@ function ItemPreviewThumb({ src, alt, isStudio }: { src: string; alt: string; is
           Custom
         </span>
       )}
-    </div>
+      {showImage && (
+        <span
+          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors duration-200"
+          aria-hidden="true"
+        >
+          <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+        </span>
+      )}
+    </>
+  );
+
+  if (!showImage) {
+    return <div className={containerClass} style={containerStyle}>{inner}</div>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={containerClass}
+        style={containerStyle}
+        aria-label={`View ${alt} full size`}
+      >
+        {inner}
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/90" />
+          <DialogPrimitive.Content
+            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[95vh] max-w-none max-h-none flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            onClick={() => setOpen(false)}
+          >
+            <DialogPrimitive.Title className="sr-only">{alt}</DialogPrimitive.Title>
+            <img
+              src={src}
+              alt={alt}
+              className="max-w-full max-h-full object-contain touch-pinch-zoom select-none"
+              onClick={(e) => e.stopPropagation()}
+              draggable={false}
+            />
+            <DialogPrimitive.Close
+              className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Close preview"
+            >
+              <X className="w-6 h-6" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
+    </>
   );
 }
 
