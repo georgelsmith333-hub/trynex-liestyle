@@ -14,7 +14,7 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 import {
   ArrowRight, Sparkles, Zap, Package, Star, Check, Truck,
   ShieldCheck, Clock, Palette, Layers, Award, ChevronRight,
-  Users, BadgeCheck, Flame, Shirt, Coffee, Crown, Pen
+  Users, BadgeCheck, Flame, Shirt, Coffee, Crown
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { useRef, useEffect, useState, useCallback } from "react";

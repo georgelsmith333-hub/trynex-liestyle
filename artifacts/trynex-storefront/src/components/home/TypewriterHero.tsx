@@ -7,16 +7,13 @@ import {
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 const PHRASES: string[] = [
-  "T-Shirts",
-  "Hoodies",
-  "Mugs",
-  "Caps",
-  "Gift Hampers",
-  "টি-শার্ট",
-  "হুডি",
-  "মগ",
-  "ক্যাপ",
-  "গিফট হ্যাম্পার",
+  "ডিজাইন আপনার",
+  "We craft it.",
+  "Premium 320GSM cotton.",
+  "Delivered in 48 hours.",
+  "প্রিমিয়াম কোয়ালিটি",
+  "Made in Bangladesh.",
+  "শতভাগ কাস্টম",
 ];
 
 const TRUST_ITEMS = [
@@ -49,22 +46,32 @@ function useTypewriter(phrases: string[], opts?: {
   holdMs?: number;
   enabled?: boolean;
 }) {
-  const typeSpeed = opts?.typeSpeed ?? 90;
-  const deleteSpeed = opts?.deleteSpeed ?? 45;
-  const holdMs = opts?.holdMs ?? 1400;
+  const typeSpeed = opts?.typeSpeed ?? 85;
+  const deleteSpeed = opts?.deleteSpeed ?? 40;
+  const holdMs = opts?.holdMs ?? 1500;
   const enabled = opts?.enabled ?? true;
+  const safe = phrases.length > 0 ? phrases : [""];
 
-  const [text, setText] = useState(phrases[0] ?? "");
+  const [text, setText] = useState(safe[0]);
   const [phase, setPhase] = useState<"typing" | "holding" | "deleting">("holding");
   const indexRef = useRef(0);
 
+  // When typing is disabled (reduced motion), rotate full phrases without
+  // per-character animation so the hero still feels alive.
   useEffect(() => {
-    if (!enabled) {
-      setText(phrases[indexRef.current] ?? "");
-      return;
-    }
+    if (enabled) return;
+    setText(safe[indexRef.current % safe.length]);
+    const id = window.setInterval(() => {
+      indexRef.current = (indexRef.current + 1) % safe.length;
+      setText(safe[indexRef.current]);
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [enabled, safe]);
+
+  useEffect(() => {
+    if (!enabled) return;
     let timer: number | undefined;
-    const current = phrases[indexRef.current] ?? "";
+    const current = safe[indexRef.current];
 
     if (phase === "typing") {
       if (text.length < current.length) {
@@ -78,12 +85,12 @@ function useTypewriter(phrases: string[], opts?: {
       if (text.length > 0) {
         timer = window.setTimeout(() => setText(current.slice(0, text.length - 1)), deleteSpeed);
       } else {
-        indexRef.current = (indexRef.current + 1) % phrases.length;
+        indexRef.current = (indexRef.current + 1) % safe.length;
         setPhase("typing");
       }
     }
     return () => { if (timer) window.clearTimeout(timer); };
-  }, [text, phase, phrases, typeSpeed, deleteSpeed, holdMs, enabled]);
+  }, [text, phase, safe, typeSpeed, deleteSpeed, holdMs, enabled]);
 
   return text;
 }
@@ -117,7 +124,7 @@ export function TypewriterHero() {
       className="relative overflow-hidden"
       style={{
         paddingTop: "calc(var(--announcement-height, 0px) + 4.25rem)",
-        paddingBottom: "2rem",
+        paddingBottom: "4.5rem",
         minHeight: "min(88vh, 100svh)",
       }}
       aria-label="Hero"
@@ -232,7 +239,7 @@ export function TypewriterHero() {
           className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center mb-5 sm:mb-7 w-full sm:w-auto"
         >
           <Link
-            href={settings.heroCTALink || "/products"}
+            href="/design-studio"
             className="inline-flex items-center justify-center gap-2 px-7 sm:px-9 py-3.5 sm:py-4 rounded-2xl font-bold text-white text-[0.95rem] sm:text-base transition-transform active:scale-95 hover:-translate-y-0.5"
             style={{
               background: "linear-gradient(135deg, var(--color-primary), #FB8500)",
@@ -240,14 +247,16 @@ export function TypewriterHero() {
             }}
             data-testid="hero-cta-primary"
           >
-            {settings.heroCTAText || "Shop Now"} <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Pen className="w-4 h-4 sm:w-[1.05rem] sm:h-[1.05rem]" />
+            Start Designing
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
           <Link
-            href="/design-studio"
+            href="/products?sort=bestsellers"
             className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-gray-800 text-[0.95rem] sm:text-base bg-white border-2 border-gray-200 hover:border-orange-300 hover:text-orange-600 transition-colors"
             data-testid="hero-cta-secondary"
           >
-            <Pen className="w-4 h-4" /> Design Studio
+            Shop Best Sellers
           </Link>
         </motion.div>
 
@@ -275,25 +284,35 @@ export function TypewriterHero() {
           ))}
         </motion.div>
 
-        {/* Trust strip */}
-        <motion.div
-          initial={reduced ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.45 }}
-          className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] sm:text-xs font-semibold text-gray-500"
-        >
+      </div>
+
+      {/* Sticky trust strip — pinned to the bottom of the hero so social
+          proof remains visible while the user reads the headline. */}
+      <motion.div
+        initial={reduced ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.45 }}
+        className="absolute left-0 right-0 bottom-0 z-10 backdrop-blur-md"
+        style={{
+          background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.95) 100%)",
+          borderTop: "1px solid rgba(232,93,4,0.12)",
+        }}
+        role="region"
+        aria-label="Trust signals"
+      >
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1 text-[11px] sm:text-xs font-semibold text-gray-600">
           <span className="inline-flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
-            <span className="text-gray-700 font-bold">4.9/5</span>
+            <span className="text-gray-800 font-bold">4.9/5</span>
           </span>
-          {TRUST_ITEMS.map((item, i) => (
+          {TRUST_ITEMS.map((item) => (
             <span key={item.label} className="inline-flex items-center gap-3">
               <span aria-hidden="true" className="text-gray-300">•</span>
               <span>{item.label}</span>
             </span>
           ))}
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
 
       <style>{`
         @keyframes twCursorBlink {
