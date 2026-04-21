@@ -30,9 +30,13 @@
    The BASE mesh keeps the GLB's authored UVs (or no UVs at all — it only
    uses a flat color material), so we never touch it.
 ════════════════════════════════════════════════════════ */
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { useGLTF } from "@react-three/drei";
+import { useGLTF, useProgress, OrbitControls } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
+import { hasWebGL2 } from "../pages/design-studio/composer";
+
+export { hasWebGL2 };
 
 // Print-zone constants imported for reference / future UV-crop helpers
 export {
@@ -358,3 +362,154 @@ export function MugBody({
   );
 }
 useGLTF.preload("/models/mug.glb");
+
+/* ═══════════════════════════════════════════════════════
+   SHARED 3D-VIEWER INFRASTRUCTURE
+   Used by ProductViewer3D + CartViewer3D so the studio,
+   PDP, cart, checkout and admin previews behave identically.
+════════════════════════════════════════════════════════ */
+
+/** Overlay shown while GLB / texture assets are streaming in.
+ *  MUST be rendered as a sibling of <Canvas>, not inside it. */
+export function ViewerLoadingOverlay() {
+  const { active, progress, total, loaded } = useProgress();
+  if (!active || total === 0) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(255,255,255,0.6)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+        pointerEvents: "none",
+        zIndex: 3,
+        color: "#475569",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontSize: 12,
+        fontWeight: 600,
+        gap: 10,
+      }}
+      aria-live="polite"
+    >
+      <div
+        style={{
+          width: 36, height: 36, borderRadius: "50%",
+          border: "3px solid rgba(232,93,4,0.18)",
+          borderTopColor: "#E85D04",
+          animation: "trynex-spin 0.8s linear infinite",
+        }}
+      />
+      <div>Loading 3D preview… {Math.round(progress)}%</div>
+      <div style={{ fontSize: 10, opacity: 0.7 }}>
+        {loaded}/{total} asset{total === 1 ? "" : "s"}
+      </div>
+      <style>{`@keyframes trynex-spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  );
+}
+
+/** Replacement for a 3D viewer when WebGL2 isn't available.
+ *  Renders the supplied 2D mockup PNG so the user still sees the product. */
+export function NoWebGLFallback({
+  imgSrc,
+  garmentColor,
+  message = "Your browser does not support 3D preview. Showing the 2D mockup instead.",
+}: {
+  imgSrc?: string;
+  garmentColor?: string;
+  message?: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: garmentColor || "#f8fafc",
+        padding: 16,
+        textAlign: "center",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}
+    >
+      {imgSrc && (
+        <img
+          src={imgSrc}
+          alt="Product mockup"
+          style={{
+            maxWidth: "85%",
+            maxHeight: "75%",
+            objectFit: "contain",
+            mixBlendMode: "multiply",
+          }}
+        />
+      )}
+      <div style={{ marginTop: 12, fontSize: 11, color: "#64748b", maxWidth: 280 }}>
+        {message}
+      </div>
+    </div>
+  );
+}
+
+/** OrbitControls with double-tap (or double-click) → reset camera.
+ *  Drop-in replacement; forwards every prop. */
+export function ResettableOrbitControls(props: React.ComponentProps<typeof OrbitControls>) {
+  const ref = useRef<any>(null);
+  const { gl } = useThree();
+  const lastTapRef = useRef(0);
+
+  useEffect(() => {
+    const el = gl.domElement;
+    const reset = () => {
+      const c = ref.current;
+      if (c && typeof c.reset === "function") c.reset();
+    };
+    const onPointer = (e: PointerEvent) => {
+      // Only treat single-finger taps as candidates so pinch-zoom is unaffected
+      if (e.pointerType === "touch" && (e as any).isPrimary === false) return;
+      const now = performance.now();
+      if (now - lastTapRef.current < 320) {
+        reset();
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+    };
+    el.addEventListener("pointerup", onPointer);
+    el.addEventListener("dblclick", reset);
+    return () => {
+      el.removeEventListener("pointerup", onPointer);
+      el.removeEventListener("dblclick", reset);
+    };
+  }, [gl]);
+
+  return <OrbitControls ref={ref} {...props} />;
+}
+
+/** Three-point lighting rig: key (warm) + fill (cool) + rim (cool back-light).
+ *  Centralises lighting so studio & cart match exactly. */
+export function StudioLightRig({ rim = true }: { rim?: boolean }) {
+  return (
+    <>
+      <ambientLight intensity={0.55} />
+      <directionalLight
+        position={[3, 4, 5]}
+        intensity={1.05}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <directionalLight position={[-4, 2, -3]} intensity={0.32} color={"#bcd6ff"} />
+      {rim && (
+        <directionalLight position={[0, 3, -6]} intensity={0.55} color={"#ffe9c8"} />
+      )}
+    </>
+  );
+}

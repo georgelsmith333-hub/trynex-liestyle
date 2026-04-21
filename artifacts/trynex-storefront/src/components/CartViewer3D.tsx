@@ -4,9 +4,9 @@
    so it never needs raw Layer objects — tiny bundle cost.
    Uses the shared garment3d helpers so rendering matches the studio exactly.
 ════════════════════════════════════════════════════════ */
-import { useRef, useState, Suspense } from "react";
+import { useRef, useState, useMemo, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
+import { ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import {
   RealisticShirt,
@@ -15,6 +15,11 @@ import {
   CapBody,
   MugBody,
   useUrlTexture,
+  ResettableOrbitControls,
+  ViewerLoadingOverlay,
+  NoWebGLFallback,
+  StudioLightRig,
+  hasWebGL2,
 } from "./garment3d";
 
 /**
@@ -97,6 +102,16 @@ export default function CartViewer3D({
   // Mug: design texture (transparent bg); garmentColor applied via material base
   const mugTex = useUrlTexture(isMug ? frontTexUrl : undefined);
 
+  // WebGL2 capability check — gracefully degrade to 2D mockup if unsupported
+  const supports3D = useMemo(() => hasWebGL2(), []);
+  if (!supports3D) {
+    return (
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <NoWebGLFallback imgSrc={frontTexUrl} garmentColor={garmentColor} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       {/* Front/Back toggle — shown for all garments with both faces */}
@@ -143,15 +158,7 @@ export default function CartViewer3D({
         style={{ width: "100%", height: "100%", background: "transparent" }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.6} />
-          <directionalLight
-            position={[3, 4, 5]}
-            intensity={1.1}
-            castShadow
-            shadow-mapSize-width={512}
-            shadow-mapSize-height={512}
-          />
-          <directionalLight position={[-4, 2, -3]} intensity={0.35} color="#bcd6ff" />
+          <StudioLightRig rim />
 
           <Environment preset="city" />
 
@@ -182,7 +189,7 @@ export default function CartViewer3D({
             far={3}
           />
 
-          <OrbitControls
+          <ResettableOrbitControls
             enablePan={false}
             enableZoom={true}
             enableDamping
@@ -197,6 +204,7 @@ export default function CartViewer3D({
           />
         </Suspense>
       </Canvas>
+      <ViewerLoadingOverlay />
     </div>
   );
 }

@@ -9,7 +9,7 @@
 ════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
+import { Environment, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import {
   composeLayers,
@@ -23,6 +23,11 @@ import {
   HoodieBody,
   CapBody,
   MugBody,
+  ResettableOrbitControls,
+  ViewerLoadingOverlay,
+  NoWebGLFallback,
+  StudioLightRig,
+  hasWebGL2,
 } from "../../components/garment3d";
 
 interface FacePayload {
@@ -160,7 +165,18 @@ export default function ProductViewer3D({
     { outW: 1024, outH: 1024, clipToPrintZone: true }
   );
 
+  // WebGL2 capability check — gracefully degrade to 2D mockup if unsupported
+  const supports3D = useMemo(() => hasWebGL2(), []);
+  if (!supports3D) {
+    return (
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <NoWebGLFallback imgSrc={product.frontSrc} garmentColor={garmentColor} />
+      </div>
+    );
+  }
+
   return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
     <Canvas
       shadows
       dpr={[1, 1.5]}
@@ -169,15 +185,7 @@ export default function ProductViewer3D({
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
       <Suspense fallback={null}>
-        <ambientLight intensity={0.55} />
-        <directionalLight
-          position={[3, 4, 5]}
-          intensity={1.1}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
-        <directionalLight position={[-4, 2, -3]} intensity={0.35} color={"#bcd6ff"} />
+        <StudioLightRig rim />
 
         <Environment preset="city" />
         <CameraRig activeFace={activeFace} isMug={isMug} />
@@ -222,7 +230,7 @@ export default function ProductViewer3D({
           far={3}
         />
 
-        <OrbitControls
+        <ResettableOrbitControls
           enablePan={false}
           enableZoom={true}
           enableDamping
@@ -237,5 +245,7 @@ export default function ProductViewer3D({
         />
       </Suspense>
     </Canvas>
+    <ViewerLoadingOverlay />
+    </div>
   );
 }
