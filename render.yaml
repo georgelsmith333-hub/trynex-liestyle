@@ -21,6 +21,18 @@ services:
         generateValue: true
       - key: ALLOWED_ORIGINS
         sync: false
+      # --- Object storage (Cloudflare R2) ---
+      # Customer-uploaded design files live here. Set the secret values
+      # (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) in the Render dashboard
+      # so they never enter source control.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
 
 databases:
   - name: trynex-db
