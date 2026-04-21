@@ -709,10 +709,11 @@ export const getExportOrdersCsvUrl = () => `/api/backup/orders-csv`;
 export const useImportBackup = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: FormData) =>
-      customFetch<{ message: string; imported: number }>("/api/backup/import", {
+    mutationFn: (body: { version: string; data: Record<string, unknown> }) =>
+      customFetch<{ success: boolean; imported: Record<string, number> }>("/api/backup/import", {
         method: "POST",
-        body: data,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/products"] });
