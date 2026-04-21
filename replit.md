@@ -51,10 +51,11 @@ After every Render deploy, complete these three steps to keep search engines fre
 
 ## Auth health check (post-deploy)
 
-Two endpoints are available:
+Three diagnostic endpoints are available:
 
 * **`GET /api/health/auth`** — strict-contract endpoint for monitors / smoke checks. Returns ONLY `{ google_configured, jwt_secret_present, db_reachable }`.
 * **`GET /api/auth/health`** — extended diagnostic. Adds `admin_jwt_secret_present`, `allowed_origins_configured`, `customers_table_exists`, `guest_sequence_column_exists`, `node_env`.
+* **`GET /api/health/storage`** — storage backend diagnostic. Returns `{ backend: "r2" | "s3" | "replit", portable: bool, reachable: bool, error: string | null }`. In production `backend` MUST be `"r2"` or `"s3"` and `reachable` MUST be `true`; if `backend` is `"replit"` the server would have refused to start at boot, so this endpoint will not respond at all in that case.
 
 Verify in 5 seconds:
 
