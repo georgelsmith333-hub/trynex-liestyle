@@ -1,13 +1,15 @@
 /* ═══════════════════════════════════════════════════════
    PRODUCT VIEWER 3D — realtime preview using R3F
-   • T-shirt/longsleeve/hoodie  → dual flat plane meshes (front + back), camera flips
-   • Mug                        → open cylinder + handle, full 360° wrap texture
-   • Cap                        → flat front panel
-   Texture data comes from offscreen canvases composed by ../composer.ts
+   Uses the shared garment3d helpers so the studio preview
+   matches the cart/checkout/admin 3D viewers exactly.
+
+   Texture composition (live CanvasTexture from offscreen canvas):
+     • Garment (tshirt/longsleeve/hoodie/cap) → front + back transparent textures
+     • Mug → wide wrap texture (2048×768)
 ════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows, useGLTF } from "@react-three/drei";
+import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import {
   composeLayers,
@@ -15,6 +17,13 @@ import {
   type ComposerPrintZone,
 } from "./composer";
 import type { DesignProduct } from "./mockups";
+import {
+  RealisticShirt,
+  LongSleeveBody,
+  HoodieBody,
+  CapBody,
+  MugBody,
+} from "../../components/garment3d";
 
 interface FacePayload {
   layers: ComposerLayer[];
@@ -34,9 +43,11 @@ export interface ProductViewer3DProps {
 }
 
 /** Hook: build a CanvasTexture that re-composes whenever its inputs change. */
-function useFaceTexture(face: FacePayload | undefined, garmentColor: string | null, opts: {
-  outW: number; outH: number; clipToPrintZone?: boolean;
-}) {
+function useFaceTexture(
+  face: FacePayload | undefined,
+  garmentColor: string | null,
+  opts: { outW: number; outH: number; clipToPrintZone?: boolean }
+): THREE.CanvasTexture | null {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
@@ -52,24 +63,19 @@ function useFaceTexture(face: FacePayload | undefined, garmentColor: string | nu
     textureRef.current = tex;
   }
 
-  // Stable signature so React only recomposes when something meaningful changes
-  const sig = face ? JSON.stringify({
-    g: garmentColor,
-    z: face.printZone,
-    h: face.baseHeight,
-    l: face.layers.map(l => l.type === "image"
-      ? [l.visible, l.transform, l.naturalW, l.naturalH, l.src.slice(0, 64)]
-      : [l.visible, l.transform, l.text, l.fontFamily, l.fontSize, l.fontStyle, l.fontWeight, l.color]),
-  }) : "";
+  const sig = face
+    ? JSON.stringify({
+        g: garmentColor,
+        z: face.printZone,
+        h: face.baseHeight,
+        l: face.layers.map((l) =>
+          l.type === "image"
+            ? [l.visible, l.transform, l.naturalW, l.naturalH, l.src.slice(0, 64)]
+            : [l.visible, l.transform, l.text, l.fontFamily, l.fontSize, l.fontStyle, l.fontWeight, l.color]
+        ),
+      })
+    : "";
 
-  // Stash the latest `face` object in a ref so the effect can read it without
-  // having to list it in deps. Listing the prop directly would cause the
-  // effect to fire on every parent re-render (parents typically pass freshly
-  // constructed `{ layers, printZone, baseHeight }` payload objects each
-  // render), wasting an offscreen-canvas recomposition per render even when
-  // no layer or color actually changed. The `sig` string already captures
-  // every input that matters, and is the only thing the effect really needs
-  // to react to.
   const faceRef = useRef(face);
   faceRef.current = face;
   const clipFlag = opts.clipToPrintZone ?? true;
@@ -92,259 +98,29 @@ function useFaceTexture(face: FacePayload | undefined, garmentColor: string | nu
     }).then(() => {
       if (cancelled) return;
       if (textureRef.current) textureRef.current.needsUpdate = true;
-      setVersion(v => v + 1);
+      setVersion((v) => v + 1);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, garmentColor, opts.outW, opts.outH, clipFlag]);
 
-  return textureRef.current;
+  return face ? textureRef.current : null;
 }
 
-/* ──────────────────────── MUG ──────────────────────── */
-/** Realistic ceramic mug:
- *  - solid (closed-bottom) cylinder body so liquid color isn't visible inside
- *  - inner liner (back-side cylinder) for a hollow look from above
- *  - top rim ring
- *  - PROPER handle as a swept tube along a CatmullRom curve so both ends
- *    actually attach to the mug wall (the previous TorusGeometry was a flat
- *    ring rotated awkwardly, which read as "broken" from any non-front angle)
- */
-function Mug({ wrapTex, garmentColor }: { wrapTex: THREE.CanvasTexture | null; garmentColor: string }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const R = 0.72;          // body radius
-  const H = 1.7;           // body height
-  const bodyGeo = useMemo(() => new THREE.CylinderGeometry(R, R, H, 128, 1, true), []);
-  const innerGeo = useMemo(() => new THREE.CylinderGeometry(R - 0.04, R - 0.04, H - 0.04, 96, 1, true), []);
-  const bottomGeo = useMemo(() => new THREE.CircleGeometry(R - 0.005, 96), []);
-
-  // Handle: a CatmullRom curve from upper attachment to lower attachment,
-  // bowed outward in +X. Tube radius is the handle thickness. Endpoints sit
-  // exactly on the mug wall (x = R), so the join looks seamless.
-  const handleGeo = useMemo(() => {
-    const top = new THREE.Vector3(R - 0.02, 0.45, 0);
-    const out1 = new THREE.Vector3(R + 0.55, 0.40, 0);
-    const out2 = new THREE.Vector3(R + 0.55, -0.40, 0);
-    const bot = new THREE.Vector3(R - 0.02, -0.45, 0);
-    const curve = new THREE.CatmullRomCurve3([top, out1, out2, bot], false, "catmullrom", 0.5);
-    return new THREE.TubeGeometry(curve, 64, 0.08, 18, false);
-  }, []);
-
-  useEffect(() => {
-    if (wrapTex) {
-      // Tile = 1 wrap; flip so artwork reads correctly when looking at the front
-      wrapTex.wrapS = THREE.RepeatWrapping;
-      wrapTex.wrapT = THREE.ClampToEdgeWrapping;
-      wrapTex.repeat.set(-1, 1);
-      wrapTex.offset.set(0.25, 0); // align print-zone center with the front of the mug
-      wrapTex.needsUpdate = true;
-    }
-  }, [wrapTex]);
-
-  return (
-    <group ref={groupRef} position={[-0.12, -0.05, 0]}>
-      {/* outer ceramic shell */}
-      <mesh geometry={bodyGeo} castShadow receiveShadow>
-        <meshPhysicalMaterial
-          map={wrapTex ?? undefined}
-          color={"#ffffff"}
-          roughness={0.22}
-          metalness={0.02}
-          clearcoat={0.7}
-          clearcoatRoughness={0.15}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* inner liner — back side only, dark to read as hollow */}
-      <mesh geometry={innerGeo}>
-        <meshStandardMaterial color={"#161616"} side={THREE.BackSide} roughness={0.55} />
-      </mesh>
-      {/* solid bottom (closed mug) */}
-      <mesh geometry={bottomGeo} position={[0, -H / 2 + 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <meshStandardMaterial color={garmentColor} roughness={0.4} />
-      </mesh>
-      {/* top rim — slim ring covers the wall thickness */}
-      <mesh position={[0, H / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[R - 0.04, R, 96]} />
-        <meshStandardMaterial color={garmentColor} roughness={0.3} side={THREE.DoubleSide} />
-      </mesh>
-      {/* handle — swept tube, attaches to the wall at top & bottom */}
-      <mesh geometry={handleGeo} castShadow>
-        <meshPhysicalMaterial color={garmentColor} roughness={0.28} clearcoat={0.55} clearcoatRoughness={0.2} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ──────────── REAL 3D T-SHIRT (GLB MESH) ─────────────
-   Replaces the flat-plane garment for the tshirt category.
-   Uses a real apparel mesh with proper sleeve/collar geometry,
-   fabric folds and realistic UV mapping baked into the GLB.    */
-function RealisticShirt({
-  texture,
-  garmentColor,
+/* ── Camera: smoothly orbits to face the active side ── */
+function CameraRig({
+  activeFace,
+  isMug,
 }: {
-  texture: THREE.CanvasTexture | null;
-  garmentColor: string;
+  activeFace: "front" | "back";
+  isMug: boolean;
 }) {
-  const { scene } = useGLTF("/models/tshirt.glb") as { scene: THREE.Group };
-
-  // Find first mesh in the GLB (the shirt body)
-  const shirtGeo = useMemo(() => {
-    let geo: THREE.BufferGeometry | null = null;
-    scene.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh && !geo) {
-        geo = (obj as THREE.Mesh).geometry as THREE.BufferGeometry;
-      }
-    });
-    return geo;
-  }, [scene]);
-
-  if (!shirtGeo) return null;
-
-  return (
-    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={2.6}>
-      {/* base shirt — garment color */}
-      <mesh geometry={shirtGeo} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={garmentColor}
-          roughness={0.78}
-          metalness={0.02}
-        />
-      </mesh>
-      {/* design overlay — slightly inflated to avoid z-fighting */}
-      {texture && (
-        <mesh geometry={shirtGeo} scale={1.001}>
-          <meshStandardMaterial
-            map={texture}
-            transparent
-            roughness={0.65}
-            metalness={0}
-            depthWrite={false}
-            alphaTest={0.02}
-          />
-        </mesh>
-      )}
-    </group>
-  );
-}
-useGLTF.preload("/models/tshirt.glb");
-
-/* ──────────── TEE / LONGSLEEVE / HOODIE / CAP ──────── */
-/** A single garment "panel" — a slightly soft rounded plane with a shape mask
-   matching the silhouette of the product. Done with a custom rounded-rect shape. */
-function GarmentPanel({
-  texture,
-  garmentColor,
-  side,
-  width,
-  height,
-  zOffset,
-}: {
-  texture: THREE.CanvasTexture | null;
-  garmentColor: string;
-  side: "front" | "back";
-  width: number;
-  height: number;
-  zOffset: number;
-}) {
-  // Build a tee-shaped silhouette (works as a stylized stand-in for hoodie/longsleeve too).
-  const shape = useMemo(() => {
-    const w = width, h = height;
-    const halfW = w / 2;
-    const shoulderY = h * 0.35;
-    const sleeveOutX = halfW + w * 0.12;
-    const sleeveBottomY = h * 0.20;
-    const bodyEdgeX = halfW * 0.78;
-    const s = new THREE.Shape();
-    // start at the right collar
-    s.moveTo(w * 0.10, h * 0.50);
-    // collar up & over (left → right)
-    s.bezierCurveTo(w * 0.05, h * 0.48, w * -0.05, h * 0.50, w * -0.10, h * 0.50);
-    // up to neckline top via collar
-    s.bezierCurveTo(w * -0.10, h * 0.50, w * -0.18, h * 0.45, w * -0.20, shoulderY);
-    // shoulder out → sleeve
-    s.lineTo(-sleeveOutX, sleeveBottomY);
-    s.lineTo(-sleeveOutX + w * 0.05, h * 0.10);
-    s.lineTo(-bodyEdgeX, h * 0.10);
-    // body left side → hem
-    s.lineTo(-bodyEdgeX, -h * 0.50);
-    s.lineTo(bodyEdgeX, -h * 0.50);
-    // body right side → sleeve
-    s.lineTo(bodyEdgeX, h * 0.10);
-    s.lineTo(sleeveOutX - w * 0.05, h * 0.10);
-    s.lineTo(sleeveOutX, sleeveBottomY);
-    s.lineTo(w * 0.20, shoulderY);
-    s.bezierCurveTo(w * 0.18, h * 0.45, w * 0.10, h * 0.50, w * 0.10, h * 0.50);
-    s.closePath();
-    return s;
-  }, [width, height]);
-
-  const geo = useMemo(() => {
-    // Higher curve segments → smoother UV mapping AND smoother displacement.
-    const g = new THREE.ShapeGeometry(shape, 24);
-    g.computeBoundingBox();
-    const bbox = g.boundingBox!;
-    const sizeX = bbox.max.x - bbox.min.x;
-    const sizeY = bbox.max.y - bbox.min.y;
-    const uvAttr = g.attributes.uv as THREE.BufferAttribute;
-    const posAttr = g.attributes.position as THREE.BufferAttribute;
-    // Subtle barrel curvature: push the centre of the body outward (toward
-    // the viewer for the front face) so the garment reads as a 3D form
-    // rather than a flat plane. Magnitude is intentionally small so the
-    // print stays readable. Falls off near the silhouette edges and the
-    // sleeves so the shoulder line doesn't bulge.
-    const curveDepth = sizeX * 0.06;
-    for (let i = 0; i < posAttr.count; i++) {
-      const x = posAttr.getX(i);
-      const y = posAttr.getY(i);
-      const u = (x - bbox.min.x) / sizeX;          // 0..1 across width
-      const v = (y - bbox.min.y) / sizeY;          // 0..1 up the height
-      uvAttr.setXY(i, u, v);
-      // Cosine bulge across X, dampened toward sleeves (|x| > body width)
-      // and toward the very top/bottom of the body.
-      const bodyRadius = sizeX * 0.32;             // matches `bodyEdgeX` in shape
-      const sleeveDamp = Math.max(0, 1 - Math.max(0, Math.abs(x) - bodyRadius) / (sizeX * 0.18));
-      const verticalDamp = Math.sin(Math.PI * v);  // 0 at top/bottom, 1 mid
-      const z = curveDepth * Math.cos((Math.PI * (x - bbox.min.x)) / sizeX - Math.PI / 2)
-              * sleeveDamp * verticalDamp;
-      posAttr.setZ(i, z);
-    }
-    uvAttr.needsUpdate = true;
-    posAttr.needsUpdate = true;
-    g.computeVertexNormals();
-    return g;
-  }, [shape]);
-
-  return (
-    <group position={[0, 0, zOffset]} rotation={[0, side === "back" ? Math.PI : 0, 0]}>
-      {/* base garment (so silhouette has its real fabric color even in transparent texture areas) */}
-      <mesh geometry={geo} receiveShadow>
-        <meshStandardMaterial color={garmentColor} roughness={0.85} side={THREE.DoubleSide} />
-      </mesh>
-      {/* printed artwork on top */}
-      {texture && (
-        <mesh geometry={geo} position={[0, 0, 0.001]}>
-          <meshStandardMaterial
-            map={texture}
-            transparent
-            roughness={0.7}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-function CameraRig({ activeFace, isMug }: { activeFace: "front" | "back"; isMug: boolean }) {
-  // Smoothly rotate camera around Y axis to face the active side
-  const targetY = isMug ? 0 : (activeFace === "back" ? Math.PI : 0);
+  const targetY = isMug ? 0 : activeFace === "back" ? Math.PI : 0;
   useFrame(({ camera }) => {
     const radius = isMug ? 3.4 : 4.0;
-    // current angle of camera
     const cur = Math.atan2(camera.position.x, camera.position.z);
-    // Lerp toward target, but only if user isn't actively orbiting (best-effort)
     const next = cur + (targetY - cur) * 0.06;
     camera.position.x = Math.sin(next) * radius;
     camera.position.z = Math.cos(next) * radius;
@@ -362,17 +138,17 @@ export default function ProductViewer3D({
   activeFace = "front",
 }: ProductViewer3DProps) {
   const isMug = product.category === "mug";
-  const isTshirt = product.category === "tshirt";
 
-  // For the mug, build a wide texture (~ 2π:height ratio) at high resolution
+  // Mug: wide wrap texture — design only (transparent bg).
+  // MugBody applies garmentColor directly as the body material base so that
+  // cart (which loads the stored texture URL) and studio render identically.
   const mugTex = useFaceTexture(
     isMug ? front : undefined,
-    garmentColor,
+    null,
     { outW: 2048, outH: 768, clipToPrintZone: true }
   );
 
-  // For tee/longsleeve/hoodie/cap — front + back textures with transparent bg
-  // so the underlying garment-colored mesh shows through outside the print.
+  // Garments: transparent front + back textures
   const frontTex = useFaceTexture(
     !isMug ? front : undefined,
     null,
@@ -387,7 +163,7 @@ export default function ProductViewer3D({
   return (
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       camera={{ position: [0, 0.2, 4], fov: 35 }}
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
@@ -404,37 +180,38 @@ export default function ProductViewer3D({
         <directionalLight position={[-4, 2, -3]} intensity={0.35} color={"#bcd6ff"} />
 
         <Environment preset="city" />
-
         <CameraRig activeFace={activeFace} isMug={isMug} />
 
-        {isMug ? (
-          <Mug wrapTex={mugTex} garmentColor={garmentColor} />
-        ) : isTshirt ? (
-          /* Real GLB shirt mesh — back face uses front design too
-             (garment is a single 3D mesh; user can orbit to see back) */
+        {product.category === "mug" && (
+          <MugBody wrapTex={mugTex} garmentColor={garmentColor} />
+        )}
+
+        {product.category === "tshirt" && (
           <RealisticShirt
-            texture={activeFace === "back" && backTex ? backTex : frontTex}
+            frontTex={frontTex}
+            backTex={backTex}
             garmentColor={garmentColor}
           />
-        ) : (
-          <>
-            <GarmentPanel
-              texture={frontTex}
-              garmentColor={garmentColor}
-              side="front"
-              width={2.4}
-              height={3.0}
-              zOffset={0.02}
-            />
-            <GarmentPanel
-              texture={backTex}
-              garmentColor={garmentColor}
-              side="back"
-              width={2.4}
-              height={3.0}
-              zOffset={-0.02}
-            />
-          </>
+        )}
+
+        {product.category === "longsleeve" && (
+          <LongSleeveBody
+            frontTex={frontTex}
+            backTex={backTex}
+            garmentColor={garmentColor}
+          />
+        )}
+
+        {product.category === "hoodie" && (
+          <HoodieBody
+            frontTex={frontTex}
+            backTex={backTex}
+            garmentColor={garmentColor}
+          />
+        )}
+
+        {product.category === "cap" && (
+          <CapBody frontTex={frontTex} garmentColor={garmentColor} />
         )}
 
         <ContactShadows

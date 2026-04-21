@@ -775,30 +775,46 @@ export default function DesignStudio() {
       });
       const mockupUrl = mockupCanvas.toDataURL("image/png", 0.85);
 
-      // 2. Design-only texture (transparent bg, full 1000-unit space)
-      //    Stored in customImages[0] — used by CartViewer3D for the UV texture.
+      // 2. Design-only UV texture (transparent bg) — used by CartViewer3D.
+      //    Mug uses wide 2048×768 to match the studio live preview (full 360° wrap band).
+      //    Garments use square 1024×1024 for front/back panel UVs.
       const frontTexCanvas = document.createElement("canvas");
-      await composeDesignTexture({
-        canvas: frontTexCanvas,
-        printZone: frontPZ,
-        layers: frontLayers,
-        outSize: 512,
-        imageCache,
-      });
-      const frontTexUrl = frontTexCanvas.toDataURL("image/webp", 0.8);
+      if (isMug) {
+        await composeLayers({
+          canvas: frontTexCanvas,
+          baseHeight: selectedProduct.baseHeight,
+          printZone: frontPZ,
+          layers: frontLayers,
+          garmentColor: null,
+          outW: 2048,
+          outH: 768,
+          imageCache,
+          clipToPrintZone: true,
+          blendMode: "multiply",
+        });
+      } else {
+        await composeDesignTexture({
+          canvas: frontTexCanvas,
+          printZone: frontPZ,
+          layers: frontLayers,
+          outSize: 1024,
+          imageCache,
+        });
+      }
+      const frontTexUrl = frontTexCanvas.toDataURL("image/webp", 0.85);
 
-      // 3. Back-face design texture (if back has layers)
+      // 3. Back-face design texture (garments only — mug has no back face)
       let backTexUrl: string | undefined;
-      if (backLayers.length > 0) {
+      if (!isMug && backLayers.length > 0) {
         const backTexCanvas = document.createElement("canvas");
         await composeDesignTexture({
           canvas: backTexCanvas,
           printZone: backPZ,
           layers: backLayers,
-          outSize: 512,
+          outSize: 1024,
           imageCache,
         });
-        backTexUrl = backTexCanvas.toDataURL("image/webp", 0.8);
+        backTexUrl = backTexCanvas.toDataURL("image/webp", 0.85);
       }
 
       const displayPrice = isMug
