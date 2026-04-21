@@ -118,6 +118,34 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    // Backfill columns onto pre-existing customers tables. The original
+    // CREATE TABLE above did NOT include guest-account / social-login
+    // columns, so production databases that were initialized before those
+    // features shipped are missing them — which makes /auth/guest fail with
+    // "column guest_sequence does not exist" and /auth/google fail to
+    // upsert. These ALTERs are idempotent and safe to run on every boot.
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS google_id TEXT`);
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS facebook_id TEXT`);
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS avatar TEXT`);
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false`);
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS guest_sequence INTEGER`);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS customers_google_id_unique
+        ON customers (google_id)
+        WHERE google_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS customers_facebook_id_unique
+        ON customers (facebook_id)
+        WHERE facebook_id IS NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS customers_guest_sequence_unique
+        ON customers (guest_sequence)
+        WHERE guest_sequence IS NOT NULL
+    `);
+
     await db.execute(sql`
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT
     `);

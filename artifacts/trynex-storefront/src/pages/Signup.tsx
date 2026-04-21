@@ -146,8 +146,12 @@ export default function Signup() {
               </div>
             )}
 
-            {googleClientId && (
+            {googleClientId ? (
               <div ref={googleBtnRef} className="w-full mb-3 flex justify-center [&>div]:!w-full" />
+            ) : (
+              <div className="w-full mb-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500 text-center">
+                Google sign-in is being set up — please register with email below.
+              </div>
             )}
 
             {facebookAppId && (

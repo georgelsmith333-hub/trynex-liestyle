@@ -198,8 +198,12 @@ export default function Login() {
               </div>
             </div>
 
-            {googleClientId && (
+            {googleClientId ? (
               <div ref={googleBtnRef} className="w-full mb-3 flex justify-center [&>div]:!w-full" />
+            ) : (
+              <div className="w-full mb-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500 text-center">
+                Google sign-in is being set up — please use email login or continue as guest from the cart.
+              </div>
             )}
 
             {facebookAppId && (
