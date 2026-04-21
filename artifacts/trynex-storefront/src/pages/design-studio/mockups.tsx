@@ -63,27 +63,28 @@ const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
 const BASE = 1000;
 
+// Tab order (per spec): t-shirt → mug → long sleeve → cap → hoodie
 export const PRODUCTS: DesignProduct[] = [
   { id: "white-tshirt",     name: "Unisex T-Shirt",    category: "tshirt",     garmentColor: "#F5F5F3",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: TSHIRT_PZ,
     frontSrc: "/mockups/white-tshirt-front.png", backSrc: "/mockups/white-tshirt-back.png" },
-  { id: "white-longsleeve", name: "Unisex Long Sleeve", category: "longsleeve", garmentColor: "#F5F5F3",
-    description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: LONGSLEEVE_PZ,
-    frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
-  { id: "white-hoodie",     name: "Unisex Hoodie",     category: "hoodie",     garmentColor: "#F2EFE9",
-    description: "320GSM Fleece · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: HOODIE_PZ,
-    frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
-  { id: "white-cap",        name: "Cap",               category: "cap",        garmentColor: "#F5F2EC",
-    description: "Cotton Twill · Pick a color",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: CAP_PZ,
-    frontSrc: "/mockups/white-cap-front.png" },
   { id: "white-mug",        name: "Coffee Mug",        category: "mug",        garmentColor: "#F5F5F5",
     description: "11oz Ceramic · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: MUG_PZ,
     frontSrc: "/mockups/white-mug-front.png" },
+  { id: "white-longsleeve", name: "Unisex Long Sleeve", category: "longsleeve", garmentColor: "#F5F5F3",
+    description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: LONGSLEEVE_PZ,
+    frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
+  { id: "white-cap",        name: "Cap",               category: "cap",        garmentColor: "#F5F2EC",
+    description: "Cotton Twill · Pick a color",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: CAP_PZ,
+    frontSrc: "/mockups/white-cap-front.png" },
+  { id: "white-hoodie",     name: "Unisex Hoodie",     category: "hoodie",     garmentColor: "#F2EFE9",
+    description: "320GSM Fleece · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: HOODIE_PZ,
+    frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
 ];
 
 /* ═══════════════════════════════════════════════════════

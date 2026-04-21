@@ -29,6 +29,7 @@ import {
   StudioLightRig,
   hasWebGL2,
   VIEWER_DEFAULTS,
+  VIEWER_FRAMING,
 } from "../../components/garment3d";
 
 interface FacePayload {
@@ -115,22 +116,24 @@ function useFaceTexture(
   return face ? textureRef.current : null;
 }
 
-/* ── Camera: smoothly orbits to face the active side ── */
+/* ── Camera: smoothly orbits to face the active side, framing per category ── */
 function CameraRig({
   activeFace,
-  isMug,
+  category,
 }: {
   activeFace: "front" | "back";
-  isMug: boolean;
+  category: "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug";
 }) {
-  const targetY = isMug ? 0 : activeFace === "back" ? Math.PI : 0;
+  const f = VIEWER_FRAMING[category];
+  // Mug & cap have no separate "back" face — keep them facing front.
+  const hasBackFace = category === "tshirt" || category === "longsleeve" || category === "hoodie";
+  const targetY = hasBackFace && activeFace === "back" ? Math.PI : 0;
   useFrame(({ camera }) => {
-    const radius = isMug ? 3.4 : 4.0;
     const cur = Math.atan2(camera.position.x, camera.position.z);
     const next = cur + (targetY - cur) * 0.06;
-    camera.position.x = Math.sin(next) * radius;
-    camera.position.z = Math.cos(next) * radius;
-    camera.position.y = isMug ? 0.4 : 0.2;
+    camera.position.x = Math.sin(next) * f.radius;
+    camera.position.z = Math.cos(next) * f.radius;
+    camera.position.y = f.cameraY;
     camera.lookAt(0, 0, 0);
   });
   return null;
@@ -216,7 +219,7 @@ export default function ProductViewer3D({
         <StudioLightRig rim />
 
         <Environment preset="city" />
-        <CameraRig activeFace={activeFace} isMug={isMug} />
+        <CameraRig activeFace={activeFace} category={product.category} />
 
         {product.category === "mug" && (
           <MugBody wrapTex={mugTex} garmentColor={garmentColor} />
@@ -251,7 +254,7 @@ export default function ProductViewer3D({
         )}
 
         <ContactShadows
-          position={[0, isMug ? -0.85 : -1.55, 0]}
+          position={[0, VIEWER_FRAMING[product.category].shadowY, 0]}
           opacity={VIEWER_DEFAULTS.shadowOpacity}
           blur={VIEWER_DEFAULTS.shadowBlur}
           scale={VIEWER_DEFAULTS.shadowScale}
@@ -265,8 +268,8 @@ export default function ProductViewer3D({
           dampingFactor={0.08}
           rotateSpeed={0.7}
           zoomSpeed={0.8}
-          minDistance={isMug ? 2.4 : 3}
-          maxDistance={isMug ? 5 : 6}
+          minDistance={VIEWER_FRAMING[product.category].minDistance}
+          maxDistance={VIEWER_FRAMING[product.category].maxDistance}
           minPolarAngle={Math.PI * 0.25}
           maxPolarAngle={Math.PI * 0.65}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}

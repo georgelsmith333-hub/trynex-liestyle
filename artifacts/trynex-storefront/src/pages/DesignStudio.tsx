@@ -1204,6 +1204,36 @@ export default function DesignStudio() {
                     {otherFaceCount} layer{otherFaceCount !== 1 ? "s" : ""} on the {activeFace === "front" ? "back" : "front"}
                   </span>
                 )}
+                {/* Quick action: copy whatever is on the front to the back so the
+                    user doesn't have to rebuild the design twice. Only shown
+                    while viewing the back face and only when the back is empty
+                    AND the front has at least one layer. */}
+                {activeFace === "back" && currentFaceLayers.length === 0 && (() => {
+                  const frontLayers = layers.filter(l => (l.face ?? "front") === "front");
+                  if (frontLayers.length === 0) return null;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cloned = frontLayers.map(l => ({
+                          ...l,
+                          id: `${l.id}-back-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                          face: "back" as const,
+                        }));
+                        commitLayers([...layers, ...cloned]);
+                      }}
+                      className="px-3 py-2 text-[11px] font-bold rounded-xl transition-all"
+                      style={{
+                        background: "linear-gradient(135deg,#E85D04,#F48C06)",
+                        color: "white",
+                        boxShadow: "0 4px 12px rgba(232,93,4,0.25)",
+                      }}
+                      data-testid="mirror-front-to-back"
+                    >
+                      ↻ Apply front design to back
+                    </button>
+                  );
+                })()}
               </div>
             )}
 

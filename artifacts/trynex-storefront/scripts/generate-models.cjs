@@ -265,16 +265,24 @@ function generateCap() {
   normaliseUVs(crown);
   crown.computeVertexNormals();
 
-  // Brim — flat extruded half-disc
+  // Brim — flat extruded half-disc. The arc is built opening toward +X
+  // (in shape-space), then we rotate it so it lies horizontally AND points
+  // toward +Z (camera-facing). Without the +π/2 Y-rotation the brim would
+  // stick out the right side of the cap and the front panel of the crown
+  // would face the side wall, not the camera.
   const brimShape = new THREE.Shape();
   brimShape.absarc(0, 0, 1.28, -Math.PI*0.55, Math.PI*0.55, false);
   brimShape.lineTo(0, 0);
   brimShape.closePath();
   const brim = new THREE.ExtrudeGeometry(brimShape, { steps:1, depth:0.06, bevelEnabled:false });
+  // 1) lay flat (rotate around X so the disc sits in XZ plane)
+  // 2) rotate around Y by +90° so the half-disc opening points to +Z
+  // 3) translate down to sit at the front of the crown
   brim.applyMatrix4(
-    new THREE.Matrix4().makeRotationX(-Math.PI/2 + 0.18)
-      .multiply(new THREE.Matrix4().makeTranslation(0, -0.65, 0.15))
+    new THREE.Matrix4().makeRotationY(Math.PI / 2)
+      .multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2 + 0.18))
   );
+  brim.applyMatrix4(new THREE.Matrix4().makeTranslation(0, -0.65, 0.15));
   normaliseUVs(brim);
   brim.computeVertexNormals();
 

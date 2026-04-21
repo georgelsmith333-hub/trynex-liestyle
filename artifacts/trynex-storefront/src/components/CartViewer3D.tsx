@@ -21,6 +21,7 @@ import {
   StudioLightRig,
   hasWebGL2,
   VIEWER_DEFAULTS,
+  VIEWER_FRAMING,
 } from "./garment3d";
 
 type GarmentCategory = "tshirt" | "longsleeve" | "hoodie" | "mug" | "cap";
@@ -44,20 +45,22 @@ const FALLBACK_GARMENT_BY_CATEGORY: Record<GarmentCategory, string> = {
  */
 function CameraController({
   activeFace,
-  isMug,
+  category,
 }: {
   activeFace: "front" | "back";
-  isMug: boolean;
+  category: GarmentCategory;
 }) {
   const tickRef = useRef(0);
   const INTRO_TICKS = 80;
+  const f = VIEWER_FRAMING[category];
+  const noBackFace = category === "mug" || category === "cap";
 
   useFrame(({ camera }) => {
     tickRef.current++;
-    const radius = isMug ? 3.4 : 4.0;
-    const camY   = isMug ? 0.4 : 0.2;
+    const radius = f.radius;
+    const camY   = f.cameraY;
 
-    if (isMug) {
+    if (noBackFace) {
       // Mug: keep auto-rotating indefinitely until user grabs OrbitControls
       const angle = -tickRef.current * 0.008;
       camera.position.x = Math.sin(angle) * radius;
@@ -180,7 +183,7 @@ export default function CartViewer3D({
           <Environment preset="city" />
 
           {/* Unified camera: auto-rotate intro → face lock (or continuous for mug) */}
-          <CameraController activeFace={face} isMug={isMug} />
+          <CameraController activeFace={face} category={category} />
 
           {category === "mug" && (
             <MugBody wrapTex={mugTex} garmentColor={garmentColor} />
@@ -199,7 +202,7 @@ export default function CartViewer3D({
           )}
 
           <ContactShadows
-            position={[0, isMug ? -0.85 : -1.55, 0]}
+            position={[0, VIEWER_FRAMING[category].shadowY, 0]}
             opacity={VIEWER_DEFAULTS.shadowOpacity}
             blur={VIEWER_DEFAULTS.shadowBlur}
             scale={VIEWER_DEFAULTS.shadowScale}
@@ -213,8 +216,8 @@ export default function CartViewer3D({
             dampingFactor={0.08}
             rotateSpeed={0.7}
             zoomSpeed={0.8}
-            minDistance={isMug ? 2.4 : 3}
-            maxDistance={isMug ? 5 : 6}
+            minDistance={VIEWER_FRAMING[category].minDistance}
+            maxDistance={VIEWER_FRAMING[category].maxDistance}
             minPolarAngle={Math.PI * 0.25}
             maxPolarAngle={Math.PI * 0.65}
             touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}

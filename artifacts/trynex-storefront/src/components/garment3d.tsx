@@ -299,8 +299,12 @@ function GarmentGLB({
 
   if (meshes.length === 0) return null;
 
+  // Match RealisticShirt's render-scale so longsleeve & hoodie occupy the
+  // same screen-space as the t-shirt (their source GLBs are authored at
+  // the same model-unit size). Without this, garments looked tiny and
+  // the camera framed only the neckline.
   return (
-    <group>
+    <group scale={2.6}>
       {/* Base colour for every part — apply procedural fabric maps */}
       {meshes.map((m, i) => (
         <mesh key={i} geometry={m.geometry} castShadow receiveShadow>
@@ -424,8 +428,13 @@ export function MugBody({
     if (wrapTex) {
       wrapTex.wrapS = THREE.RepeatWrapping;
       wrapTex.wrapT = THREE.ClampToEdgeWrapping;
+      // Cylinder default UVs wind so U=0 lies on +X. Our wrap texture is
+      // 2048×768 with the design centred at U_tex=0.5. We want that centre
+      // to land on +Z (the side facing the camera). Solve -u_geo + offset
+      // = 0.5 for u_geo = 0.25 → offset = 0.75. Repeat -1 mirrors so the
+      // design reads right-way-around when the camera orbits the mug.
       wrapTex.repeat.set(-1, 1);
-      wrapTex.offset.set(0.25, 0);
+      wrapTex.offset.set(0.75, 0);
       wrapTex.needsUpdate = true;
     }
   }, [wrapTex]);
@@ -499,6 +508,30 @@ export const VIEWER_DEFAULTS = {
   shadowBlur: 2.4,
   shadowScale: 6,
   shadowFar: 3,
+};
+
+/** Per-category framing — every product's 3D model has different proportions
+ *  (hoodie has a tall hood, cap is short and wide, mug is narrow & half-height,
+ *  long sleeve has wide sleeves). These constants frame each one so the FRONT
+ *  PRINT AREA fills the centre of the viewport — the user sees their design
+ *  exactly where they placed it in 2D. */
+export type ViewerCategory = "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug";
+export const VIEWER_FRAMING: Record<ViewerCategory, {
+  /** Camera distance from origin */
+  radius: number;
+  /** Camera height — positive looks slightly down, negative looks up */
+  cameraY: number;
+  /** Soft min/max for OrbitControls dolly */
+  minDistance: number;
+  maxDistance: number;
+  /** Y position of the contact-shadow plane */
+  shadowY: number;
+}> = {
+  tshirt:     { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
+  longsleeve: { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
+  hoodie:     { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
+  cap:        { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
+  mug:        { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
 };
 
 /** Overlay shown while GLB / texture assets are streaming in.
