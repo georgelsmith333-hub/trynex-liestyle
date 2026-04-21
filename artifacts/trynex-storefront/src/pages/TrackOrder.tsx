@@ -80,6 +80,45 @@ function buildTrackBody(oNum: string, identifier: string): TrackBody {
     : { orderNumber: oNum.toUpperCase(), phone: identifier.trim() };
 }
 
+function ItemPreviewThumb({ src, alt, isStudio }: { src: string; alt: string; isStudio: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const showImage = !!src && !failed;
+  return (
+    <div
+      className={cn(
+        "rounded-xl overflow-hidden shrink-0 flex items-center justify-center relative",
+        isStudio ? "w-20 h-20" : "w-16 h-16"
+      )}
+      style={{
+        background: isStudio
+          ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
+          : '#f3f4f6',
+        border: isStudio ? '1px solid rgba(232,93,4,0.2)' : '1px solid #e5e7eb',
+      }}
+    >
+      {showImage ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          className="w-full h-full object-contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Package className="w-6 h-6 text-gray-300" aria-hidden="true" />
+      )}
+      {isStudio && (
+        <span
+          className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-white shadow"
+          style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}
+        >
+          Custom
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function TrackOrder() {
   const settings = useSiteSettings();
   const [orderNumber, setOrderNumber] = useState("");
@@ -485,14 +524,15 @@ export default function TrackOrder() {
                             </div>
                           );
                         }
+                        const previewSrc = (item.imageUrl as string) || (item.productImage as string) || '';
+                        const isStudio = !!item.isStudio;
                         return (
                         <div key={idx} className="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
-                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0"
-                            style={{ background: '#f3f4f6' }}>
-                            {item.productImage && (
-                              <img src={item.productImage as string} alt="" className="w-full h-full object-cover" />
-                            )}
-                          </div>
+                          <ItemPreviewThumb
+                            src={previewSrc}
+                            alt={`${item.productName as string} preview`}
+                            isStudio={isStudio}
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-sm leading-snug text-gray-800">{item.productName as string}</p>
                             <p className="text-xs text-gray-400 mt-0.5">
