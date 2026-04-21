@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { HealthCheckResponse } from "@workspace/api-zod";
+import { getConfiguredGoogleClientId } from "./auth";
 
 const router: IRouter = Router();
 
@@ -23,7 +24,7 @@ router.get("/health/auth", async (_req, res) => {
     // dbReachable stays false
   }
   res.json({
-    google_configured: Boolean(process.env.GOOGLE_CLIENT_ID),
+    google_configured: Boolean(await getConfiguredGoogleClientId()),
     jwt_secret_present: Boolean(process.env.JWT_SECRET),
     db_reachable: dbReachable,
   });

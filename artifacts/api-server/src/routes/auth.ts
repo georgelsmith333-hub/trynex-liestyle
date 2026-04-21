@@ -1,13 +1,13 @@
 import { Router, type IRouter } from "express";
-import { db, customersTable } from "@workspace/db";
+import { db, customersTable, settingsTable } from "@workspace/db";
 import { eq, or, desc, sql } from "drizzle-orm";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 
-// Lazily-built Google OAuth verifier. Re-built only when GOOGLE_CLIENT_ID
-// changes (effectively never at runtime). Verifies signature, issuer,
-// audience, and expiry against Google's published public keys.
+// Lazily-built Google OAuth verifier. Re-built only when the configured
+// client ID changes. Verifies signature, issuer, audience, and expiry
+// against Google's published public keys.
 let googleClient: OAuth2Client | null = null;
 let googleClientForId: string | null = null;
 function getGoogleClient(clientId: string): OAuth2Client {
@@ -15,6 +15,26 @@ function getGoogleClient(clientId: string): OAuth2Client {
   googleClient = new OAuth2Client(clientId);
   googleClientForId = clientId;
   return googleClient;
+}
+
+// Resolve the active Google OAuth client ID. Admins typically configure
+// this in the Site Settings panel (DB), so we MUST consult the settings
+// table — falling back to the env var only when the DB row is absent.
+// Without this lookup, production rejects every Google sign-in with
+// "google_not_configured" even though the admin filled in the field.
+export async function getConfiguredGoogleClientId(): Promise<string> {
+  try {
+    const [row] = await db
+      .select()
+      .from(settingsTable)
+      .where(eq(settingsTable.key, "googleClientId"))
+      .limit(1);
+    const dbValue = row?.value?.trim();
+    if (dbValue) return dbValue;
+  } catch {
+    // Fall through to env fallback if the settings table is unreachable.
+  }
+  return (process.env.GOOGLE_CLIENT_ID || "").trim();
 }
 
 const router: IRouter = Router();
@@ -173,7 +193,7 @@ router.post("/auth/google", async (req, res) => {
       return;
     }
 
-    const expectedAud = process.env.GOOGLE_CLIENT_ID || "";
+    const expectedAud = await getConfiguredGoogleClientId();
 
     // Production MUST verify the Google ID token signature against Google's
     // public keys. Without this, anyone can mint a forged JWT with arbitrary
@@ -542,7 +562,7 @@ router.post("/auth/guest", async (req, res) => {
 // Diagnostic endpoint — returns ONLY booleans so future regressions can be
 // debugged in one curl. Never returns secret values. Safe to expose.
 router.get("/auth/health", async (_req, res) => {
-  const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID);
+  const googleConfigured = Boolean(await getConfiguredGoogleClientId());
   const jwtSecretPresent = Boolean(process.env.JWT_SECRET);
   const adminJwtSecretPresent = Boolean(process.env.ADMIN_JWT_SECRET);
   const allowedOriginsConfigured = Boolean(process.env.ALLOWED_ORIGINS);
