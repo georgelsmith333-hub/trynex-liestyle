@@ -51,10 +51,16 @@ After every Render deploy, complete these three steps to keep search engines fre
 
 ## Auth health check (post-deploy)
 
-Verify auth is healthy in 5 seconds:
+Two endpoints are available:
+
+* **`GET /api/health/auth`** — strict-contract endpoint for monitors / smoke checks. Returns ONLY `{ google_configured, jwt_secret_present, db_reachable }`.
+* **`GET /api/auth/health`** — extended diagnostic. Adds `admin_jwt_secret_present`, `allowed_origins_configured`, `customers_table_exists`, `guest_sequence_column_exists`, `node_env`.
+
+Verify in 5 seconds:
 
 ```bash
-curl https://<your-render-host>/api/auth/health
+curl https://<your-render-host>/api/health/auth   # strict 3-boolean check
+curl https://<your-render-host>/api/auth/health   # full diagnostic
 ```
 
 Expected response (all `true`):

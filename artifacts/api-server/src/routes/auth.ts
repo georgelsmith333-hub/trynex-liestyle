@@ -19,6 +19,9 @@ function getGoogleClient(clientId: string): OAuth2Client {
 
 const router: IRouter = Router();
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET environment variable is required in production");
+}
 const JWT_SECRET = process.env.JWT_SECRET || "dev_only_secret_not_for_production";
 const CUSTOMER_SALT = process.env.CUSTOMER_SALT || "trynex_customer_2024";
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -465,12 +468,16 @@ router.post("/auth/guest", async (req, res) => {
         // (including converted accounts, which keep their sequence after
         // is_guest is flipped to false). This guarantees uniqueness against
         // the partial unique index on guest_sequence.
-        const [last] = await db
-          .select({ seq: customersTable.guestSequence })
-          .from(customersTable)
-          .orderBy(desc(customersTable.guestSequence))
-          .limit(1);
-        const nextSeq = (last?.seq ?? 0) + 1 + attempt;
+        // Use raw SQL so we can specify NULLS LAST — without it, any
+        // pre-existing customer rows with NULL guest_sequence sort to the
+        // top under DESC and the next-sequence calc collapses to 1.
+        const result = await db.execute(
+          sql`SELECT MAX(guest_sequence) AS seq FROM customers`,
+        );
+        const rows = (result as { rows?: Array<{ seq: number | null }> }).rows
+          ?? (result as unknown as Array<{ seq: number | null }>);
+        const lastSeq = (rows?.[0]?.seq as number | null) ?? 0;
+        const nextSeq = lastSeq + 1 + attempt;
         const padded = String(nextSeq).padStart(4, "0");
         const username = `guestaccount${padded}`;
         const guestEmail = `${username}@trynex.guest`;
