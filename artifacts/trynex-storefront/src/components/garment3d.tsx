@@ -488,6 +488,19 @@ useGLTF.preload("/models/mug.glb");
    PDP, cart, checkout and admin previews behave identically.
 ════════════════════════════════════════════════════════ */
 
+/** Single source of truth for camera + render parameters used by every
+ *  3D viewer in the app. Only `preserveDrawingBuffer` legitimately varies
+ *  (studio needs it for snapshot export; cart never snapshots). */
+export const VIEWER_DEFAULTS = {
+  fov: 36,
+  cameraPosition: [0, 0.2, 4] as [number, number, number],
+  dpr: [1, 1.5] as [number, number],
+  shadowOpacity: 0.32,
+  shadowBlur: 2.4,
+  shadowScale: 6,
+  shadowFar: 3,
+};
+
 /** Overlay shown while GLB / texture assets are streaming in.
  *  MUST be rendered as a sibling of <Canvas>, not inside it. */
 export function ViewerLoadingOverlay() {
@@ -533,13 +546,17 @@ export function ViewerLoadingOverlay() {
 }
 
 /** Replacement for a 3D viewer when WebGL2 isn't available.
- *  Renders the supplied 2D mockup PNG so the user still sees the product. */
+ *  Layers the user's design over the garment mockup so personalization is
+ *  still visible. `garmentSrc` is the white-cutout PNG (multiply-tinted by
+ *  garmentColor) and `designSrc` is the composed design texture. */
 export function NoWebGLFallback({
-  imgSrc,
-  garmentColor,
+  garmentSrc,
+  designSrc,
+  garmentColor = "#ffffff",
   message = "Your browser does not support 3D preview. Showing the 2D mockup instead.",
 }: {
-  imgSrc?: string;
+  garmentSrc?: string;
+  designSrc?: string;
   garmentColor?: string;
   message?: string;
 }) {
@@ -552,24 +569,44 @@ export function NoWebGLFallback({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: garmentColor || "#f8fafc",
+        background: "#f8fafc",
         padding: 16,
         textAlign: "center",
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      {imgSrc && (
-        <img
-          src={imgSrc}
-          alt="Product mockup"
-          style={{
-            maxWidth: "85%",
-            maxHeight: "75%",
-            objectFit: "contain",
-            mixBlendMode: "multiply",
-          }}
-        />
-      )}
+      <div style={{
+        position: "relative",
+        width: "85%",
+        maxHeight: "75%",
+        aspectRatio: "1 / 1",
+      }}>
+        {garmentSrc && (
+          <img
+            src={garmentSrc}
+            alt="Product mockup"
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "contain",
+              backgroundColor: garmentColor,
+              mixBlendMode: "multiply",
+            }}
+          />
+        )}
+        {designSrc && (
+          <img
+            src={designSrc}
+            alt="Your design"
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "contain",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </div>
       <div style={{ marginTop: 12, fontSize: 11, color: "#64748b", maxWidth: 280 }}>
         {message}
       </div>

@@ -20,7 +20,20 @@ import {
   NoWebGLFallback,
   StudioLightRig,
   hasWebGL2,
+  VIEWER_DEFAULTS,
 } from "./garment3d";
+
+type GarmentCategory = "tshirt" | "longsleeve" | "hoodie" | "mug" | "cap";
+
+/** Static garment cutout PNG used by the WebGL-less fallback,
+ *  layered under the user's design for a faithful 2D mockup. */
+const FALLBACK_GARMENT_BY_CATEGORY: Record<GarmentCategory, string> = {
+  tshirt:     "/mockups/white-tshirt-front.png",
+  longsleeve: "/mockups/white-longsleeve-front.png",
+  hoodie:     "/mockups/white-hoodie-front.png",
+  cap:        "/mockups/white-cap-front.png",
+  mug:        "/mockups/white-mug-front.png",
+};
 
 /**
  * Unified camera controller for garments (non-mug):
@@ -79,7 +92,7 @@ function CameraController({
 export interface CartViewer3DProps {
   garmentColor: string;
   /** product category — controls which 3D shape to render */
-  category: "tshirt" | "longsleeve" | "hoodie" | "mug" | "cap";
+  category: GarmentCategory;
   /** Pre-composed design texture URL (transparent bg, design at correct UV position) */
   frontTexUrl?: string;
   /** Back-face design texture URL */
@@ -107,7 +120,11 @@ export default function CartViewer3D({
   if (!supports3D) {
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <NoWebGLFallback imgSrc={frontTexUrl} garmentColor={garmentColor} />
+        <NoWebGLFallback
+          garmentSrc={FALLBACK_GARMENT_BY_CATEGORY[category]}
+          designSrc={frontTexUrl}
+          garmentColor={garmentColor}
+        />
       </div>
     );
   }
@@ -152,8 +169,8 @@ export default function CartViewer3D({
 
       <Canvas
         shadows
-        dpr={[1, 1.5]}
-        camera={{ position: [0, 0.2, 4], fov: 38 }}
+        dpr={VIEWER_DEFAULTS.dpr}
+        camera={{ position: VIEWER_DEFAULTS.cameraPosition, fov: VIEWER_DEFAULTS.fov }}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false }}
         style={{ width: "100%", height: "100%", background: "transparent" }}
       >
@@ -183,10 +200,10 @@ export default function CartViewer3D({
 
           <ContactShadows
             position={[0, isMug ? -0.85 : -1.55, 0]}
-            opacity={0.3}
-            blur={2.4}
-            scale={6}
-            far={3}
+            opacity={VIEWER_DEFAULTS.shadowOpacity}
+            blur={VIEWER_DEFAULTS.shadowBlur}
+            scale={VIEWER_DEFAULTS.shadowScale}
+            far={VIEWER_DEFAULTS.shadowFar}
           />
 
           <ResettableOrbitControls

@@ -28,6 +28,7 @@ import {
   NoWebGLFallback,
   StudioLightRig,
   hasWebGL2,
+  VIEWER_DEFAULTS,
 } from "../../components/garment3d";
 
 interface FacePayload {
@@ -167,10 +168,35 @@ export default function ProductViewer3D({
 
   // WebGL2 capability check — gracefully degrade to 2D mockup if unsupported
   const supports3D = useMemo(() => hasWebGL2(), []);
+  // Compose a one-shot 2D mockup (garment + design) for the WebGL-less fallback.
+  // Lightweight: only runs when 3D isn't supported; reuses the same composer
+  // pipeline used by the live texture so the personalization is faithful.
+  const [fallbackDesignUrl, setFallbackDesignUrl] = useState<string | undefined>();
+  useEffect(() => {
+    if (supports3D || !front) return;
+    const c = document.createElement("canvas");
+    composeLayers({
+      canvas: c,
+      baseHeight: front.baseHeight,
+      printZone: front.printZone,
+      layers: front.layers,
+      garmentColor: null,
+      outW: 1024,
+      outH: 1024,
+      imageCache: new Map(),
+      clipToPrintZone: true,
+      blendMode: "source-over",
+    }).then(() => setFallbackDesignUrl(c.toDataURL("image/png")));
+  }, [supports3D, front]);
+
   if (!supports3D) {
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <NoWebGLFallback imgSrc={product.frontSrc} garmentColor={garmentColor} />
+        <NoWebGLFallback
+          garmentSrc={product.frontSrc}
+          designSrc={fallbackDesignUrl}
+          garmentColor={garmentColor}
+        />
       </div>
     );
   }
@@ -179,8 +205,10 @@ export default function ProductViewer3D({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
     <Canvas
       shadows
-      dpr={[1, 1.5]}
-      camera={{ position: [0, 0.2, 4], fov: 35 }}
+      dpr={VIEWER_DEFAULTS.dpr}
+      camera={{ position: VIEWER_DEFAULTS.cameraPosition, fov: VIEWER_DEFAULTS.fov }}
+      // preserveDrawingBuffer: true is studio-only — needed for the
+      // "Save mockup" snapshot. Cart never snapshots, so it leaves it false.
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
@@ -224,10 +252,10 @@ export default function ProductViewer3D({
 
         <ContactShadows
           position={[0, isMug ? -0.85 : -1.55, 0]}
-          opacity={0.35}
-          blur={2.4}
-          scale={6}
-          far={3}
+          opacity={VIEWER_DEFAULTS.shadowOpacity}
+          blur={VIEWER_DEFAULTS.shadowBlur}
+          scale={VIEWER_DEFAULTS.shadowScale}
+          far={VIEWER_DEFAULTS.shadowFar}
         />
 
         <ResettableOrbitControls
