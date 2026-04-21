@@ -18,13 +18,13 @@ export function TrackingPixels() {
     initialized.current = true;
 
     if (settings.googleAnalyticsId) {
-      initGoogleAnalytics(settings.googleAnalyticsId);
+      initGoogleAnalytics(settings.googleAnalyticsId as string);
     }
     if (settings.facebookPixelId) {
-      initFacebookPixel(settings.facebookPixelId);
+      initFacebookPixel(settings.facebookPixelId as string);
     }
     if (settings.googleAdsId) {
-      initGoogleAds(settings.googleAdsId);
+      initGoogleAds(settings.googleAdsId as string);
     }
   }, [settings]);
 

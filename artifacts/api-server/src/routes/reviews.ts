@@ -70,8 +70,7 @@ router.post("/reviews", async (req, res) => {
       customerName,
       customerEmail,
       rating,
-      text: text || null,
-      verified,
+      body: text || "",
       approved: false,
     }).returning();
 

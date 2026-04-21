@@ -13,9 +13,9 @@ export default function AdminBackup() {
   const [exporting, setExporting] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<Record<string, number> | null>(null);
+  const [importResult, setImportResult] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importMutation = useImportBackup({ request: { headers: getAuthHeaders() } });
+  const importMutation = useImportBackup();
 
   const handleExportCSV = async () => {
     setExportingCsv(true);
@@ -73,9 +73,9 @@ export default function AdminBackup() {
         toast({ title: "Invalid file", description: "This doesn't look like a TryNex backup file.", variant: "destructive" });
         return;
       }
-      const result = await importMutation.mutateAsync({
-        data: { version: parsed.version, data: parsed.data },
-      });
+      const fd = new FormData();
+      fd.append("data", JSON.stringify({ version: parsed.version, data: parsed.data }));
+      const result = await importMutation.mutateAsync(fd);
       setImportResult(result.imported);
       toast({ title: "Backup restored!", description: "Data imported successfully." });
     } catch {

@@ -45,8 +45,10 @@ import { useLocation } from "wouter";
       return () => window.removeEventListener('resize', check);
     }, []);
 
-    const discount = product.discountPrice
-      ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
+    const price = parseFloat(String(product.price)) || 0;
+    const discountPrice = product.discountPrice ? parseFloat(String(product.discountPrice)) : null;
+    const discount = discountPrice
+      ? Math.round(((price - discountPrice) / price) * 100)
       : 0;
 
     const rating = product.rating ? parseFloat(String(product.rating)) : 4.9;
@@ -56,7 +58,7 @@ import { useLocation } from "wouter";
     // Build WhatsApp order URL
     const whatsappNumber = "8801903426915";
     const whatsappMsg = encodeURIComponent(
-      `Hello TryNex! I want to order:\n*${product.name}*\nPrice: ${formatPrice(product.discountPrice || product.price)}\nProduct link: https://trynexshop.com/product/${product.id}`
+      `Hello TryNex! I want to order:\n*${product.name}*\nPrice: ${formatPrice(discountPrice || price)}\nProduct link: https://trynexshop.com/product/${product.id}`
     );
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
 
@@ -91,9 +93,9 @@ import { useLocation } from "wouter";
       addToCart({
         productId: product.id,
         name: product.name,
-        price: product.discountPrice || product.price,
+        price: discountPrice || price,
         quantity: 1,
-        imageUrl: product.imageUrl,
+        imageUrl: product.imageUrl ?? undefined,
       });
       toast({
         title: "✓ Added to bag",
@@ -115,9 +117,9 @@ import { useLocation } from "wouter";
       toggleWishlist({
         id: product.id,
         name: product.name,
-        price: product.price,
-        discountPrice: product.discountPrice,
-        imageUrl: product.imageUrl,
+        price: price,
+        discountPrice: discountPrice ?? undefined,
+        imageUrl: product.imageUrl ?? undefined,
       });
     };
 
@@ -297,13 +299,13 @@ import { useLocation } from "wouter";
             {/* Price + Cart — anchored to bottom so all cards in a row line up */}
             <div className="flex items-center justify-between gap-2 mt-auto">
               <div className="flex items-baseline gap-1.5 min-w-0">
-                {product.discountPrice ? (
+                {discountPrice ? (
                   <>
-                    <span className="font-black text-orange-600 text-base">{formatPrice(product.discountPrice)}</span>
-                    <span className="text-xs line-through text-gray-400 shrink-0">{formatPrice(product.price)}</span>
+                    <span className="font-black text-orange-600 text-base">{formatPrice(discountPrice)}</span>
+                    <span className="text-xs line-through text-gray-400 shrink-0">{formatPrice(price)}</span>
                   </>
                 ) : (
-                  <span className="font-black text-gray-900 text-base">{formatPrice(product.price)}</span>
+                  <span className="font-black text-gray-900 text-base">{formatPrice(price)}</span>
                 )}
               </div>
 

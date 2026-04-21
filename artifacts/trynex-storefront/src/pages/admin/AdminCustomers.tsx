@@ -50,9 +50,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function AdminCustomers() {
-  const { data, isLoading, error } = useListAdminCustomers({
-    request: { headers: getAuthHeaders() },
-  });
+  const { data, isLoading, error } = useListAdminCustomers();
   const { data: guestData, isLoading: guestsLoading } = useListAdminGuestCustomers();
   const [search, setSearch] = useState("");
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
@@ -77,18 +75,19 @@ export default function AdminCustomers() {
   const filtered = data.customers.filter(c => {
     const q = search.toLowerCase();
     return !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) ||
-      c.phone.includes(q) || (c.district || "").toLowerCase().includes(q);
+      (c.phone || "").includes(q);
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "spent") return b.totalSpent - a.totalSpent;
-    if (sortBy === "orders") return b.totalOrders - a.totalOrders;
+    if (sortBy === "spent") return Number(b.totalSpent ?? 0) - Number(a.totalSpent ?? 0);
+    if (sortBy === "orders") return (b.totalOrders ?? 0) - (a.totalOrders ?? 0);
     return new Date(b.lastOrder || 0).getTime() - new Date(a.lastOrder || 0).getTime();
   });
 
-  const totalRevenue = data.customers.reduce((sum, c) => sum + c.totalSpent, 0);
-  const avgOrderValue = data.totalOrders > 0 ? totalRevenue / data.totalOrders : 0;
-  const repeatCustomers = data.customers.filter(c => c.totalOrders > 1).length;
+  const totalRevenue = data.customers.reduce((sum, c) => sum + Number(c.totalSpent ?? 0), 0);
+  const totalOrders = data.totalOrders ?? data.customers.reduce((sum, c) => sum + (c.totalOrders ?? 0), 0);
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const repeatCustomers = data.customers.filter(c => (c.totalOrders ?? 0) > 1).length;
 
   return (
     <AdminLayout>
@@ -113,7 +112,7 @@ export default function AdminCustomers() {
               };
               const headers = ["Name", "Email", "Phone", "District", "City", "Address", "Total Orders", "Total Spent", "First Order", "Last Order", "Payment Methods"];
               const rows = data.customers.map(c => [
-                escCsv(c.name), escCsv(c.email), escCsv(c.phone),
+                escCsv(c.name), escCsv(c.email), escCsv(c.phone ?? ""),
                 escCsv(c.district || ""), escCsv(c.city || ""), escCsv(c.address || ""),
                 String(c.totalOrders), String(c.totalSpent),
                 c.firstOrder ? new Date(c.firstOrder).toLocaleDateString() : "",
@@ -138,8 +137,8 @@ export default function AdminCustomers() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Total Customers", value: data.totalCustomers, icon: Users, color: "#E85D04" },
-            { label: "Total Orders", value: data.totalOrders, icon: ShoppingBag, color: "#16a34a" },
+            { label: "Total Customers", value: data.totalCustomers ?? data.customers.length, icon: Users, color: "#E85D04" },
+            { label: "Total Orders", value: totalOrders, icon: ShoppingBag, color: "#16a34a" },
             { label: "Repeat Customers", value: repeatCustomers, icon: TrendingUp, color: "#7c3aed" },
             { label: "Avg. Order Value", value: formatPrice(avgOrderValue), icon: BarChart3, color: "#0ea5e9" },
           ].map(stat => (
@@ -161,7 +160,7 @@ export default function AdminCustomers() {
           ))}
         </div>
 
-        {data.topDistricts.length > 0 && (
+        {(data.topDistricts ?? []).length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="w-5 h-5 text-orange-500" />
@@ -174,7 +173,7 @@ export default function AdminCustomers() {
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                    {data.topDistricts.map((_, i) => (
+                    {(data.topDistricts ?? []).map((_: unknown, i: number) => (
                       <Cell key={i} fill={DISTRICT_COLORS[i % DISTRICT_COLORS.length]} />
                     ))}
                   </Bar>
@@ -186,7 +185,7 @@ export default function AdminCustomers() {
 
         <div className="flex gap-2 border-b border-gray-200">
           {([
-            { id: "buyers", label: `Buyers (${data.totalCustomers})`, icon: Users },
+            { id: "buyers", label: `Buyers (${data.totalCustomers ?? data.customers.length})`, icon: Users },
             { id: "guests", label: `Guest Accounts${guestData ? ` (${guestData.totalGuests})` : ""}`, icon: UserCircle },
           ] as const).map(t => (
             <button
@@ -365,7 +364,7 @@ export default function AdminCustomers() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-gray-900 truncate">{customer.name}</span>
-                            {customer.totalOrders > 1 && (
+                            {(customer.totalOrders ?? 0) > 1 && (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-600">
                                 Repeat
                               </span>
@@ -379,8 +378,8 @@ export default function AdminCustomers() {
                           </div>
                         </div>
                         <div className="text-right hidden sm:block">
-                          <p className="text-sm font-bold text-gray-900">{formatPrice(customer.totalSpent)}</p>
-                          <p className="text-xs text-gray-400">{customer.totalOrders} order{customer.totalOrders > 1 ? "s" : ""}</p>
+                          <p className="text-sm font-bold text-gray-900">{formatPrice(Number(customer.totalSpent ?? 0))}</p>
+                          <p className="text-xs text-gray-400">{customer.totalOrders ?? 0} order{(customer.totalOrders ?? 0) > 1 ? "s" : ""}</p>
                         </div>
                         {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-300" /> : <ChevronDown className="w-4 h-4 text-gray-300" />}
                       </div>

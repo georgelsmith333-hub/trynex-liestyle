@@ -597,7 +597,7 @@ export default function AdminFacebookImport() {
                         className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
                       >
                         <option value="">Select category</option>
-                        {(categoriesData ?? []).map((c: Category) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        {(categoriesData?.categories ?? []).map((c: Category) => <option key={c.id} value={c.name}>{c.name}</option>)}
                       </select>
                     </div>
                     <div>

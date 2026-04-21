@@ -76,6 +76,7 @@ export default function Signup() {
       }, 500);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [initGoogleButton, googleClientId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,7 +111,7 @@ export default function Signup() {
       setError("Facebook SDK is still loading. Please wait a moment and try again.");
       return;
     }
-    window.FB.login(async (response) => {
+    window.FB.login?.(async (response) => {
       if (response.authResponse?.accessToken) {
         setLoading(true);
         const result = await loginWithFacebook(response.authResponse.accessToken);

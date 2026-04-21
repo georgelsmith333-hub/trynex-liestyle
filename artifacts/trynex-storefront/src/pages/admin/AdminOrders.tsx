@@ -314,9 +314,9 @@ export default function AdminOrders() {
                           <p className="text-[10px] text-gray-300">{order.shippingDistrict}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <p className="font-black text-primary text-sm">{formatPrice(order.total)}</p>
-                          {(order.shippingCost ?? 0) === 0 && <p className="text-[10px] text-green-400">FREE ship</p>}
-                          {order.promoCode && <p className="text-[10px] text-purple-500 font-bold">{order.promoCode} (-{formatPrice(order.promoDiscount || 0)})</p>}
+                          <p className="font-black text-primary text-sm">{formatPrice(parseFloat(order.total))}</p>
+                          {parseFloat(order.shippingCost) === 0 && <p className="text-[10px] text-green-400">FREE ship</p>}
+                          {order.promoCode && <p className="text-[10px] text-purple-500 font-bold">{order.promoCode} (-{formatPrice(parseFloat(order.promoDiscount || "0") || 0)})</p>}
                         </td>
                         <td className="px-4 py-4">
                           <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: `${pm.color}15`, color: pm.color }}>

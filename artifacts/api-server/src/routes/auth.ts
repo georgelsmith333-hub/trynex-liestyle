@@ -474,7 +474,7 @@ router.post("/auth/guest", async (req, res) => {
         const result = await db.execute(
           sql`SELECT MAX(guest_sequence) AS seq FROM customers`,
         );
-        const rows = (result as { rows?: Array<{ seq: number | null }> }).rows
+        const rows = (result as unknown as { rows?: Array<{ seq: number | null }> }).rows
           ?? (result as unknown as Array<{ seq: number | null }>);
         const lastSeq = (rows?.[0]?.seq as number | null) ?? 0;
         const nextSeq = lastSeq + 1 + attempt;

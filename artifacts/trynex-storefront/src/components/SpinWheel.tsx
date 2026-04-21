@@ -54,7 +54,7 @@ interface Props {
 }
 
 export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose }: Props) {
-  const { settings } = useSiteSettings();
+  const settings = useSiteSettings();
   const enabled = (settings as any)?.spinWheelEnabled !== false;
   const delaySeconds = Math.max(1, (settings as any)?.spinWheelDelay ?? 4);
   const title = (settings as any)?.spinWheelTitle || "Spin & Win an Offer!";

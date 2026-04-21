@@ -859,7 +859,7 @@ export default function ProductDetail() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size) => (
+                    {product.sizes.map((size: string) => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size === selectedSize ? "" : size)}
@@ -924,7 +924,7 @@ export default function ProductDetail() {
                     Color {selectedColor && <span className="text-orange-600 font-normal">— {selectedColor}</span>}
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {product.colors.map((color, colorIdx) => (
+                    {product.colors.map((color: string, colorIdx: number) => (
                       <button
                         key={color}
                         onClick={() => {
