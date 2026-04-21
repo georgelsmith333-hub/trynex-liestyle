@@ -1,0 +1,1379 @@
+Skip to content
+Library
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+46 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+(7 items)
+
+Make, test, iterate…
+
+Plan
+Plan #24 - Fix 3D mockups for every product
+#24 - Fix 3D mockups for every product
+What & Why
+The 3D preview is the headline feature, but right now the customer's design appears on the SIDE of the t-shirt instead of centered on the chest, and other products (hoodie, long sleeve, cap, mug) are similarly misaligned. The fabric also looks plasticky and the touch interaction is not smooth on mobile. Every product must show the design exactly where the user placed it in 2D, with realistic fabric/material and silky-smooth touch controls.
+
+Done looks like
+For every product (t-shirt, hoodie, long sleeve, cap, mug), the design rendered in 3D appears in the SAME position, scale, and rotation that the customer placed it in the 2D editor — front shows on the front panel, back shows on the back panel, no wrap to the sides or armpits.
+Fabric materials look realistic: subtle weave/cloth normal map, soft matte sheen on cotton products, ceramic gloss on the mug, brim curvature on the cap. Lighting includes a soft key + fill + rim light so the product feels three-dimensional.
+Touch controls feel premium: one-finger orbit with momentum, two-finger pinch-to-zoom, double-tap to reset, no jitter, no rubber-banding past the configured limits. Works smoothly on a mid-range phone.
+The 3D preview renders identically in: Design Studio, Product Detail page, Cart, Checkout, Order Confirmation, Order Tracking, and Admin order detail.
+A clear loading indicator while GLBs/textures load; graceful 2D fallback if WebGL2 is unavailable.
+Out of scope
+Adding new product types beyond the existing five.
+Changing the 2D editor itself (covered by the Design Studio task).
+Replacing the GLB models with new sculpts; reuse and re-UV existing meshes if the chest UV is wrong.
+Steps
+Audit the UV layout of each GLB and the corresponding PrintZone in mockups.tsx so the texture's chest rectangle lands on the chest UV island. If a model's UVs are misaligned, fix them in code (UV transform on the design overlay mesh) so the design lands on the front chest, hoodie front pocket area, sleeve panel, cap front, and mug body window.
+Upgrade the design overlay material so the design respects the underlying fabric (subtle multiply blend, slight roughness inheritance) and add cloth/ceramic normal+roughness maps to base materials.
+Improve scene lighting (key/fill/rim) and environment map for soft realistic reflections; tune per-product (matte for cotton, glossy for mug).
+Tune OrbitControls for smooth touch: enable damping, set damping factor, configure zoom speed for touch, add double-tap-to-reset, ensure no pan, lock vertical angle sensibly per product.
+Make every place that renders the 3D preview use the same shared viewer component and material setup so cart, checkout, admin, etc. all look identical.
+Add a polished loading skeleton and error/fallback path when WebGL2 is unsupported.
+Relevant files
+artifacts/trynex-storefront/src/components/garment3d.tsx
+artifacts/trynex-storefront/src/pages/design-studio/ProductViewer3D.tsx
+artifacts/trynex-storefront/src/components/CartViewer3D.tsx
+artifacts/trynex-storefront/src/pages/design-studio/composer.ts
+artifacts/trynex-storefront/src/pages/design-studio/mockups.tsx
+Plan #29 - Full Replit-platform independence
+#29 - Full Replit-platform independence
+What & Why
+Production runs on Render + Cloudflare R2, but the codebase still has Replit-only fallbacks: the object-storage layer falls back to a 127.0.0.1:1106 sidecar when no R2/S3 vars are set, the deployment route hard-codes /home/runner/workspace as the repo root, and a few feature paths (ACL, signed URLs) work only on Replit's GCS-backed sidecar. We need the production deploy to be 100% Replit-free, with R2 as the sole storage backend and zero hidden dependencies on Replit's runtime.
+
+Done looks like
+With R2_* env vars set on Render, the server boots, logs [storage] active backend: r2, and every storage operation (upload, download, signed URL, ACL/visibility, move-to-order-folder) works against R2 with no calls to 127.0.0.1:1106.
+If R2 vars are missing in production, the server fails fast with a clear error pointing to the exact env vars needed — instead of silently falling back to the sidecar.
+The "Push to GitHub" deployment route either reads REPO_ROOT from env (with a sensible default for Render's filesystem) or is feature-flagged off in production.
+Signed URLs for customer/admin downloads work on R2 (presigned S3-style URLs).
+Visibility model (/public/ vs /uploads/) is documented and the bucket policy expectations are stated.
+The health endpoint reports the active storage backend and R2 connectivity.
+Out of scope
+Migrating existing files from Replit storage to R2 (separate one-time migration if needed).
+Switching to a different storage provider (S3 path stays as already-implemented option).
+Steps
+Make the storage backend selector strict in production: refuse to start if NODE_ENV=production and no R2/S3 backend is configured.
+Implement the missing R2 implementations of getObjectEntityFile, trySetObjectEntityAclPolicy, and moveObjectToOrderPrefix (using S3-compatible APIs against R2).
+Make the deployment route's REPO_ROOT configurable; default to the Render filesystem path and feature-flag the route off when not in admin/dev.
+Extend the health endpoint to surface storage backend status, R2 connectivity, and a list of any sidecar-only code paths still in use.
+Document the required Render env vars and the R2 bucket layout (public vs uploads vs orders) in the project readme.
+Relevant files
+artifacts/api-server/src/lib/objectStorage.ts
+artifacts/api-server/src/lib/objectAcl.ts
+artifacts/api-server/src/routes/deployment.ts
+artifacts/api-server/src/routes/health.ts
+artifacts/api-server/src/index.ts
+render.yaml
+Agent
+Agent can make changes, review its work, and debug itself automatically.
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Starting task…
+Plan #24 - Fix 3D mockups for every product
+#24 - Fix 3D mockups for every product
+What & Why
+The 3D preview is the headline feature, but right now the customer's design appears on the SIDE of the t-shirt instead of centered on the chest, and other products (hoodie, long sleeve, cap, mug) are similarly misaligned. The fabric also looks plasticky and the touch interaction is not smooth on mobile. Every product must show the design exactly where the user placed it in 2D, with realistic fabric/material and silky-smooth touch controls.
+
+Done looks like
+For every product (t-shirt, hoodie, long sleeve, cap, mug), the design rendered in 3D appears in the SAME position, scale, and rotation that the customer placed it in the 2D editor — front shows on the front panel, back shows on the back panel, no wrap to the sides or armpits.
+Fabric materials look realistic: subtle weave/cloth normal map, soft matte sheen on cotton products, ceramic gloss on the mug, brim curvature on the cap. Lighting includes a soft key + fill + rim light so the product feels three-dimensional.
+Touch controls feel premium: one-finger orbit with momentum, two-finger pinch-to-zoom, double-tap to reset, no jitter, no rubber-banding past the configured limits. Works smoothly on a mid-range phone.
+The 3D preview renders identically in: Design Studio, Product Detail page, Cart, Checkout, Order Confirmation, Order Tracking, and Admin order detail.
+A clear loading indicator while GLBs/textures load; graceful 2D fallback if WebGL2 is unavailable.
+Out of scope
+Adding new product types beyond the existing five.
+Changing the 2D editor itself (covered by the Design Studio task).
+Replacing the GLB models with new sculpts; reuse and re-UV existing meshes if the chest UV is wrong.
+Steps
+Audit the UV layout of each GLB and the corresponding PrintZone in mockups.tsx so the texture's chest rectangle lands on the chest UV island. If a model's UVs are misaligned, fix them in code (UV transform on the design overlay mesh) so the design lands on the front chest, hoodie front pocket area, sleeve panel, cap front, and mug body window.
+Upgrade the design overlay material so the design respects the underlying fabric (subtle multiply blend, slight roughness inheritance) and add cloth/ceramic normal+roughness maps to base materials.
+Improve scene lighting (key/fill/rim) and environment map for soft realistic reflections; tune per-product (matte for cotton, glossy for mug).
+Tune OrbitControls for smooth touch: enable damping, set damping factor, configure zoom speed for touch, add double-tap-to-reset, ensure no pan, lock vertical angle sensibly per product.
+Make every place that renders the 3D preview use the same shared viewer component and material setup so cart, checkout, admin, etc. all look identical.
+Add a polished loading skeleton and error/fallback path when WebGL2 is unsupported.
+Relevant files
+artifacts/trynex-storefront/src/components/garment3d.tsx
+artifacts/trynex-storefront/src/pages/design-studio/ProductViewer3D.tsx
+artifacts/trynex-storefront/src/components/CartViewer3D.tsx
+artifacts/trynex-storefront/src/pages/design-studio/composer.ts
+artifacts/trynex-storefront/src/pages/design-studio/mockups.tsx
+Plan #24 - Fix 3D mockups for every product
+View a proposed or accepted plan.
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+48 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #30 - Aggressive SEO + 50 launch blog posts
+#30 - Aggressive SEO + 50 launch blog posts
+What & Why
+The blog is wired up but empty. The owner wants 50 SEO-optimized launch posts to drive organic traffic, plus deeper schema markup and on-page SEO so the site ranks aggressively for Bangladesh custom-apparel keywords (custom t-shirt Bangladesh, personalized hoodie Dhaka, custom mug printing, gift hampers Bangladesh, etc.). Existing infrastructure (DB-backed posts, sitemap, robots, JSON-LD) is solid — we extend it.
+
+Done looks like
+50 published blog posts seeded into the database, each:
+800–1500 words, original, in clear English (with Bangla phrases woven in where natural for local SEO).
+Has a unique slug, a real cover image (reuse existing product/category imagery or generated), category, tags, author, reading time, and a meta description.
+Includes proper H1/H2/H3 structure, internal links to product pages and other posts, and an FAQ section so the auto-extracted FAQ schema fires.
+Sitemap.xml includes all 50 posts; robots.txt remains correct.
+Every page has appropriate JSON-LD (Product on PDPs, BreadcrumbList everywhere, BlogPosting + FAQPage on posts, Organization + WebSite on the homepage with SearchAction sitelinks search box).
+Open Graph + Twitter card metadata is filled out per page with the correct image, title, description, and URL.
+Lighthouse SEO score on the homepage and a representative blog post is ≥95.
+A small admin-only "SEO health" page lists pages missing meta description, canonical, or OG image.
+Out of scope
+Off-page SEO (backlinks, paid promotion).
+Translating the entire site into Bangla (only weave local terms into posts).
+Steps
+Generate 50 keyword-targeted blog post drafts (titles, slugs, excerpts, full HTML/Markdown bodies with H2/H3, internal links, FAQs, cover image references). Use a reproducible seed script so the content can be regenerated/edited later.
+Insert the 50 posts into the blog_posts table via a one-shot seed script; mark them published and assign categories/tags.
+Add Organization + WebSite JSON-LD (with SearchAction sitelinks) to the homepage; add Product JSON-LD to PDPs if missing; ensure Breadcrumb JSON-LD covers every interior page.
+Audit OG/Twitter metadata across all pages and fill gaps via the existing SEOHead component.
+Add an admin "SEO health" page showing missing meta on any page.
+Relevant files
+artifacts/api-server/src/routes/blog.ts
+artifacts/api-server/src/routes/sitemap.ts
+artifacts/trynex-storefront/src/pages/Blog.tsx
+artifacts/trynex-storefront/src/pages/BlogPost.tsx
+artifacts/trynex-storefront/src/pages/admin/AdminBlog.tsx
+artifacts/trynex-storefront/src/components/SEOHead.tsx
+lib/db/src/schema/index.ts
+Plan #30 - Aggressive SEO + 50 launch blog posts
+View a proposed or accepted plan.
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+50 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #31 - Personal site-overview PDF (chat-only)
+#31 - Personal site-overview PDF
+What & Why
+After all of the overhaul work lands, the owner wants a single, detailed PDF that explains how the entire site works — frontend to backend, tech stack, file layout, env vars, deployment topology, every key feature — written in plain language so it can be shared with another AI/engineer for future help. This PDF is for the owner's personal storage only and must NOT be committed to the repo.
+
+Done looks like
+A single PDF file is delivered in chat (not committed to git, not pushed to GitHub) covering, in plain language:
+Project goals and core feature list.
+The full tech stack: pnpm monorepo, React + Vite storefront, Express + Drizzle API, PostgreSQL DB, Cloudflare R2 storage, Render hosting (backend), Cloudflare Pages (frontend), UptimeRobot keep-alive.
+Repository layout (artifacts, lib packages) with one-line description per major folder.
+How auth works (email, Google, Facebook, guest) including admin auth.
+How the design studio + 3D preview pipeline works end-to-end.
+How orders, payments, promo codes, spin wheel, and referrals work.
+Admin panel capabilities.
+SEO/blog system and how to add content.
+All env vars (names only, never values) and where they live.
+Deployment workflow (Render blueprint, Cloudflare frontend, R2 bucket layout, UptimeRobot).
+Troubleshooting checklist for common issues (Google login, blank homepage, storage backend, etc.).
+The PDF is reasonably formatted with a table of contents, headings, and code-block-style env var lists.
+Out of scope
+Marketing or sales content.
+API reference for every endpoint (high-level only).
+Steps
+After all dependent tasks are merged, gather the latest state of the codebase, env var matrix, and feature behavior.
+Generate the PDF document with sections as described above.
+Deliver the PDF as a chat attachment to the owner; ensure the file is excluded from any git commit.
+Relevant files
+replit.md
+render.yaml
+artifacts/api-server/src/index.ts
+artifacts/api-server/src/routes
+artifacts/trynex-storefront/src/pages
+lib/db/src/schema/index.ts
+Dependencies
+Plan #31 - Personal site-overview PDF (chat-only)
+View a proposed or accepted plan.
+
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+50 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #26 - Verify auth flows and admin panel
+#26 - Verify auth flows and admin panel
+What & Why
+Screenshots from production still show "Google sign-in is not configured" on the signup page, and the customer reports guest account creation, email signup, and admin login feel uncertain. Authentication is the gateway to checkout — we need every flow verified end-to-end and the admin panel proven to work.
+
+Done looks like
+Google sign-in works on production for both Login and Signup. If the Google Client ID has not yet been saved in site settings, the UI clearly tells the admin where to set it (link to admin settings page) instead of just saying "not configured".
+Facebook login works (or, if not configured, the button hides cleanly instead of erroring).
+Email/password signup works on mobile — including the password field (the "(min) 6 characters" placeholder no longer overlaps the eye-toggle icon).
+Guest checkout works: a customer can place an order without creating an account, and that order is retrievable via the order tracking page using the order number + phone.
+Admin login works; once logged in, admin can: view orders (with the new zoomable previews), edit products/categories, edit site settings (including Google Client ID), edit hero typewriter phrases, manage blog posts, view referrals, view promo codes. Every admin page renders without JS errors.
+A short "production readiness" admin page shows green/red badges for each critical service (DB, R2 storage, Google OAuth, Facebook OAuth, email transport) so the owner can see at a glance what is configured.
+Out of scope
+Adding new auth providers beyond Google + Facebook + email + guest.
+Migrating existing accounts.
+Steps
+Audit and harden every auth route (/auth/google, /auth/facebook, /auth/signup, /auth/login, /auth/guest) so missing config produces a clear, actionable error pointing the admin at the settings page; never crash the request.
+Fix the mobile signup form layout so password placeholder and eye toggle don't overlap; verify on a 360px-wide viewport.
+In the storefront AuthContext, surface server-side configuration errors as inline help text (with admin link if the current user is an admin), not generic errors.
+Walk through every admin page; fix any broken state, missing loading state, or unhandled error. Ensure admin can edit Google Client ID and Facebook App ID in settings and the change takes effect without a redeploy.
+Add a "Production readiness" panel to the admin dashboard listing each integration and its status.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/routes/health.ts
+artifacts/api-server/src/routes/settings.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/admin
+Plan #26 - Verify auth flows and admin panel
+View a proposed or accepted plan.
+
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+50 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #30 - Aggressive SEO + 50 launch blog posts
+#30 - Aggressive SEO + 50 launch blog posts
+What & Why
+The blog is wired up but empty. The owner wants 50 SEO-optimized launch posts to drive organic traffic, plus deeper schema markup and on-page SEO so the site ranks aggressively for Bangladesh custom-apparel keywords (custom t-shirt Bangladesh, personalized hoodie Dhaka, custom mug printing, gift hampers Bangladesh, etc.). Existing infrastructure (DB-backed posts, sitemap, robots, JSON-LD) is solid — we extend it.
+
+Done looks like
+50 published blog posts seeded into the database, each:
+800–1500 words, original, in clear English (with Bangla phrases woven in where natural for local SEO).
+Has a unique slug, a real cover image (reuse existing product/category imagery or generated), category, tags, author, reading time, and a meta description.
+Includes proper H1/H2/H3 structure, internal links to product pages and other posts, and an FAQ section so the auto-extracted FAQ schema fires.
+Sitemap.xml includes all 50 posts; robots.txt remains correct.
+Every page has appropriate JSON-LD (Product on PDPs, BreadcrumbList everywhere, BlogPosting + FAQPage on posts, Organization + WebSite on the homepage with SearchAction sitelinks search box).
+Open Graph + Twitter card metadata is filled out per page with the correct image, title, description, and URL.
+Lighthouse SEO score on the homepage and a representative blog post is ≥95.
+A small admin-only "SEO health" page lists pages missing meta description, canonical, or OG image.
+Out of scope
+Off-page SEO (backlinks, paid promotion).
+Translating the entire site into Bangla (only weave local terms into posts).
+Steps
+Generate 50 keyword-targeted blog post drafts (titles, slugs, excerpts, full HTML/Markdown bodies with H2/H3, internal links, FAQs, cover image references). Use a reproducible seed script so the content can be regenerated/edited later.
+Insert the 50 posts into the blog_posts table via a one-shot seed script; mark them published and assign categories/tags.
+Add Organization + WebSite JSON-LD (with SearchAction sitelinks) to the homepage; add Product JSON-LD to PDPs if missing; ensure Breadcrumb JSON-LD covers every interior page.
+Audit OG/Twitter metadata across all pages and fill gaps via the existing SEOHead component.
+Add an admin "SEO health" page showing missing meta on any page.
+Relevant files
+artifacts/api-server/src/routes/blog.ts
+artifacts/api-server/src/routes/sitemap.ts
+artifacts/trynex-storefront/src/pages/Blog.tsx
+artifacts/trynex-storefront/src/pages/BlogPost.tsx
+artifacts/trynex-storefront/src/pages/admin/AdminBlog.tsx
+artifacts/trynex-storefront/src/components/SEOHead.tsx
+lib/db/src/schema/index.ts
+Plan #30 - Aggressive SEO + 50 launch blog posts
+View a proposed or accepted plan.
+
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+50 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #25 - Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+#25 - Design Studio UX overhaul
+What & Why
+Customers expect uploading an image to "just work" — the background should disappear automatically, every change should be undoable, and on mobile they should be able to scale, rotate, and move the design with their fingers from any side of the layer without fiddly controls. Right now background removal is a manual button, multi-touch handles are limited, and the 2D preview doesn't blend the design with the fabric realistically.
+
+Done looks like
+Uploading an image automatically attempts background removal in the background (with a small spinner). The user can toggle "Remove background" off/on at any time on a layer to get the original back instantly — no re-upload needed.
+Undo/Redo is visible and reachable on both desktop and mobile, with keyboard shortcuts (Ctrl/Cmd+Z, Shift+Cmd+Z) and a clearly labeled toolbar pair. History covers add/remove/move/scale/rotate/text-edit/background-removal-toggle. A subtle toast confirms what was undone.
+Touch on mobile: each selected layer shows large tappable handles on all four corners + four edges (resize) and a top rotate handle, plus the existing pinch/rotate gesture continues to work. Handles are big enough for fingers (≥36px) and don't overlap small layers.
+The 2D preview blends the design with the fabric: subtle multiply over fabric texture and a faint inner shadow so flat PNGs no longer look like a sticker pasted on top.
+A persistent "Save draft" indicator + autosave continues to work; an explicit "Restore previous design" entry point exists if local draft is found.
+Out of scope
+3D-side fixes (handled by the 3D mockup task).
+Adding new layer types (e.g. shapes) beyond image and text.
+Steps
+Trigger automatic background removal as soon as an image layer is added (server first, in-browser model fallback). Cache the original pixels on the layer so toggling BG removal off restores them instantly.
+Surface Undo/Redo prominently in the mobile toolbar and keep the existing desktop bar; add keyboard shortcuts and a small "Undid: X" toast.
+Add edge handles (N/E/S/W) and a clearly visible rotate handle to every selected layer; ensure handles scale up on touch devices and stay within a comfortable hit area.
+Add a fabric-blend layer in the 2D compositor (multiply overlay using a fabric noise + faint inner shadow) so designs feel printed, not pasted.
+Polish the "Edit mode active / Your design has been restored" banner so it doesn't overlap the canvas hint text on mobile.
+Relevant files
+artifacts/trynex-storefront/src/pages/DesignStudio.tsx
+artifacts/trynex-storefront/src/pages/design-studio/composer.ts
+artifacts/trynex-storefront/src/pages/design-studio/mockups.tsx
+Dependencies
+Plan #25 - Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+View a proposed or accepted plan.
+
+
+
+Skip to content
+Library
+.agents
+.config
+.git
+artifacts
+attached_assets
+docs
+lib
+screenshots
+scripts
+.gitignore
+.node-version
+.npmrc
+build-cloudflare.sh
+DEPLOYMENT_GUIDE.md
+render.yaml
+replit.md
+skills-lock.json
+tsconfig.base.json
+tsconfig.json
+wrangler.toml
+Packager files
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+Config files
+.replit
+.replitignore
+Tasks
+Preview
+Plan #8 - P0: Fix Google login + Guest account creation on production
+#8 - P0 Auth & Checkout Reliability Fix
+What & Why
+Customers report Google login fails and "Continue as Guest" fails on production (trynexshop.com / Render API). Both flows are critical for checkout conversion — every minute they're broken loses sales. Diagnose, surface real error reasons in the UI, and fix.
+
+Done looks like
+A new visitor on production can sign in with Google in one tap and reach /account.
+A new visitor on the checkout page can tap "Continue as Guest" and proceed to place an order; their synthetic credentials persist in localStorage.
+When auth fails, the UI shows the actual reason (e.g. "Google sign-in is not configured", "Server unreachable", "Email already registered as a regular account") instead of a generic "Failed".
+Add a /api/health/auth diagnostic endpoint that returns { google_configured: bool, jwt_secret_present: bool, db_reachable: bool } so future regressions are debuggable in 5 seconds.
+Document required Render env vars + DB site_settings rows in replit.md and the deploy checklist.
+Out of scope
+Replacing Clerk/Replit Auth. Keep the current custom JWT + Google Identity Services + guest flows.
+Facebook login (separate flow, currently working).
+Email verification flow.
+Steps
+Diagnose: read all auth code paths end-to-end, list every reason the Google or guest call could 4xx/5xx in production. Confirm against Render logs if accessible.
+Surface real errors: every catch path on both client and server must propagate a human-readable message field. Replace generic "Google login failed" with the API's reason or "Google sign-in is temporarily unavailable" when no reason is present.
+Add the /api/health/auth diagnostic endpoint (no secrets in the response — booleans only).
+Fix any bugs found in the diagnose step (likely candidates: missing GOOGLE_CLIENT_ID in DB settings, missing Render env var, JWT_SECRET fallback, CORS allowlist, guest-sequence race condition, password length validation refusing valid synthetic passwords).
+Add 2 happy-path tests (one for /api/auth/google with a stub credential, one for /api/auth/guest ensuring it returns username+password) and run the full build to make sure nothing regressed.
+Update replit.md with the env-var checklist (GOOGLE_CLIENT_ID, JWT_SECRET, ADMIN_JWT_SECRET, ALLOWED_ORIGINS) and a one-liner on how to verify auth health post-deploy.
+Relevant files
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/app.ts
+artifacts/trynex-storefront/src/context/AuthContext.tsx
+artifacts/trynex-storefront/src/pages/Login.tsx
+artifacts/trynex-storefront/src/pages/Signup.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/context/SiteSettingsContext.tsx
+replit.md
+Diff: auth.ts
+artifacts/api-server/src/routes/auth.ts
+-1
++1
+    });
+  } catch (err) {
+    req.log.error({ err }, "Google login failed");
+    res.status(500).json({ error: "internal_error", message: "Google login failed" });
+    res.status(500).json({ error: "internal_error", message: failureReason(err, "Google sign-in is temporarily unavailable. Please try again or use email login.") });
+  }
+});
+Validation
+Validation
+Configure test commands and inspect run results to verify CI readiness.
+Recent runs
+No runs yet
+settings.ts
+Plan #20 - Show zoom level and a reset button in the preview
+#20 - Show zoom level and a reset button in the preview
+What & Why
+The new zoom in the Track Order preview lightbox works, but customers have no visible affordance for the current zoom level or a quick way to return to fit. A small overlay with +/- buttons, a percentage indicator, and a reset button would make the feature more discoverable and easier to use, especially on desktop.
+
+Done looks like
+Floating control overlay shows current zoom percentage
+Buttons for zoom in, zoom out, and reset to fit
+Controls are keyboard accessible and hide cleanly on mobile when not needed
+Relevant files
+artifacts/trynex-storefront/src/pages/TrackOrder.tsx (ZoomableImage and PreviewLightbox)
+Dependencies
+Agent
+The front at 2d is ok but see the back of those same products, i hope i dont needed to explain and u will get your missed things and do completely fix as needed by 100% keeping everything safe and working needed at real live website + same products 3d views you can see looks like garbage except the t shirt 3d mockup vecause only that shows real mock but also there is some problems too what ive told you at previous messages that the designes not come or show as where the user placed that design at 2d not showing that at 3d and its changed and for tge other items all products mockups like a real failure things and nothing realisric an good norhing.!! And my request you do fix the 3d thinga for every product very realistic and also the mug which is at the last tab but pick it from last to second tab and the presebd second one is maybe long sleeve so just move that to the last or before the hoodie or cap, here is serial of tab u need to show at design studio: t shirt, mug, longsleeve,then cap ad then hoodies or other things but just before all thimgs u must also make sure that those things and the every products front and back view at any color + also any mockup of 3d also perfectly as needed to be with extra forcement for artificial looks and its needed to be shows actual product item at realistic mockup with realistically blended or added their image on item as it will show at 3d too and any product. Thanks.
+
+50 minutes ago
+I hear you — there are real bugs here, not just polish. Let me investigate quickly: the tab order, the 3D models that look wrong (cap looks like a flat disc, mug/hoodie shown from a weird angle), and the design positioning mismatch between 2D and 3D.
+
+This is a lot of real bugs. Let me triage and fix the highest-impact ones in this turn. I'll batch work:
+
+Tab order: t-shirt → mug → longsleeve → cap → hoodie
+3D camera per category: hoodie/cap/mug were framed wrong (showing tops instead of fronts)
+3D cap geometry: rebuild as a proper baseball cap (was a flat disc)
+3D mug: tighten framing & handle orientation
+2D back: add an "Apply front design to back" helper so users can mirror in one tap
+Let me read the key files first:
+
+I'll do the visible bug fixes now: tab reorder, per-category 3D camera framing, and add a "mirror front to back" helper. The deeper 3D geometry work (proper cap/mug shapes) needs more time.
+
+Let me find the key viewer code and the back face panel:
+
+Now I have enough info to make all critical fixes. Let me batch all the edits in parallel:
+
+Now per-category 3D framing + scale, and rebuild cap/mug GLBs. Let me add a viewer config and update GarmentGLB:
+
+Now wire VIEWER_FRAMING into both viewers, scale GarmentGLB to match RealisticShirt, and add a "mirror to back" button:
+
+Now batch the remaining fixes:
+
+Now fix the cap GLB and update both viewers in parallel:
+
+Now regenerate the GLBs and update both viewers + add the mirror button — in parallel:
+
+Models regenerated. Now wire VIEWER_FRAMING into both viewers' camera + controls + shadow plane, and add the mirror button:
+
+Now do the same for CartViewer3D and add the back-face mirror button to DesignStudio in parallel:
+
+Now add the "Mirror front design to back" button in DesignStudio. First find layer state API:
+
+Now typecheck and restart:
+
+The ability to use Replit Agent has been disabled by your admin.
+
+Queue
+Premium hero + product card polish
+Spin wheel + referral system expansion
+Full Replit-platform independence
+Design Studio UX overhaul (auto BG removal, undo/redo, multi-touch)
+Aggressive SEO + 50 launch blog posts
+Verify auth flows and admin panel
+Personal site-overview PDF (chat-only)
+
+Make, test, iterate…
+
+Plan
+Plan #29 - Full Replit-platform independence
+#29 - Full Replit-platform independence
+What & Why
+Production runs on Render + Cloudflare R2, but the codebase still has Replit-only fallbacks: the object-storage layer falls back to a 127.0.0.1:1106 sidecar when no R2/S3 vars are set, the deployment route hard-codes /home/runner/workspace as the repo root, and a few feature paths (ACL, signed URLs) work only on Replit's GCS-backed sidecar. We need the production deploy to be 100% Replit-free, with R2 as the sole storage backend and zero hidden dependencies on Replit's runtime.
+
+Done looks like
+With R2_* env vars set on Render, the server boots, logs [storage] active backend: r2, and every storage operation (upload, download, signed URL, ACL/visibility, move-to-order-folder) works against R2 with no calls to 127.0.0.1:1106.
+If R2 vars are missing in production, the server fails fast with a clear error pointing to the exact env vars needed — instead of silently falling back to the sidecar.
+The "Push to GitHub" deployment route either reads REPO_ROOT from env (with a sensible default for Render's filesystem) or is feature-flagged off in production.
+Signed URLs for customer/admin downloads work on R2 (presigned S3-style URLs).
+Visibility model (/public/ vs /uploads/) is documented and the bucket policy expectations are stated.
+The health endpoint reports the active storage backend and R2 connectivity.
+Out of scope
+Migrating existing files from Replit storage to R2 (separate one-time migration if needed).
+Switching to a different storage provider (S3 path stays as already-implemented option).
+Steps
+Make the storage backend selector strict in production: refuse to start if NODE_ENV=production and no R2/S3 backend is configured.
+Implement the missing R2 implementations of getObjectEntityFile, trySetObjectEntityAclPolicy, and moveObjectToOrderPrefix (using S3-compatible APIs against R2).
+Make the deployment route's REPO_ROOT configurable; default to the Render filesystem path and feature-flag the route off when not in admin/dev.
+Extend the health endpoint to surface storage backend status, R2 connectivity, and a list of any sidecar-only code paths still in use.
+Document the required Render env vars and the R2 bucket layout (public vs uploads vs orders) in the project readme.
+Relevant files
+artifacts/api-server/src/lib/objectStorage.ts
+artifacts/api-server/src/lib/objectAcl.ts
+artifacts/api-server/src/routes/deployment.ts
+artifacts/api-server/src/routes/health.ts
+artifacts/api-server/src/index.ts
+render.yaml
+Plan #29 - Full Replit-platform independence
+View a proposed or accepted plan.
