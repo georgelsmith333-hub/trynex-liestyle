@@ -1,6 +1,6 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useListOrders } from "@workspace/api-client-react";
-import { CartItemThumbnail } from "@/components/CartItemThumbnail";
+import { ItemPreviewThumb, PreviewLightbox, type PreviewItem } from "@/components/ZoomableImage";
 import { Loader } from "@/components/ui/Loader";
 import { getAuthHeaders, formatPrice, getApiUrl } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,9 @@ export default function AdminOrders() {
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [lastCount, setLastCount] = useState<number | null>(null);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [lightbox, setLightbox] = useState<{ items: PreviewItem[]; index: number } | null>(null);
+  const openLightbox = (items: PreviewItem[], index: number) => setLightbox({ items, index });
+  const closeLightbox = () => setLightbox(null);
 
   const { data, isLoading, refetch, dataUpdatedAt } = useListOrders(
     { limit: 200, ...(statusFilter !== "all" ? { status: statusFilter } : {}) },
@@ -196,6 +199,37 @@ export default function AdminOrders() {
 
   const lastRefresh = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString('en-BD') : null;
 
+  const buildOrderPreview = (order: any) => {
+    const items: PreviewItem[] = [];
+    const mainIdx = new Map<number, number>();
+    const customIdx = new Map<number, number[]>();
+    if (!order) return { items, mainIdx, customIdx };
+    (order.items ?? []).forEach((item: any, idx: number) => {
+      let parsed: any = null;
+      try { parsed = JSON.parse(item.customNote ?? "{}"); } catch { /* ignore */ }
+      if (parsed && typeof parsed === "object" && parsed.hamper) return;
+      const isStudio = !!item.isStudio || !!(parsed && parsed.studioDesign);
+      const src = (item.imageUrl as string) || (item.productImage as string) || '';
+      if (src) {
+        mainIdx.set(idx, items.length);
+        items.push({ src, alt: `${item.productName} preview`, isStudio });
+      }
+      if (Array.isArray(item.customImages) && item.customImages.length > 0) {
+        const arr: number[] = [];
+        item.customImages.forEach((img: string, i: number) => {
+          arr.push(items.length);
+          items.push({ src: img, alt: `${item.productName} customer design ${i + 1}`, isStudio: false });
+        });
+        customIdx.set(idx, arr);
+      }
+    });
+    return { items, mainIdx, customIdx };
+  };
+
+  const { items: previewItems, mainIdx: mainPreviewIdx, customIdx: customImageIdx } = buildOrderPreview(selectedOrder);
+
+  useEffect(() => { setLightbox(null); }, [selectedOrder?.id]);
+
   return (
     <AdminLayout>
       {/* Header */}
@@ -282,7 +316,7 @@ export default function AdminOrders() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  {["Order #", "Date", "Customer", "Total", "Payment", "Pay Status", "Order Status", "Action"].map(h => (
+                  {["Order #", "Date", "Customer", "Items", "Total", "Payment", "Pay Status", "Order Status", "Action"].map(h => (
                     <th key={h} className="px-4 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -312,6 +346,41 @@ export default function AdminOrders() {
                           <p className="font-bold text-sm leading-tight">{order.customerName}</p>
                           <p className="text-xs text-gray-500">{order.customerPhone}</p>
                           <p className="text-[10px] text-gray-300">{order.shippingDistrict}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          {(() => {
+                            const rowPreview = buildOrderPreview(order);
+                            const visible = rowPreview.items.slice(0, 3);
+                            const extra = rowPreview.items.length - visible.length;
+                            if (visible.length === 0) {
+                              return <span className="text-[10px] text-gray-300">—</span>;
+                            }
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                {visible.map((p, vi) => (
+                                  <ItemPreviewThumb
+                                    key={vi}
+                                    src={p.src}
+                                    alt={p.alt}
+                                    isStudio={p.isStudio}
+                                    size="sm"
+                                    onOpen={() => openLightbox(rowPreview.items, vi)}
+                                  />
+                                ))}
+                                {extra > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openLightbox(rowPreview.items, visible.length)}
+                                    className="w-12 h-12 rounded-xl text-[10px] font-black text-gray-500 hover:text-orange-600 transition-colors flex items-center justify-center"
+                                    style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
+                                    aria-label={`Show ${extra} more design${extra === 1 ? '' : 's'}`}
+                                  >
+                                    +{extra}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-4">
                           <p className="font-black text-primary text-sm">{formatPrice(parseFloat(order.total))}</p>
@@ -367,7 +436,7 @@ export default function AdminOrders() {
                 </AnimatePresence>
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <Package className="w-12 h-12 mx-auto mb-4 opacity-15" />
                       <p className="text-gray-400 text-sm font-medium">
                         {search ? `No orders matching "${search}"` : 'No orders yet.'}
@@ -545,7 +614,22 @@ export default function AdminOrders() {
                         style={{ background: '#fff8f5', border: '1px solid #fed7aa' }}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                            <CartItemThumbnail item={{ imageUrl: item.imageUrl as string | undefined, name: String(item.productName ?? ''), customNote: item.customNote as string | undefined, customImages: item.customImages as string[] | undefined }} size={64} />
+                            {(() => {
+                              const previewSrc = (item.imageUrl as string) || (item.productImage as string) || '';
+                              let isStudio = !!item.isStudio;
+                              if (!isStudio) {
+                                try { isStudio = !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch { /* ignore */ }
+                              }
+                              const lbIdx = mainPreviewIdx.get(i);
+                              return (
+                                <ItemPreviewThumb
+                                  src={previewSrc}
+                                  alt={`${item.productName} preview`}
+                                  isStudio={isStudio}
+                                  onOpen={lbIdx !== undefined ? () => openLightbox(previewItems, lbIdx) : undefined}
+                                />
+                              );
+                            })()}
                           <div className="min-w-0 flex-1">
                             <p className="font-bold text-sm">{item.productName}</p>
                             <p className="text-xs text-gray-500">
@@ -689,12 +773,20 @@ export default function AdminOrders() {
                           <div className="mt-2 pt-2 border-t border-orange-100">
                             <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1.5">Customer Design Files</p>
                             <div className="flex flex-wrap gap-2">
-                              {item.customImages.map((img: string, idx: number) => (
-                                <a key={idx} href={img} target="_blank" rel="noopener noreferrer"
-                                  className="block w-14 h-14 rounded-lg overflow-hidden border border-gray-200 hover:border-orange-400 transition-colors hover:shadow-md">
-                                  <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-                                </a>
-                              ))}
+                              {item.customImages.map((img: string, idx: number) => {
+                                const arr = customImageIdx.get(i) ?? [];
+                                const lbIdx = arr[idx];
+                                return (
+                                  <ItemPreviewThumb
+                                    key={idx}
+                                    src={img}
+                                    alt={`${item.productName} design ${idx + 1}`}
+                                    isStudio={false}
+                                    size="sm"
+                                    onOpen={lbIdx !== undefined ? () => openLightbox(previewItems, lbIdx) : undefined}
+                                  />
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -752,6 +844,13 @@ export default function AdminOrders() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PreviewLightbox
+        items={lightbox?.items ?? []}
+        index={lightbox?.index ?? null}
+        onIndexChange={(i) => setLightbox(prev => prev ? { ...prev, index: i } : prev)}
+        onClose={closeLightbox}
+      />
     </AdminLayout>
   );
 }
