@@ -21,6 +21,7 @@ import { trackInitiateCheckout, trackPurchase } from "@/lib/tracking";
 import { getStoredUtm } from "@/hooks/useUtm";
 import { TrustBadges } from "@/components/TrustBadges";
 import { CartItemThumbnail } from "@/components/CartItemThumbnail";
+import { ItemPreviewThumb, PreviewLightbox, type PreviewItem } from "@/components/ZoomableImage";
 import { useAuth } from "@/context/AuthContext";
 import { LogIn, UserPlus, X as XIcon } from "lucide-react";
 
@@ -87,6 +88,7 @@ export default function Checkout() {
 
   const snapshotRef = useRef({ total: 0, advance: 0, shipping: 0 });
   const itemsSnapshotRef = useRef<Array<{ name: string; imageUrl?: string; customNote?: string; customImages?: string[]; quantity: number; price: number; size?: string; color?: string }>>([]);
+  const [successLightboxIndex, setSuccessLightboxIndex] = useState<number | null>(null);
 
   const { mutateAsync: createOrder, isPending } = useCreateOrder();
   const formRef = useRef<HTMLFormElement>(null);
@@ -640,27 +642,66 @@ export default function Checkout() {
             <p className="text-xs text-gray-400 mt-1">Save this number to track your order</p>
           </div>
 
-          {itemsSnapshotRef.current.length > 0 && (
-            <div className="p-4 rounded-2xl mb-4 bg-gray-50 border border-gray-100 text-left">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Your Order</p>
-              <div className="space-y-2">
-                {itemsSnapshotRef.current.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CartItemThumbnail item={item} size={48} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-xs leading-tight truncate text-gray-800">{item.name}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        Qty: {item.quantity}
-                        {item.size ? ` · ${item.size}` : ''}
-                        {item.color ? ` · ${item.color}` : ''}
-                      </p>
-                    </div>
-                    <p className="font-bold text-xs text-orange-600 shrink-0">{formatPrice(item.price * item.quantity)}</p>
+          {itemsSnapshotRef.current.length > 0 && (() => {
+            const previewItems: PreviewItem[] = [];
+            const previewIndexByItem = new Map<number, number>();
+            itemsSnapshotRef.current.forEach((item, idx) => {
+              const src = item.imageUrl || '';
+              if (!src) return;
+              let isStudio = false;
+              try { isStudio = !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch {}
+              previewIndexByItem.set(idx, previewItems.length);
+              previewItems.push({ src, alt: `${item.name} preview`, isStudio });
+            });
+            return (
+              <>
+                <div className="p-4 rounded-2xl mb-4 bg-gray-50 border border-gray-100 text-left">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Your Order</p>
+                  <div className="space-y-2">
+                    {itemsSnapshotRef.current.map((item, i) => {
+                      let isStudio = false;
+                      try { isStudio = !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch {}
+                      const src = item.imageUrl || '';
+                      return (
+                        <div key={i} className="flex items-center gap-3">
+                          {src ? (
+                            <ItemPreviewThumb
+                              src={src}
+                              alt={`${item.name} preview`}
+                              isStudio={isStudio}
+                              size="sm"
+                              onOpen={
+                                previewIndexByItem.has(i)
+                                  ? () => setSuccessLightboxIndex(previewIndexByItem.get(i)!)
+                                  : undefined
+                              }
+                            />
+                          ) : (
+                            <CartItemThumbnail item={item} size={48} />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-xs leading-tight truncate text-gray-800">{item.name}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Qty: {item.quantity}
+                              {item.size ? ` · ${item.size}` : ''}
+                              {item.color ? ` · ${item.color}` : ''}
+                            </p>
+                          </div>
+                          <p className="font-bold text-xs text-orange-600 shrink-0">{formatPrice(item.price * item.quantity)}</p>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+                <PreviewLightbox
+                  items={previewItems}
+                  index={successLightboxIndex}
+                  onIndexChange={setSuccessLightboxIndex}
+                  onClose={() => setSuccessLightboxIndex(null)}
+                />
+              </>
+            );
+          })()}
 
           {paymentMode === 'full' ? (
             <div className="p-4 rounded-2xl mb-4 text-left" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>

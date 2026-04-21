@@ -12,6 +12,7 @@ import {
   ShoppingBag, Calendar, MapPin, Tag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PreviewLightbox, type PreviewItem } from "@/components/ZoomableImage";
 
 interface ReferralData {
   code: string;
@@ -34,6 +35,9 @@ interface OrderItem {
   productId: number;
   productName: string;
   productImage?: string;
+  imageUrl?: string;
+  customNote?: string;
+  isStudio?: boolean;
   quantity: number;
   size?: string;
   color?: string;
@@ -91,6 +95,7 @@ export default function Account() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [orderLightbox, setOrderLightbox] = useState<{ orderId: number; index: number } | null>(null);
 
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -485,22 +490,63 @@ export default function Account() {
                             </div>
 
                             <div className="px-4 py-3 space-y-2">
-                              <div className="flex gap-2 overflow-x-auto pb-1">
-                                {order.items.slice(0, 4).map((item, i) => (
-                                  <div key={i} className="shrink-0 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5 border border-gray-100">
-                                    {item.productImage && (
-                                      <img src={item.productImage} alt={item.productName} className="w-6 h-6 rounded object-cover" />
-                                    )}
-                                    <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{item.productName}</span>
-                                    <span className="text-[10px] text-gray-400">×{item.quantity}</span>
-                                  </div>
-                                ))}
-                                {order.items.length > 4 && (
-                                  <div className="shrink-0 flex items-center px-2.5 py-1.5 text-xs text-gray-400">
-                                    +{order.items.length - 4} more
-                                  </div>
-                                )}
-                              </div>
+                              {(() => {
+                                const previewItems: PreviewItem[] = [];
+                                const previewIndexByItem = new Map<number, number>();
+                                order.items.forEach((item, idx) => {
+                                  let isStudio = !!item.isStudio;
+                                  if (!isStudio) {
+                                    try { isStudio = !!JSON.parse(item.customNote ?? "{}").studioDesign; } catch {}
+                                  }
+                                  const src = item.imageUrl || item.productImage || '';
+                                  if (!src) return;
+                                  previewIndexByItem.set(idx, previewItems.length);
+                                  previewItems.push({ src, alt: `${item.productName} preview`, isStudio });
+                                });
+                                const isOpen = orderLightbox?.orderId === order.id;
+                                return (
+                                  <>
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                      {order.items.slice(0, 4).map((item, i) => {
+                                        const src = item.imageUrl || item.productImage || '';
+                                        const lbIdx = previewIndexByItem.get(i);
+                                        const canZoom = src && lbIdx !== undefined;
+                                        return (
+                                          <div key={i} className="shrink-0 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5 border border-gray-100">
+                                            {src && (
+                                              canZoom ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setOrderLightbox({ orderId: order.id, index: lbIdx! })}
+                                                  className="rounded overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-zoom-in"
+                                                  aria-label={`View ${item.productName} preview full size`}
+                                                >
+                                                  <img src={src} alt={item.productName} className="w-6 h-6 object-cover" />
+                                                </button>
+                                              ) : (
+                                                <img src={src} alt={item.productName} className="w-6 h-6 rounded object-cover" />
+                                              )
+                                            )}
+                                            <span className="text-xs text-gray-700 font-medium whitespace-nowrap">{item.productName}</span>
+                                            <span className="text-[10px] text-gray-400">×{item.quantity}</span>
+                                          </div>
+                                        );
+                                      })}
+                                      {order.items.length > 4 && (
+                                        <div className="shrink-0 flex items-center px-2.5 py-1.5 text-xs text-gray-400">
+                                          +{order.items.length - 4} more
+                                        </div>
+                                      )}
+                                    </div>
+                                    <PreviewLightbox
+                                      items={previewItems}
+                                      index={isOpen ? orderLightbox!.index : null}
+                                      onIndexChange={(i) => setOrderLightbox({ orderId: order.id, index: i })}
+                                      onClose={() => setOrderLightbox(null)}
+                                    />
+                                  </>
+                                );
+                              })()}
 
                               <div className="flex items-center justify-between pt-1">
                                 <div className="flex items-center gap-3 text-xs text-gray-500">
