@@ -330,6 +330,13 @@ export default function Cart() {
 
               <div className="lg:col-span-5">
                 <div className="sticky top-28 rounded-3xl p-7" style={{ background: 'white', border: '1px solid #e5e7eb' }}>
+                  <div
+                    className="mb-5 flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                    style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412' }}
+                  >
+                    <Sparkles className="w-4 h-4 shrink-0" style={{ color: '#E85D04' }} />
+                    <span>Checkout in the next few minutes — production starts in 24h, delivered in 3–5 days nationwide.</span>
+                  </div>
                   <h3 className="text-xl font-bold font-display mb-6 text-gray-900">Order Summary</h3>
 
                   <div className="space-y-3 mb-6 text-sm">

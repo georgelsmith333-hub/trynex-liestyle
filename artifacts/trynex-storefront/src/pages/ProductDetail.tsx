@@ -817,7 +817,7 @@ export default function ProductDetail() {
 
               {/* Price */}
               <div className="mb-8 p-5 rounded-2xl" style={{ background: '#fff8f5', border: '1px solid #fde4d0' }}>
-                <div className="flex items-baseline gap-4 mb-2">
+                <div className="flex items-baseline gap-3 sm:gap-4 mb-3 flex-wrap">
                   {product.discountPrice ? (
                     <>
                       <span className="text-4xl font-black text-orange-600">{formatPrice(product.discountPrice)}</span>
@@ -828,6 +828,20 @@ export default function ProductDetail() {
                   ) : (
                     <span className="text-4xl font-black text-gray-900">{formatPrice(product.price)}</span>
                   )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide"
+                    style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }}
+                  >
+                    <Truck className="w-3 h-3" /> Cash on Delivery
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide"
+                    style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
+                  >
+                    🇧🇩 5,000+ happy customers
+                  </span>
                 </div>
                 <ViewerCount productId={product.id} />
               </div>
