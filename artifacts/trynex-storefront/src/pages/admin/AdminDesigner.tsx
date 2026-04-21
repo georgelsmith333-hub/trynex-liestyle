@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import {
   useGetDesignerSettings, usePatchDesignerSettings,
@@ -71,7 +71,7 @@ const SectionCard = ({
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${iconColor}15`, border: `1px solid ${iconColor}25` }}>
-            <Icon className="w-4 h-4" style={{ color: iconColor }} />
+            {React.createElement(Icon as React.ComponentType<{ className?: string; style?: React.CSSProperties }>, { className: "w-4 h-4", style: { color: iconColor } })}
           </div>
           <h2 className="font-bold text-sm text-gray-800">{title}</h2>
         </div>

@@ -750,9 +750,6 @@ router.post("/orders", async (req, res) => {
         promoDiscount: validatedPromoDiscount > 0 ? validatedPromoDiscount.toString() : null,
         total: total.toString(),
         notes,
-        utmSource: utmSource || null,
-        utmMedium: utmMedium || null,
-        utmCampaign: utmCampaign || null,
       }).returning();
       return created;
     });

@@ -5,6 +5,8 @@ import { requireAdmin } from "../middlewares/adminAuth";
 
 const router: IRouter = Router();
 
+const REFERRAL_DISCOUNT_PCT = 10;
+
 router.get("/referrals", requireAdmin, async (req, res) => {
   try {
     const referrals = await db.select().from(referralsTable).orderBy(desc(referralsTable.createdAt));
@@ -29,15 +31,13 @@ router.post("/referrals", async (req, res) => {
       return;
     }
 
-    const code = "TRYNEX" + ownerName.replace(/\s+/g, "").toUpperCase().slice(0, 6) + Math.random().toString(36).slice(2, 5).toUpperCase();
+    const referralCode = "TRYNEX" + ownerName.replace(/\s+/g, "").toUpperCase().slice(0, 6) + Math.random().toString(36).slice(2, 5).toUpperCase();
 
     const [referral] = await db.insert(referralsTable).values({
-      code,
+      referralCode,
       ownerName,
       ownerEmail,
       ownerPhone: ownerPhone || null,
-      discountPercent: 10,
-      maxUses: 0,
     }).returning();
 
     res.status(201).json({ referral, message: "Your referral code has been created!" });
@@ -50,22 +50,17 @@ router.post("/referrals", async (req, res) => {
 router.get("/referrals/check/:code", async (req, res) => {
   try {
     const code = req.params.code.toUpperCase().trim();
-    const [referral] = await db.select().from(referralsTable).where(eq(referralsTable.code, code));
+    const [referral] = await db.select().from(referralsTable).where(eq(referralsTable.referralCode, code));
 
     if (!referral || !referral.active) {
       res.status(404).json({ error: "invalid", message: "Invalid referral code" });
       return;
     }
 
-    if (referral.maxUses && referral.maxUses > 0 && (referral.totalUses || 0) >= referral.maxUses) {
-      res.status(400).json({ error: "max_uses", message: "This referral code has reached its limit" });
-      return;
-    }
-
     res.json({
       valid: true,
-      code: referral.code,
-      discountPercent: referral.discountPercent,
+      code: referral.referralCode,
+      discountPercent: REFERRAL_DISCOUNT_PCT,
       ownerName: referral.ownerName,
     });
   } catch (err) {
@@ -80,9 +75,9 @@ router.put("/referrals/:code/use", async (req, res) => {
     const { orderTotal } = req.body;
 
     await db.update(referralsTable).set({
-      totalUses: sql`COALESCE(total_uses, 0) + 1`,
+      usedCount: sql`COALESCE(used_count, 0) + 1`,
       totalEarnings: sql`COALESCE(total_earnings, 0) + ${Math.round((orderTotal || 0) * 0.10)}`,
-    }).where(eq(referralsTable.code, code));
+    }).where(eq(referralsTable.referralCode, code));
 
     res.json({ success: true });
   } catch (err) {

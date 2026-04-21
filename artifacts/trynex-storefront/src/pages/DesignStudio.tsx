@@ -790,7 +790,7 @@ export default function DesignStudio() {
           // Sanitize layer name for use as a filename
           const safeName = (imgLayer.name || "design").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
           const filename = `${safeName}-${Date.now()}.${ext}`;
-          const reqRes = await fetch(`${getApiUrl()}/api/storage/uploads/request-url`, {
+          const reqRes = await fetch(getApiUrl("/api/storage/uploads/request-url"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1297,7 +1297,7 @@ export default function DesignStudio() {
                   animate={{ opacity: 1, rotateY: 0 }}
                   exit={{ opacity: 0, rotateY: activeFace === "back" ? 12 : -12 }}
                   transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                  {...bindCanvasGestures()}
+                  {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
                   <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
 

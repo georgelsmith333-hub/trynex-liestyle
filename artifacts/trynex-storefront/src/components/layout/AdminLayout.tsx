@@ -28,16 +28,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const token = localStorage.getItem('trynex_admin_token');
 
-  const { data, isLoading, isError, error } = useAdminMe({
-    request: { headers: { Authorization: `Bearer ${token || ''}` } },
-    query: {
-      enabled: !!token,
-      retry: 2,
-      retryDelay: 1000,
-      staleTime: 60000,
-      refetchOnWindowFocus: false,
-    } as any,
-  });
+  const { data, isLoading, isError } = useAdminMe();
   const { mutateAsync: logout } = useAdminLogout();
 
   useEffect(() => {
@@ -45,7 +36,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       setLocation("/admin/login");
       return;
     }
-    if (!isLoading && (isError || (data && !data.authenticated))) {
+    if (!isLoading && (isError || (data && !data.admin))) {
       localStorage.removeItem('trynex_admin_token');
       setLocation("/admin/login");
     }
@@ -58,7 +49,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   };
 
   if (!token || isLoading) return <Loader fullScreen />;
-  if (isError || !data?.authenticated) return <Loader fullScreen />;
+  if (isError || !data?.admin) return <Loader fullScreen />;
 
   return (
     <div className="min-h-screen flex bg-gray-50">

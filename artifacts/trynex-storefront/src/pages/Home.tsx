@@ -17,7 +17,7 @@ import {
   Users, BadgeCheck, Flame, Shirt, Coffee, Crown
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
-import { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { TypewriterHero } from "@/components/home/TypewriterHero";
 
 const MARQUEE_ITEMS = [
@@ -179,6 +179,7 @@ function FlipDigit({ value, prevValue }: { value: string; prevValue: string }) {
       const t = setTimeout(() => setFlipping(false), 500);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [value, prevValue]);
 
   return (
@@ -1262,7 +1263,7 @@ export default function Home() {
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: `${color}15` }}>
-                  <Icon className="w-5 h-5" style={{ color }} />
+                  {React.createElement(Icon as React.ComponentType<{ className?: string; style?: React.CSSProperties }>, { className: "w-5 h-5", style: { color } })}
                 </div>
                 <div>
                   <p className="font-bold text-gray-900 text-sm leading-tight">{title}</p>

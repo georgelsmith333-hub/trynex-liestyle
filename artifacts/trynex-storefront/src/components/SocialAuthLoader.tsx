@@ -3,11 +3,6 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 declare global {
   interface Window {
-    fbAsyncInit?: () => void;
-    FB?: {
-      init: (config: Record<string, unknown>) => void;
-      login: (cb: (resp: { authResponse?: { accessToken: string } }) => void, opts: { scope: string }) => void;
-    };
     google?: {
       accounts: {
         id: {

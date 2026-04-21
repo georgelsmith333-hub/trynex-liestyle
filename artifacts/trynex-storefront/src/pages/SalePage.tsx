@@ -134,7 +134,7 @@ export default function SalePage() {
     if (products.length > 0) {
       products.forEach(p => {
         const price = p.discountPrice ? parseFloat(p.discountPrice) : parseFloat(p.price);
-        trackViewContent({ id: p.id, name: p.name, price, category: p.category });
+        trackViewContent({ id: p.id, name: p.name, price, category: String(p.categoryId ?? "") });
       });
     }
   }, [products.length]);

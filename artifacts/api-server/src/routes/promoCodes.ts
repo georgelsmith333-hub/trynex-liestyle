@@ -91,22 +91,18 @@ router.post("/promo-codes/validate", async (req, res) => {
 
     if (!promo) {
       const [referral] = await db.select().from(referralsTable)
-        .where(eq(referralsTable.code, code.toUpperCase().trim()));
+        .where(eq(referralsTable.referralCode, code.toUpperCase().trim()));
 
       if (referral && referral.active) {
         if (customerEmail && referral.ownerEmail && customerEmail.toLowerCase().trim() === referral.ownerEmail.toLowerCase().trim()) {
           res.status(400).json({ error: "self_referral", message: "You cannot use your own referral code" });
           return;
         }
-        if (referral.maxUses && referral.maxUses > 0 && (referral.totalUses || 0) >= referral.maxUses) {
-          res.status(400).json({ error: "max_uses", message: "This referral code has reached its usage limit" });
-          return;
-        }
-        const discountPct = referral.discountPercent || 10;
+        const discountPct = 10;
         const discount = Math.round((orderTotal || 0) * discountPct / 100);
         res.json({
           valid: true,
-          code: referral.code,
+          code: referral.referralCode,
           discountType: "percentage",
           discountValue: discountPct,
           discount,

@@ -50,10 +50,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function AdminDashboard() {
-  const { data: rawStats, isLoading, refetch, dataUpdatedAt } = useGetAdminStats({
-    request: { headers: getAuthHeaders() },
-    query: { refetchInterval: 30000 } as any,
-  });
+  const { data: rawStats, isLoading, refetch, dataUpdatedAt } = useGetAdminStats();
 
   if (isLoading || !rawStats) return <AdminLayout><Loader /></AdminLayout>;
 
@@ -77,7 +74,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Today's Revenue",
-      value: formatPrice(stats.todayRevenue),
+      value: formatPrice(stats.todayRevenue ?? 0),
       icon: TrendingUp,
       color: "#2563eb",
       bg: "#eff6ff",
@@ -99,13 +96,13 @@ export default function AdminDashboard() {
     },
     {
       title: "Low Stock Alert",
-      value: String(stats.lowStockProducts),
+      value: String(stats.lowStockProducts ?? 0),
       icon: AlertTriangle,
       color: "#d97706",
       bg: "#fffbeb",
       border: "#fde68a",
       desc: "Products ≤ 5 units",
-      trend: stats.lowStockProducts > 0 ? "Action needed" : "All good",
+      trend: (stats.lowStockProducts ?? 0) > 0 ? "Action needed" : "All good",
       link: "/admin/products?filter=lowstock"
     },
   ];
@@ -325,7 +322,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {stats.recentOrders.map((order, i) => (
+                {(stats.recentOrders ?? []).map((order, i) => (
                   <motion.tr
                     key={order.id}
                     initial={{ opacity: 0, x: -10 }}
@@ -346,7 +343,7 @@ export default function AdminDashboard() {
                     <td className="px-5 py-4 font-black text-orange-600">{formatPrice(order.total)}</td>
                   </motion.tr>
                 ))}
-                {stats.recentOrders.length === 0 && (
+                {(stats.recentOrders ?? []).length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-16 text-center">
                       <ShoppingCart className="w-10 h-10 mx-auto mb-3 text-gray-300" />

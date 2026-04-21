@@ -70,7 +70,7 @@ export default function AdminProducts() {
     defaultValues: { featured: false, customizable: true, stock: 0 }
   });
 
-  const categories: Category[] = categoriesData ?? [];
+  const categories: Category[] = categoriesData?.categories ?? [];
 
   const openAddModal = () => {
     setEditingProduct(null);
@@ -84,8 +84,8 @@ export default function AdminProducts() {
       name: product.name,
       slug: product.slug,
       description: product.description || '',
-      price: product.price,
-      discountPrice: product.discountPrice || undefined,
+      price: parseFloat(product.price),
+      discountPrice: product.discountPrice ? parseFloat(product.discountPrice) : undefined,
       stock: product.stock,
       categoryId: product.categoryId || undefined,
       imageUrl: product.imageUrl || '',
@@ -413,9 +413,9 @@ export default function AdminProducts() {
                 <p className="text-xs text-gray-400 truncate mb-3">{product.slug}</p>
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <span className="font-black text-orange-600 text-sm">{formatPrice(product.price)}</span>
+                    <span className="font-black text-orange-600 text-sm">{formatPrice(parseFloat(product.price))}</span>
                     {product.discountPrice && (
-                      <span className="ml-2 text-xs line-through text-gray-400">{formatPrice(product.discountPrice)}</span>
+                      <span className="ml-2 text-xs line-through text-gray-400">{formatPrice(parseFloat(product.discountPrice))}</span>
                     )}
                   </div>
                   <div className="text-[11px] font-bold px-2.5 py-1 rounded-lg"

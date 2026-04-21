@@ -5,6 +5,7 @@ import { customFetch } from "./custom-fetch";
 // ─── Shared option type used by hooks that pass auth headers ────────────────
 interface ReqOpts {
   request?: { headers?: Record<string, string> };
+  query?: Record<string, unknown>;
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -111,19 +112,30 @@ export interface AdminCustomer {
   verified?: boolean;
   createdAt: string;
   orderCount?: number;
-  totalSpent?: string;
+  totalSpent?: string | number;
+  totalOrders?: number;
+  lastOrder?: string | null;
+  firstOrder?: string | null;
+  district?: string | null;
+  city?: string | null;
+  address?: string | null;
+  paymentMethods?: string[];
 }
 
 export interface AdminStatsWeeklyDataItem {
-  date: string;
+  date?: string;
+  day?: string;
   orders: number;
   revenue: number;
 }
 
 export interface AdminStatsPaymentDistributionItem {
-  method: string;
-  count: number;
-  amount: number;
+  method?: string;
+  name?: string;
+  count?: number;
+  amount?: number;
+  value?: number;
+  color?: string;
 }
 
 export interface CreateOrderRequest {
@@ -298,10 +310,16 @@ export interface FetchSocialUrl200Post {
 
 // ─── Settings Hooks ──────────────────────────────────────────────────────────
 
+export interface SiteSettings {
+  studioTshirtColors?: string;
+  studioMugColors?: string;
+  [key: string]: unknown;
+}
+
 export const useGetSettings = (_opts?: ReqOpts) => {
   return useQuery({
     queryKey: ["/api/settings"],
-    queryFn: () => customFetch<Record<string, unknown>>("/api/settings"),
+    queryFn: () => customFetch<SiteSettings>("/api/settings"),
     staleTime: 30 * 1000,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -355,11 +373,11 @@ export const useListProducts = (
   });
 };
 
-export const useGetProduct = (slug: string) => {
+export const useGetProduct = (slugOrId: string | number, _opts?: Record<string, unknown>) => {
   return useQuery({
-    queryKey: ["/api/products", slug],
-    queryFn: () => customFetch<{ product: Product }>(`/api/products/${slug}`),
-    enabled: !!slug,
+    queryKey: ["/api/products", slugOrId],
+    queryFn: () => customFetch<{ product: Product }>(`/api/products/${slugOrId}`),
+    enabled: !!slugOrId,
     staleTime: 60 * 1000,
   });
 };
@@ -499,7 +517,7 @@ export const useListOrders = (params?: {
   limit?: number;
   page?: number;
   search?: string;
-}) => {
+}, _opts?: ReqOpts) => {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.limit) searchParams.set("limit", String(params.limit));
@@ -595,7 +613,7 @@ export const useAdminMe = () => {
 
 // ─── Admin Stats Hooks ────────────────────────────────────────────────────────
 
-export const useGetAdminStats = () => {
+export const useGetAdminStats = (_opts?: ReqOpts) => {
   return useQuery({
     queryKey: ["/api/admin/stats"],
     queryFn: () =>
@@ -605,6 +623,10 @@ export const useGetAdminStats = () => {
         totalProducts: number;
         totalCustomers: number;
         pendingOrders: number;
+        todayRevenue?: number;
+        lowStockProducts?: number;
+        topProducts?: { id: number; name: string; imageUrl?: string | null; totalSold: number }[];
+        recentOrders?: { id: number; orderNumber: string; customerName: string; status: string; paymentMethod: string; total: number }[];
         weeklyData: AdminStatsWeeklyDataItem[];
         paymentDistribution: AdminStatsPaymentDistributionItem[];
       }>("/api/admin/stats"),
@@ -615,7 +637,12 @@ export const useListAdminCustomers = () => {
   return useQuery({
     queryKey: ["/api/admin/customers"],
     queryFn: () =>
-      customFetch<{ customers: AdminCustomer[] }>("/api/admin/customers"),
+      customFetch<{
+        customers: AdminCustomer[];
+        totalCustomers?: number;
+        totalOrders?: number;
+        topDistricts?: { district: string; count: number }[];
+      }>("/api/admin/customers"),
   });
 };
 
@@ -682,10 +709,11 @@ export const getExportOrdersCsvUrl = () => `/api/backup/orders-csv`;
 export const useImportBackup = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: FormData) =>
-      customFetch<{ message: string; imported: number }>("/api/backup/import", {
+    mutationFn: (body: { version: string; data: Record<string, unknown> }) =>
+      customFetch<{ success: boolean; imported: Record<string, number> }>("/api/backup/import", {
         method: "POST",
-        body: data,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/products"] });

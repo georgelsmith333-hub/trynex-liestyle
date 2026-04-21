@@ -141,3 +141,48 @@ make sure the API is redeployed so those fixes ship before launch.
 - **Pixel not firing** → confirm `facebookPixelId` / `googleAnalyticsId` is filled in Admin → Settings; `TrackingPixels.tsx` only initializes if those values exist.
 - **Order not appearing in admin** → check Render logs for the `POST /api/orders` request and any DB error.
 - **Anything else broken** → file a follow-up task; do **not** ship paid ads with a known critical regression.
+
+---
+
+## Task #6 — Final polish applied (April 2026)
+
+The following fixes were shipped in the final pre-launch polish pass:
+
+| Fix | File |
+| --- | ---- |
+| WhatsApp support number `8801XXXXXXXXX` → `8801903426915` in error boundary | `AppErrorBoundary.tsx` |
+| Added `credentials: "include"` to `apiPost` so cross-origin auth cookies round-trip correctly | `AuthContext.tsx` |
+| Added per-IP rate limiter on `POST /api/auth/guest` (prevents guest-token spam) | `app.ts` |
+| Fixed undefined `req` reference in `/api/public-stats` catch block | `publicStats.ts` |
+| Added `lib/*/dist/` to `.gitignore` to keep generated declaration files out of the repo | `.gitignore` |
+
+Both production builds (`pnpm -r build`) passed green. `pnpm -r typecheck` exits 0 with zero errors across all packages (api-server, trynex-storefront, mockup-sandbox, scripts) as of Task #6.
+
+---
+
+## Owner action checklist (post-push)
+
+> These steps must be done by a human with access to the live infrastructure. They cannot be automated from inside the codebase.
+
+### Render (API Server)
+- [ ] Open Render dashboard → `trynex-api` service → confirm new deploy triggered automatically on `main` push.
+- [ ] Check deploy logs — look for `Listening on port` and `Database ready`.
+- [ ] Hit `https://trynex-api.onrender.com/api/healthz` → should return `{"status":"ok"}`.
+- [ ] Set env var `ALLOWED_ORIGINS=https://trynexshop.com` if not already set (CORS guard).
+
+### Cloudflare Pages (Storefront)
+- [ ] Open Pages dashboard → `trynex-storefront` project → confirm new build triggered on `main` push.
+- [ ] Preview the staging URL before promoting to production alias.
+- [ ] After promotion, load `https://trynexshop.com` on mobile — confirm hero image loads, no console errors.
+
+### UptimeRobot (keep-alive)
+- [ ] Verify the 5-minute monitor on `https://trynex-api.onrender.com/api/healthz` is active and showing green.
+- [ ] Confirm alert email/SMS contact is set (you will be paged on real downtime, not just cold starts).
+
+### Admin Settings (first-time only)
+- [ ] Log in to `https://trynexshop.com/admin` → Settings → fill in Facebook Pixel ID + GA4 Measurement ID.
+- [ ] Test a checkout on mobile → verify `Purchase` event fires in Meta Pixel Helper.
+
+### Go / No-Go
+- [ ] All items in sections 3–7 of this checklist are checked off.
+- [ ] Paid Facebook ads are only turned on **after** the above are green.
