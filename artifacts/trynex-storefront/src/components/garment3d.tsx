@@ -130,48 +130,96 @@ function collectMeshes(root: THREE.Object3D): THREE.Mesh[] {
 }
 
 /**
- * Clone a geometry and override its UVs with a planar +Z projection
- * normalised to the mesh's local XY bounding box. This guarantees the
- * design canvas (which spans [0,1] in UV space) lands on the FRONT of the
- * geometry regardless of how the GLB was authored.
+ * Build a NEW geometry containing only the triangles of `src` whose averaged
+ * face-normal lies in the requested Z hemisphere (front = +Z, back = −Z).
+ * This is the key correctness step: filtering by normal guarantees the
+ * front/back overlays are physically isolated to their respective panels,
+ * so a design painted onto the front never bleeds onto back-of-shirt or
+ * side polygons (and vice versa).
  *
- * flipU=true mirrors U so a back-side overlay (whose host group is rotated
- * 180° around Y) still reads "right way around" when viewed from the back.
+ * UVs on the resulting geometry are planar-projected from the +Z direction
+ * over its OWN local XY bounding box (so the kept triangles span [0,1]).
+ * For the back hemisphere, U is mirrored so the design reads correctly
+ * when the back camera orbits around to face it.
+ *
+ * Performance: O(triCount) one-shot build at module mount; memoised by
+ * source geometry, so the per-frame render path pays nothing.
  */
-function planarProjectGeometry(
+function buildHemisphereOverlay(
   src: THREE.BufferGeometry,
-  flipU: boolean = false
-): THREE.BufferGeometry {
-  const geo = src.clone();
+  hemisphere: "front" | "back",
+  threshold: number = 0.15
+): THREE.BufferGeometry | null {
+  // Compute per-vertex normals on a clone so we don't mutate the source
+  const tmp = src.clone();
+  tmp.computeVertexNormals();
+  const pos = tmp.attributes.position;
+  const norm = tmp.attributes.normal;
+  const idx = tmp.index;
+
+  const triCount = idx ? Math.floor(idx.count / 3) : Math.floor(pos.count / 3);
+  const wantPositive = hemisphere === "front";
+  const flipU = hemisphere === "back";
+
+  // First pass: collect triangle indices that match the hemisphere
+  const keptTriIdx: number[] = [];
+  for (let t = 0; t < triCount; t++) {
+    const a = idx ? idx.getX(t * 3)     : t * 3;
+    const b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    const nz = (norm.getZ(a) + norm.getZ(b) + norm.getZ(c)) / 3;
+    if (wantPositive ? nz > threshold : nz < -threshold) {
+      keptTriIdx.push(a, b, c);
+    }
+  }
+  if (keptTriIdx.length === 0) return null;
+
+  // Second pass: deduplicate vertices into a compact new geometry
+  const vertMap = new Map<number, number>();
+  const newPos: number[] = [];
+  const newIdx: number[] = [];
+  for (const oldI of keptTriIdx) {
+    let newI = vertMap.get(oldI);
+    if (newI === undefined) {
+      newI = newPos.length / 3;
+      newPos.push(pos.getX(oldI), pos.getY(oldI), pos.getZ(oldI));
+      vertMap.set(oldI, newI);
+    }
+    newIdx.push(newI);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(newPos, 3));
+  geo.setIndex(newIdx);
   geo.computeBoundingBox();
+
+  // Planar +Z UV projection over the kept-triangles bounding box
   const bb = geo.boundingBox!;
   const xMin = bb.min.x;
   const yMin = bb.min.y;
   const xSize = (bb.max.x - bb.min.x) || 1;
   const ySize = (bb.max.y - bb.min.y) || 1;
 
-  const pos = geo.attributes.position;
-  const uv = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) {
-    let u = (pos.getX(i) - xMin) / xSize;
-    const v = 1 - (pos.getY(i) - yMin) / ySize;
+  const vertCount = newPos.length / 3;
+  const uv = new Float32Array(vertCount * 2);
+  for (let i = 0; i < vertCount; i++) {
+    let u = (newPos[i * 3]     - xMin) / xSize;
+    const v = 1 - (newPos[i * 3 + 1] - yMin) / ySize;
     if (flipU) u = 1 - u;
-    uv[i * 2] = u;
+    uv[i * 2]     = u;
     uv[i * 2 + 1] = v;
   }
   geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
   return geo;
 }
 
-/** Hook variant of planarProjectGeometry — memoises by source geometry id. */
-function usePlanarGeometry(
-  src: THREE.BufferGeometry | null | undefined,
-  flipU: boolean = false
-): THREE.BufferGeometry | null {
-  return useMemo(() => {
-    if (!src) return null;
-    return planarProjectGeometry(src, flipU);
-  }, [src, flipU]);
+/** Hook variants — memoise by source geometry identity. */
+function useFrontOverlayGeometry(src: THREE.BufferGeometry | null | undefined) {
+  return useMemo(() => (src ? buildHemisphereOverlay(src, "front") : null), [src]);
+}
+function useBackOverlayGeometry(src: THREE.BufferGeometry | null | undefined) {
+  return useMemo(() => (src ? buildHemisphereOverlay(src, "back") : null), [src]);
 }
 
 /* ─────────────────────────────── T-SHIRT (GLB) ───────── */
@@ -188,9 +236,10 @@ export function RealisticShirt({
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
   const baseGeo = meshes[0]?.geometry ?? null;
 
-  // Re-projected UV variants for front/back overlays
-  const frontGeo = usePlanarGeometry(baseGeo, false);
-  const backGeo = usePlanarGeometry(baseGeo, true);
+  // Hemisphere-filtered overlays — front-facing triangles get the front
+  // texture, back-facing triangles get the back texture. No bleed possible.
+  const frontGeo = useFrontOverlayGeometry(baseGeo);
+  const backGeo = useBackOverlayGeometry(baseGeo);
 
   if (!baseGeo) return null;
 
@@ -215,14 +264,12 @@ export function RealisticShirt({
         </mesh>
       )}
       {backTex && backGeo && (
-        <group rotation={[0, Math.PI, 0]}>
-          <mesh geometry={backGeo} scale={1.003}>
-            <meshStandardMaterial
-              map={backTex} transparent roughness={0.65} metalness={0}
-              depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
-            />
-          </mesh>
-        </group>
+        <mesh geometry={backGeo} scale={1.003}>
+          <meshStandardMaterial
+            map={backTex} transparent roughness={0.65} metalness={0}
+            depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+          />
+        </mesh>
       )}
     </group>
   );
@@ -247,8 +294,8 @@ function GarmentGLB({
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
   const bodyGeo = meshes[0]?.geometry ?? null;
 
-  const frontGeo = usePlanarGeometry(bodyGeo, false);
-  const backGeo = usePlanarGeometry(bodyGeo, true);
+  const frontGeo = useFrontOverlayGeometry(bodyGeo);
+  const backGeo = useBackOverlayGeometry(bodyGeo);
 
   if (meshes.length === 0) return null;
 
@@ -276,14 +323,12 @@ function GarmentGLB({
         </mesh>
       )}
       {backTex && backGeo && (
-        <group rotation={[0, Math.PI, 0]}>
-          <mesh geometry={backGeo} scale={1.003}>
-            <meshStandardMaterial
-              map={backTex} transparent roughness={roughness - 0.14}
-              depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
-            />
-          </mesh>
-        </group>
+        <mesh geometry={backGeo} scale={1.003}>
+          <meshStandardMaterial
+            map={backTex} transparent roughness={roughness - 0.14}
+            depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+          />
+        </mesh>
       )}
     </group>
   );
@@ -339,7 +384,7 @@ export function CapBody({
   const { scene } = useGLTF("/models/cap.glb") as { scene: THREE.Group };
   const meshes = useMemo(() => collectMeshes(scene), [scene]);
   const crownGeo = meshes[0]?.geometry ?? null;
-  const frontGeo = usePlanarGeometry(crownGeo, false);
+  const frontGeo = useFrontOverlayGeometry(crownGeo);
 
   if (meshes.length === 0) return null;
 
