@@ -88,10 +88,25 @@ Any `false` value points directly at the missing config. `google_configured: fal
 - **Fixes shipped:** created `public/offline.html`; added 30s SW self-unregister safety net if `activate` never fires; navigation handler now requires HTML content-type + non-zero body before returning a cached response and falls back to network when offline page is unavailable; pre-hydration brand splash + 18s watchdog in `index.html` so visitors never see a totally blank screen (loop-guarded to 2 attempts / 10 min); bumped `CURRENT_BUILD` to `2026.04.21-blank-homepage-fix-offline-html` to nuke stale SWs for returning visitors.
 - **Prevention:** every release that changes precache entries must (a) verify referenced files exist via `pnpm build`, and (b) bump `CURRENT_BUILD` in `src/lib/cache-recovery.ts`.
 
+## Replit Independence
+
+Production is **fully Replit-independent**. The Replit GCS sidecar (object storage fallback) is the lowest-priority backend and is only activated in the Replit dev sandbox when no R2/S3 env vars are set. In production (`NODE_ENV=production`) the server hard-exits at boot if the storage backend resolves to `"replit"`, preventing silent failures on Render.
+
+Full audit: `docs/replit-independence.md`
+
+Production topology:
+- **Storefront** — Cloudflare Pages (static build)
+- **API** — Render Web Service (Express 5)
+- **Database** — Standard PostgreSQL via `DATABASE_URL` (any provider: Render, Supabase, Neon, etc.)
+- **Object storage** — Cloudflare R2 via S3-compatible API (`R2_*` env vars)
+
+No component depends on `*.replit.dev`, `*.repl.co`, or the Replit Object Storage sidecar in production.
+
 ## External Dependencies
 
 -   **Hosting**: Cloudflare Pages (storefront), Render (API server).
--   **Database**: PostgreSQL.
+-   **Database**: PostgreSQL (any standard provider — Render, Supabase, Neon, etc.).
+-   **Object Storage**: Cloudflare R2 (production) via S3-compatible API; Replit GCS sidecar (dev fallback only).
 -   **Authentication**: Google OAuth 2.0, Facebook Login.
 -   **Monitoring**: External HTTP keep-alive monitor (e.g., UptimeRobot).
 -   **Analytics/Tracking**: Google Analytics 4 (GA4), Google Tag Manager (GTM), Meta Pixel.

@@ -82,12 +82,12 @@ bullets([
   "Backend: Node 20, Express 5, Drizzle ORM, PostgreSQL, Pino structured logging, helmet, express-rate-limit, JWT admin sessions",
   "Storage: Cloudflare R2 (production) via @aws-sdk/client-s3 with auto-fallback to local sidecar in dev",
   "Auth: bcrypt password hash, Google + Facebook OAuth, guest auto-account creation",
-  "Build/Deploy: Render web service (API) + static site (storefront), GitHub-connected auto-deploy",
+  "Build/Deploy: Render web service (API) + Cloudflare Pages (storefront), GitHub-connected auto-deploy",
 ]);
 
 h2("Repository layout");
 bullets([
-  "artifacts/trynex-storefront — customer-facing SPA, served as static from Render",
+  "artifacts/trynex-storefront — customer-facing SPA, served as static from Cloudflare Pages",
   "artifacts/api-server — REST + JSON API, Drizzle migrations, sitemap/robots routes",
   "packages/api-spec — OpenAPI definition that codegens shared TS client",
   "packages/api-client-react — generated React Query hooks shared by storefront",
@@ -126,7 +126,7 @@ p("The Design Studio exposes a 1000×1000 SVG canvas where users place image and
 
 h1("7. Operations");
 bullets([
-  "Hosting: Render web service (Express API) + Render static site (storefront build)",
+  "Hosting: Render web service (Express API) + Cloudflare Pages (storefront, static build)",
   "DNS: trynexshop.com (root + www → Render)",
   "Object storage: Cloudflare R2 bucket via S3-compatible API",
   "Database: managed Postgres on Render or external provider, connection via DATABASE_URL",
@@ -137,11 +137,13 @@ bullets([
 
 h2("Required production env vars");
 bullets([
-  "DATABASE_URL — Postgres connection string",
-  "ADMIN_JWT_SECRET — 32+ chars",
-  "ALLOWED_ORIGINS — comma-separated (https://trynexshop.com)",
+  "DATABASE_URL — Postgres connection string (any standard provider)",
+  "ADMIN_JWT_SECRET — 32+ chars; must differ from JWT_SECRET",
+  "JWT_SECRET — customer JWT signing secret; required in production",
+  "ALLOWED_ORIGINS — comma-separated CORS allowlist (https://trynexshop.com)",
   "ADMIN_PASSWORD — initial admin password",
-  "R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET — Cloudflare R2",
+  "R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET — Cloudflare R2 (required for storage)",
+  "R2_PUBLIC_BASE_URL — optional: R2 public CDN URL for direct image serving",
   "GOOGLE_CLIENT_ID / FACEBOOK_APP_ID — optional social login",
 ]);
 
@@ -154,6 +156,30 @@ bullets([
   "Add Meta Pixel / Google Analytics IDs in Site Settings (admin)",
   "Seed initial categories, products, hero images, and blog posts",
 ]);
+
+h1("9. Replit Independence");
+p("Production is fully Replit-independent. No component in the live request path depends on Replit infrastructure.");
+
+h2("Production topology");
+bullets([
+  "Storefront: Cloudflare Pages (static build, no server-side Replit dependency)",
+  "API: Render Web Service — Express 5, standard Node 20",
+  "Database: any standard PostgreSQL via DATABASE_URL (Render, Supabase, Neon, etc.)",
+  "Object storage: Cloudflare R2 via S3-compatible API (R2_* env vars)",
+]);
+
+h2("Dev vs production storage");
+p("The Replit Object Storage sidecar (GCS at http://127.0.0.1:1106) is the lowest-priority storage fallback and is only activated when neither R2 nor S3 env vars are set — i.e., only inside the Replit dev sandbox. The API server now hard-exits at boot when NODE_ENV=production and the storage backend resolves to 'replit', preventing silent failures on Render.");
+
+h2("Boot-time production guards");
+bullets([
+  "Hard-exit if storage backend = 'replit' (Replit sidecar unavailable on Render)",
+  "Hard-exit if any required env var is absent (DATABASE_URL, ADMIN_JWT_SECRET, JWT_SECRET, ADMIN_PASSWORD, ALLOWED_ORIGINS)",
+  "Logs active storage backend at startup: {\"backend\":\"r2\"} visible in Render dashboard",
+  "Warns on absent optional vars (GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, R2_PUBLIC_BASE_URL)",
+]);
+
+p("Full audit report: docs/replit-independence.md");
 
 doc.end();
 console.log("Wrote", OUT);
