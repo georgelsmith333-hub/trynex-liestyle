@@ -6,7 +6,8 @@ import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { OrderSkeleton } from "@/components/ui/skeleton";
 import {
   Package, Search, Clock, CheckCircle2, Truck, MapPin,
-  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2, Gift, Heart, ZoomIn, X
+  XCircle, AlertTriangle, RefreshCw, Box, Star, Loader2, Gift, Heart, ZoomIn, X,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
@@ -82,9 +83,20 @@ function buildTrackBody(oNum: string, identifier: string): TrackBody {
     : { orderNumber: oNum.toUpperCase(), phone: identifier.trim() };
 }
 
-function ItemPreviewThumb({ src, alt, isStudio }: { src: string; alt: string; isStudio: boolean }) {
+type PreviewItem = { src: string; alt: string; isStudio: boolean };
+
+function ItemPreviewThumb({
+  src,
+  alt,
+  isStudio,
+  onOpen,
+}: {
+  src: string;
+  alt: string;
+  isStudio: boolean;
+  onOpen?: () => void;
+}) {
   const [failed, setFailed] = useState(false);
-  const [open, setOpen] = useState(false);
   const showImage = !!src && !failed;
   const containerClass = cn(
     "rounded-xl overflow-hidden shrink-0 flex items-center justify-center relative group",
@@ -129,46 +141,134 @@ function ItemPreviewThumb({ src, alt, isStudio }: { src: string; alt: string; is
     </>
   );
 
-  if (!showImage) {
+  if (!showImage || !onOpen) {
     return <div className={containerClass} style={containerStyle}>{inner}</div>;
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={containerClass}
-        style={containerStyle}
-        aria-label={`View ${alt} full size`}
-      >
-        {inner}
-      </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogPortal>
-          <DialogOverlay className="bg-black/90" />
-          <DialogPrimitive.Content
-            className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[95vh] max-w-none max-h-none flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-            onClick={() => setOpen(false)}
-          >
-            <DialogPrimitive.Title className="sr-only">{alt}</DialogPrimitive.Title>
+    <button
+      type="button"
+      onClick={onOpen}
+      className={containerClass}
+      style={containerStyle}
+      aria-label={`View ${alt} full size`}
+    >
+      {inner}
+    </button>
+  );
+}
+
+function PreviewLightbox({
+  items,
+  index,
+  onIndexChange,
+  onClose,
+}: {
+  items: PreviewItem[];
+  index: number | null;
+  onIndexChange: (i: number) => void;
+  onClose: () => void;
+}) {
+  const open = index !== null && index >= 0 && index < items.length;
+  const current = open ? items[index] : null;
+  const total = items.length;
+  const hasMultiple = total > 1;
+
+  const goPrev = useCallback(() => {
+    if (index === null || !hasMultiple) return;
+    onIndexChange((index - 1 + total) % total);
+  }, [index, total, hasMultiple, onIndexChange]);
+
+  const goNext = useCallback(() => {
+    if (index === null || !hasMultiple) return;
+    onIndexChange((index + 1) % total);
+  }, [index, total, hasMultiple, onIndexChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goNext(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, goPrev, goNext]);
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX.current;
+    const dy = t.clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) goPrev(); else goNext();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogPortal>
+        <DialogOverlay className="bg-black/90" />
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[95vh] max-w-none max-h-none flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          onClick={onClose}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          <DialogPrimitive.Title className="sr-only">{current?.alt ?? 'Item preview'}</DialogPrimitive.Title>
+          {current && (
             <img
-              src={src}
-              alt={alt}
+              key={current.src}
+              src={current.src}
+              alt={current.alt}
               className="max-w-full max-h-full object-contain touch-pinch-zoom select-none"
               onClick={(e) => e.stopPropagation()}
               draggable={false}
             />
-            <DialogPrimitive.Close
-              className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              aria-label="Close preview"
-            >
-              <X className="w-6 h-6" />
-            </DialogPrimitive.Close>
-          </DialogPrimitive.Content>
-        </DialogPortal>
-      </Dialog>
-    </>
+          )}
+          {hasMultiple && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Previous preview"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goNext(); }}
+                className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Next preview"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+              <div
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-xs font-bold tabular-nums select-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {(index ?? 0) + 1} / {total}
+              </div>
+            </>
+          )}
+          <DialogPrimitive.Close
+            className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            aria-label="Close preview"
+          >
+            <X className="w-6 h-6" />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   );
 }
 
@@ -266,6 +366,33 @@ export default function TrackOrder() {
   const paymentMethodLabel: Record<string, string> = {
     cod: 'Cash on Delivery', bkash: 'bKash', nagad: 'Nagad', rocket: 'Rocket'
   };
+
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const { previewItems, previewIndexByItem } = (() => {
+    const items: PreviewItem[] = [];
+    const map = new Map<number, number>();
+    const rawItems = (displayOrder?.items as Array<Record<string, unknown>> | undefined) ?? [];
+    rawItems.forEach((item: any, idx: number) => {
+      let hamper: any = null;
+      try { hamper = JSON.parse(item.customNote ?? "{}").hamper; } catch {}
+      if (hamper) return;
+      const src = (item.imageUrl as string) || (item.productImage as string) || '';
+      if (!src) return;
+      map.set(idx, items.length);
+      items.push({
+        src,
+        alt: `${item.productName as string} preview`,
+        isStudio: !!item.isStudio,
+      });
+    });
+    return { previewItems: items, previewIndexByItem: map };
+  })();
+
+  useEffect(() => {
+    if (lightboxIndex !== null && lightboxIndex >= previewItems.length) {
+      setLightboxIndex(null);
+    }
+  }, [lightboxIndex, previewItems.length]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -585,6 +712,11 @@ export default function TrackOrder() {
                             src={previewSrc}
                             alt={`${item.productName as string} preview`}
                             isStudio={isStudio}
+                            onOpen={
+                              previewIndexByItem.has(idx)
+                                ? () => setLightboxIndex(previewIndexByItem.get(idx)!)
+                                : undefined
+                            }
                           />
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-sm leading-snug text-gray-800">{item.productName as string}</p>
@@ -634,6 +766,13 @@ export default function TrackOrder() {
           </AnimatePresence>
         </div>
       </main>
+
+      <PreviewLightbox
+        items={previewItems}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+      />
 
       <Footer />
     </div>
