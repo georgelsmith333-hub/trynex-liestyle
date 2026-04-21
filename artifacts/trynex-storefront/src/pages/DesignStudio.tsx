@@ -835,10 +835,10 @@ export default function DesignStudio() {
         garmentColor: selectedColor.hex,
         printZone: frontPZ,
         layers: frontLayers,
-        outSize: 800,
+        outSize: 400,
         imageCache,
       });
-      const mockupUrl = mockupCanvas.toDataURL("image/png", 0.85);
+      const mockupUrl = mockupCanvas.toDataURL("image/webp", 0.8);
 
       // 2. Design-only UV texture (transparent bg) — used by CartViewer3D.
       //    Mug uses wide 2048×768 to match the studio live preview (full 360° wrap band).
