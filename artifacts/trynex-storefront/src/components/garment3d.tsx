@@ -36,7 +36,66 @@ import { useGLTF, useProgress, OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { hasWebGL2 } from "../pages/design-studio/composer";
 
+// Ref type for drei's <OrbitControls> — derived from the component itself so
+// we don't need to depend on `three-stdlib` directly.
+type OrbitControlsRef = React.ElementRef<typeof OrbitControls>;
+
 export { hasWebGL2 };
+
+/* ───────── Procedural fabric / ceramic micro-surface maps ─────────
+ * Generated once at module load so every viewer instance shares the
+ * same THREE.CanvasTexture (no per-render allocation, no asset files).
+ * Cotton: faint cross-weave normal + speckled roughness modulation.
+ * Ceramic: fine speckled roughness for the mug glaze.
+ */
+function makeFabricMaps(): { normal: THREE.Texture; rough: THREE.Texture } | null {
+  if (typeof document === "undefined") return null;
+  const SIZE = 256;
+  // Normal map — encode a subtle cross-weave pattern.
+  const normalCanvas = document.createElement("canvas");
+  normalCanvas.width = normalCanvas.height = SIZE;
+  const nctx = normalCanvas.getContext("2d");
+  if (!nctx) return null;
+  const nimg = nctx.createImageData(SIZE, SIZE);
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      // Two perpendicular sine waves at thread frequency
+      const wx = Math.sin((x / SIZE) * Math.PI * 64) * 0.18;
+      const wy = Math.sin((y / SIZE) * Math.PI * 64) * 0.18;
+      const i = (y * SIZE + x) * 4;
+      nimg.data[i]     = Math.round(128 + wx * 127);
+      nimg.data[i + 1] = Math.round(128 + wy * 127);
+      nimg.data[i + 2] = 255;
+      nimg.data[i + 3] = 255;
+    }
+  }
+  nctx.putImageData(nimg, 0, 0);
+  const normalTex = new THREE.CanvasTexture(normalCanvas);
+  normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+  normalTex.repeat.set(8, 8);
+  normalTex.colorSpace = THREE.NoColorSpace;
+
+  // Roughness modulation — subtle speckled noise
+  const roughCanvas = document.createElement("canvas");
+  roughCanvas.width = roughCanvas.height = SIZE;
+  const rctx = roughCanvas.getContext("2d");
+  if (!rctx) return null;
+  const rimg = rctx.createImageData(SIZE, SIZE);
+  for (let i = 0; i < rimg.data.length; i += 4) {
+    const v = 200 + Math.floor((Math.random() - 0.5) * 60);
+    rimg.data[i] = rimg.data[i + 1] = rimg.data[i + 2] = v;
+    rimg.data[i + 3] = 255;
+  }
+  rctx.putImageData(rimg, 0, 0);
+  const roughTex = new THREE.CanvasTexture(roughCanvas);
+  roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+  roughTex.repeat.set(8, 8);
+  roughTex.colorSpace = THREE.NoColorSpace;
+
+  return { normal: normalTex, rough: roughTex };
+}
+
+const FABRIC_MAPS = makeFabricMaps();
 
 // Print-zone constants imported for reference / future UV-crop helpers
 export {
@@ -138,7 +197,14 @@ export function RealisticShirt({
   return (
     <group scale={2.6}>
       <mesh geometry={baseGeo} castShadow receiveShadow>
-        <meshStandardMaterial color={garmentColor} roughness={0.78} metalness={0.02} />
+        <meshStandardMaterial
+          color={garmentColor}
+          roughness={0.82}
+          metalness={0.02}
+          normalMap={FABRIC_MAPS?.normal ?? null}
+          normalScale={new THREE.Vector2(0.18, 0.18)}
+          roughnessMap={FABRIC_MAPS?.rough ?? null}
+        />
       </mesh>
       {frontTex && frontGeo && (
         <mesh geometry={frontGeo} scale={1.003}>
@@ -188,10 +254,17 @@ function GarmentGLB({
 
   return (
     <group>
-      {/* Base colour for every part */}
+      {/* Base colour for every part — apply procedural fabric maps */}
       {meshes.map((m, i) => (
         <mesh key={i} geometry={m.geometry} castShadow receiveShadow>
-          <meshStandardMaterial color={garmentColor} roughness={roughness} metalness={0.01} />
+          <meshStandardMaterial
+            color={garmentColor}
+            roughness={roughness}
+            metalness={0.01}
+            normalMap={FABRIC_MAPS?.normal ?? null}
+            normalScale={new THREE.Vector2(0.18, 0.18)}
+            roughnessMap={FABRIC_MAPS?.rough ?? null}
+          />
         </mesh>
       ))}
       {frontTex && frontGeo && (
@@ -323,9 +396,10 @@ export function MugBody({
           color={garmentColor}
           roughness={0.22}
           metalness={0.02}
-          clearcoat={0.70}
-          clearcoatRoughness={0.15}
+          clearcoat={0.78}
+          clearcoatRoughness={0.12}
           side={THREE.DoubleSide}
+          roughnessMap={FABRIC_MAPS?.rough ?? null}
         />
       </mesh>
 
@@ -461,19 +535,19 @@ export function NoWebGLFallback({
 /** OrbitControls with double-tap (or double-click) → reset camera.
  *  Drop-in replacement; forwards every prop. */
 export function ResettableOrbitControls(props: React.ComponentProps<typeof OrbitControls>) {
-  const ref = useRef<any>(null);
+  const ref = useRef<OrbitControlsRef>(null);
   const { gl } = useThree();
   const lastTapRef = useRef(0);
 
   useEffect(() => {
     const el = gl.domElement;
     const reset = () => {
-      const c = ref.current;
-      if (c && typeof c.reset === "function") c.reset();
+      ref.current?.reset();
     };
     const onPointer = (e: PointerEvent) => {
-      // Only treat single-finger taps as candidates so pinch-zoom is unaffected
-      if (e.pointerType === "touch" && (e as any).isPrimary === false) return;
+      // Only treat single-finger taps as candidates so pinch-zoom is unaffected.
+      // PointerEvent.isPrimary is part of the standard DOM spec.
+      if (e.pointerType === "touch" && !e.isPrimary) return;
       const now = performance.now();
       if (now - lastTapRef.current < 320) {
         reset();
