@@ -102,6 +102,44 @@ export function TypewriterHero() {
   const phrases = useMemo(() => PHRASES.filter(Boolean), []);
   const typed = useTypewriter(phrases, { enabled: !reduced });
 
+  // Lightweight micro-parallax: translate the background layer slightly on
+  // scroll. Disabled under reduced-motion. Uses rAF + transform only (no
+  // layout work) to stay smooth on low-end devices.
+  const bgRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (reduced) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        const y = Math.min(window.scrollY, 600) * 0.15;
+        if (bgRef.current) bgRef.current.style.transform = `translate3d(0, ${y}px, 0)`;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [reduced]);
+
+  // Track hero visibility so the truly-sticky trust strip can pin to the
+  // viewport bottom while the hero is in view, then disappear once the user
+  // scrolls past it.
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [heroVisible, setHeroVisible] = useState(true);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setHeroVisible(entry.isIntersecting && entry.intersectionRatio > 0.05),
+      { threshold: [0, 0.05, 0.25, 1] }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   // Phrase-level live region: announce only completed phrase changes,
   // not per-keystroke updates (avoids screen-reader spam).
   const [announcedPhrase, setAnnouncedPhrase] = useState(phrases[0] ?? "");
@@ -121,6 +159,7 @@ export function TypewriterHero() {
 
   return (
     <section
+      ref={sectionRef}
       className="relative overflow-hidden"
       style={{
         paddingTop: "calc(var(--announcement-height, 0px) + 4.25rem)",
@@ -140,8 +179,13 @@ export function TypewriterHero() {
       >
         We craft {announcedPhrase}
       </span>
-      {/* Background */}
-      <div className="absolute inset-0" style={{ background }} aria-hidden="true" />
+      {/* Background (with micro-parallax) */}
+      <div
+        ref={bgRef}
+        className="absolute inset-0 will-change-transform"
+        style={{ background }}
+        aria-hidden="true"
+      />
 
       {/* Soft ambient blobs (decorative; reduced-motion safe) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -189,7 +233,12 @@ export function TypewriterHero() {
         {/* Headline */}
         <h1
           className="font-display font-black leading-[1.05] mb-4 sm:mb-5 text-gray-900"
-          style={{ fontSize: "clamp(2.1rem, 7vw, 5rem)", letterSpacing: "-0.03em" }}
+          style={{
+            fontSize: "clamp(2.1rem, 7vw, 5rem)",
+            letterSpacing: "-0.03em",
+            fontFeatureSettings: '"tnum" 1, "kern" 1',
+            fontVariantNumeric: "tabular-nums",
+          }}
         >
           <span style={{ display: "block" }}>You Imagine,</span>
           <span
@@ -286,16 +335,17 @@ export function TypewriterHero() {
 
       </div>
 
-      {/* Sticky trust strip — pinned to the bottom of the hero so social
-          proof remains visible while the user reads the headline. */}
+      {/* Truly-sticky trust strip — pinned to the viewport bottom while the
+          hero is in view, then fades out as the user scrolls past. */}
       <motion.div
         initial={reduced ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.45 }}
-        className="absolute left-0 right-0 bottom-0 z-10 backdrop-blur-md"
+        animate={{ opacity: heroVisible ? 1 : 0, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.45 }}
+        className="fixed left-0 right-0 bottom-0 z-30 backdrop-blur-md"
         style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 35%, rgba(255,255,255,0.95) 100%)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 35%, rgba(255,255,255,0.97) 100%)",
           borderTop: "1px solid rgba(232,93,4,0.12)",
+          pointerEvents: heroVisible ? "auto" : "none",
         }}
         role="region"
         aria-label="Trust signals"
