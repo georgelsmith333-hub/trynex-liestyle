@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Package, ZoomIn, ZoomOut, Maximize2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Package, ZoomIn, ZoomOut, Maximize2, Minimize2, Expand, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
@@ -311,6 +311,8 @@ export function PreviewLightbox({
   const hasMultiple = total > 1;
   const [isZoomed, setIsZoomed] = useState(false);
   const [controls, setControls] = useState<ZoomControls | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const zoomPct = Math.round((controls?.scale ?? 1) * 100);
   const canZoomIn = (controls?.scale ?? 1) < MAX_ZOOM - 0.001;
   const canZoomOut = (controls?.scale ?? 1) > MIN_ZOOM + 0.001;
@@ -342,6 +344,30 @@ export function PreviewLightbox({
     }
   }, [open]);
 
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(document.fullscreenElement === contentRef.current);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  useEffect(() => {
+    if (!open && document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, [open]);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else {
+      el.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
@@ -367,7 +393,11 @@ export function PreviewLightbox({
       <DialogPortal>
         <DialogOverlay className="bg-black/90" />
         <DialogPrimitive.Content
-          className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[95vh] max-w-none max-h-none flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          ref={contentRef}
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 max-w-none max-h-none flex items-center justify-center outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            isFullscreen ? "w-screen h-screen bg-black" : "w-[95vw] h-[95vh]"
+          )}
           onClick={onClose}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
@@ -426,6 +456,16 @@ export function PreviewLightbox({
                 title="Reset to fit"
               >
                 <Maximize2 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+                className="w-9 h-9 rounded-full hover:bg-white/15 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                aria-pressed={isFullscreen}
+                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
               </button>
             </div>
           )}
