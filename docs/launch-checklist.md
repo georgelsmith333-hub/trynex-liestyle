@@ -156,7 +156,7 @@ The following fixes were shipped in the final pre-launch polish pass:
 | Fixed undefined `req` reference in `/api/public-stats` catch block | `publicStats.ts` |
 | Added `lib/*/dist/` to `.gitignore` to keep generated declaration files out of the repo | `.gitignore` |
 
-Both production builds (`pnpm -r build`) passed green. Typecheck has pre-existing implicit-any warnings in admin routes that do not affect the runtime build; they are tracked as a follow-up.
+Both production builds (`pnpm -r build`) passed green. `pnpm -r typecheck` exits 0 with zero errors across all packages (api-server, trynex-storefront, mockup-sandbox, scripts) as of Task #6.
 
 ---
 
