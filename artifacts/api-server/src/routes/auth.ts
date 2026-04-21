@@ -3,6 +3,19 @@ import { db, customersTable } from "@workspace/db";
 import { eq, or, desc, sql } from "drizzle-orm";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+
+// Lazily-built Google OAuth verifier. Re-built only when GOOGLE_CLIENT_ID
+// changes (effectively never at runtime). Verifies signature, issuer,
+// audience, and expiry against Google's published public keys.
+let googleClient: OAuth2Client | null = null;
+let googleClientForId: string | null = null;
+function getGoogleClient(clientId: string): OAuth2Client {
+  if (googleClient && googleClientForId === clientId) return googleClient;
+  googleClient = new OAuth2Client(clientId);
+  googleClientForId = clientId;
+  return googleClient;
+}
 
 const router: IRouter = Router();
 
@@ -157,38 +170,63 @@ router.post("/auth/google", async (req, res) => {
       return;
     }
 
-    const parts = (credential as string).split(".");
-    if (parts.length !== 3) {
-      res.status(400).json({ error: "validation_error", message: "Invalid Google credential format. Please retry the sign-in." });
+    const expectedAud = process.env.GOOGLE_CLIENT_ID || "";
+
+    // Production MUST verify the Google ID token signature against Google's
+    // public keys. Without this, anyone can mint a forged JWT with arbitrary
+    // `email`/`sub` and take over any account. Refuse to start the flow if
+    // the server is mis-configured in production.
+    if (IS_PROD && !expectedAud) {
+      res.status(503).json({ error: "google_not_configured", message: "Google sign-in is not configured on the server. Please contact support or use email login." });
       return;
     }
 
     let payload: Record<string, unknown>;
-    try {
-      payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8")) as Record<string, unknown>;
-    } catch {
-      res.status(400).json({ error: "validation_error", message: "Could not decode Google credential. Please retry the sign-in." });
-      return;
-    }
-
-    // Expiry check — Google ID tokens are short-lived (1h). If the user kept
-    // a stale credential in a tab the request must be rejected with a
-    // human-readable reason rather than a generic 500.
-    const exp = typeof payload.exp === "number" ? payload.exp : 0;
-    if (exp && exp * 1000 < Date.now()) {
-      res.status(401).json({ error: "expired_credential", message: "Your Google sign-in expired. Please sign in again." });
-      return;
-    }
-
-    // Audience check — confirm the credential was minted for OUR app.
-    // GOOGLE_CLIENT_ID is the public client ID configured in Google Cloud
-    // Console. If it's not set we still accept the credential (so dev /
-    // staging environments don't break) but log a warning.
-    const expectedAud = process.env.GOOGLE_CLIENT_ID || "";
-    const aud = String(payload.aud ?? "");
-    if (expectedAud && aud && aud !== expectedAud) {
-      res.status(401).json({ error: "wrong_audience", message: "Google sign-in is misconfigured for this site (audience mismatch). Please contact support." });
-      return;
+    if (expectedAud) {
+      // Full verification: signature + issuer + audience + expiry.
+      try {
+        const ticket = await getGoogleClient(expectedAud).verifyIdToken({
+          idToken: credential as string,
+          audience: expectedAud,
+        });
+        const verifiedPayload = ticket.getPayload();
+        if (!verifiedPayload) {
+          res.status(401).json({ error: "invalid_credential", message: "Google credential could not be verified. Please retry the sign-in." });
+          return;
+        }
+        payload = verifiedPayload as unknown as Record<string, unknown>;
+      } catch (verifyErr) {
+        const msg = (verifyErr as { message?: string } | null)?.message ?? "";
+        if (/expired/i.test(msg)) {
+          res.status(401).json({ error: "expired_credential", message: "Your Google sign-in expired. Please sign in again." });
+          return;
+        }
+        if (/audience|aud/i.test(msg)) {
+          res.status(401).json({ error: "wrong_audience", message: "Google sign-in is misconfigured for this site (audience mismatch). Please contact support." });
+          return;
+        }
+        res.status(401).json({ error: "invalid_credential", message: "Google credential could not be verified. Please retry the sign-in." });
+        return;
+      }
+    } else {
+      // Dev/staging fallback (GOOGLE_CLIENT_ID unset, NODE_ENV !== production).
+      // Manual decode — INSECURE, used only to keep local development working.
+      const parts = (credential as string).split(".");
+      if (parts.length !== 3) {
+        res.status(400).json({ error: "validation_error", message: "Invalid Google credential format. Please retry the sign-in." });
+        return;
+      }
+      try {
+        payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8")) as Record<string, unknown>;
+      } catch {
+        res.status(400).json({ error: "validation_error", message: "Could not decode Google credential. Please retry the sign-in." });
+        return;
+      }
+      const exp = typeof payload.exp === "number" ? payload.exp : 0;
+      if (exp && exp * 1000 < Date.now()) {
+        res.status(401).json({ error: "expired_credential", message: "Your Google sign-in expired. Please sign in again." });
+        return;
+      }
     }
 
     const googleId = payload.sub as string | undefined;
