@@ -200,32 +200,36 @@ function buildHemisphereOverlay(
   let xSize = (bb.max.x - bb.min.x) || 1;
   let ySize = (bb.max.y - bb.min.y) || 1;
 
-  // Manual UV padding/offset to align the 1000x1000 design canvas with the model's print area.
-  // The goal is that a design at [0,0] in the 1000x1000 space maps to the exact same
-  // real-world location on the garment as it does in the 2D SVG mockup.
+  // Per-category UV padding so that a design at the centre of the 2D print zone
+  // lands on the actual print panel (chest / cap-front / upper-back) of the GLB,
+  // not on the top of the dome / hood / hem.
+  //
+  // V mapping below is `v = (geomY - yMin) / ySize`. With THREE's default
+  // flipY=true on CanvasTextures, sampling v=1 returns the TOP of the source
+  // canvas (y=0). So vertices with high geometry-Y (top of garment) sample
+  // canvas top — designs read right-side-up.
+  const cat = src.userData.category;
   if (hemisphere === "front") {
-    // Audit-derived offsets for the front face
-    if (src.userData.category === "hoodie") {
-      yMin -= ySize * 0.12;
-      ySize *= 1.18;
-    } else if (src.userData.category === "longsleeve") {
-      yMin -= ySize * 0.05;
+    if (cat === "cap") {
+      // Cap dome bbox spans top→bottom of crown; the printable front panel
+      // sits in the LOWER-FRONT of the dome. Shift the V window down.
+      yMin -= ySize * 0.55;
       ySize *= 1.10;
-    } else if (src.userData.category === "cap") {
-      yMin -= ySize * 0.15;
-      ySize *= 1.40;
+    } else if (cat === "hoodie") {
+      // Body-only mesh used for both front+back overlay; print zone sits a
+      // touch lower than geometric centre because of the hood mass above.
+      yMin -= ySize * 0.10;
+      ySize *= 1.15;
+    } else if (cat === "longsleeve") {
+      yMin -= ySize * 0.04;
+      ySize *= 1.06;
     }
   } else {
-    // Audit-derived offsets for the back face
-    if (src.userData.category === "hoodie") {
-      yMin += ySize * 0.22;
-      ySize *= 1.15;
-    } else if (src.userData.category === "longsleeve") {
-      yMin += ySize * 0.18;
+    if (cat === "hoodie") {
+      yMin -= ySize * 0.05;
       ySize *= 1.10;
-    } else if (src.userData.category === "tshirt") {
-      yMin += ySize * 0.12;
-      ySize *= 1.10;
+    } else if (cat === "longsleeve") {
+      ySize *= 1.06;
     }
   }
 
@@ -233,7 +237,7 @@ function buildHemisphereOverlay(
   const uv = new Float32Array(vertCount * 2);
   for (let i = 0; i < vertCount; i++) {
     let u = (newPos[i * 3]     - xMin) / xSize;
-    const v = 1 - (newPos[i * 3 + 1] - yMin) / ySize;
+    const v = (newPos[i * 3 + 1] - yMin) / ySize;
     if (flipU) u = 1 - u;
     uv[i * 2]     = u;
     uv[i * 2 + 1] = v;
@@ -471,13 +475,22 @@ export function MugBody({
     if (wrapTex) {
       wrapTex.wrapS = THREE.RepeatWrapping;
       wrapTex.wrapT = THREE.ClampToEdgeWrapping;
-      // Cylinder default UVs wind so U=0 lies on +X. Our wrap texture is
-      // 2048×768 with the design centred at U_tex=0.5. We want that centre
-      // to land on +Z (the side facing the camera). Solve -u_geo + offset
-      // = 0.5 for u_geo = 0.25 → offset = 0.75. Repeat -1 mirrors so the
-      // design reads right-way-around when the camera orbits the mug.
-      wrapTex.repeat.set(-1, 1);
-      wrapTex.offset.set(0.75, 0);
+      // THREE CylinderGeometry default UVs: u increases as theta goes from
+      // thetaStart=0 to 2π, mapped CW when viewed from +Y (because vertex.x
+      // = sin(θ), vertex.z = cos(θ)). So u=0 is at +Z (front, camera-facing),
+      // u=0.25 is at +X (right, where the handle lives), u=0.5 is at -Z (back),
+      // u=0.75 is at -X (left).
+      //
+      // Our 2048×768 wrap canvas has the design centred at U_tex≈0.5 (because
+      // MUG_PZ x=250, w=400 in the 1000-unit space → centre x=450/1000=0.45,
+      // close enough to the middle of the texture). We want canvas centre to
+      // land at +Z (u_geo=0). Solve: u_tex = u_geo*repeat + offset
+      //   0.5 = 0*1 + offset → offset = 0.5
+      // No mirror — the cylinder's outside-facing UV unwraps so text reads
+      // correctly with repeat=+1.
+      wrapTex.repeat.set(1, 1);
+      wrapTex.offset.set(0.5, 0);
+      wrapTex.flipY = true;
       wrapTex.needsUpdate = true;
     }
   }, [wrapTex]);
