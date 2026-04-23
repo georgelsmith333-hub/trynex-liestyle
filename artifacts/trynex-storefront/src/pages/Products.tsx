@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearch } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ProductCard";
@@ -25,8 +26,20 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export default function Products() {
   const settings = useSiteSettings();
-  const [search, setSearch] = useState("");
+  const searchString = useSearch();
+  const [search, setSearch] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") ?? params.get("search") ?? "";
+  });
   const [activeCategory, setActiveCategory] = useState<number | undefined>(undefined);
+
+  // Keep search input in sync with the URL so the navbar's search updates results.
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const q = params.get("q") ?? params.get("search") ?? "";
+    setSearch(q);
+  }, [searchString]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sort, setSort] = useState<SortOption>("default");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -35,16 +48,19 @@ export default function Products() {
   const categories = categoriesData?.categories || [];
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchString);
     const categorySlug = params.get("category");
-    if (categorySlug && categories.length > 0) {
-      const match = categories.find(
-        (c) => c.slug?.toLowerCase() === categorySlug.toLowerCase() ||
-               c.name?.toLowerCase().replace(/\s+/g, '-') === categorySlug.toLowerCase()
-      );
-      if (match) setActiveCategory(match.id);
+    if (!categorySlug) {
+      setActiveCategory(undefined);
+      return;
     }
-  }, [categories]);
+    if (categories.length === 0) return;
+    const match = categories.find(
+      (c) => c.slug?.toLowerCase() === categorySlug.toLowerCase() ||
+             c.name?.toLowerCase().replace(/\s+/g, '-') === categorySlug.toLowerCase()
+    );
+    if (match) setActiveCategory(match.id);
+  }, [searchString, categories]);
 
   const { data: productsData, isLoading } = useListProducts({
     search: search || undefined,

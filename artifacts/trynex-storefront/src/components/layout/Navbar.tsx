@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Menu, X, ChevronDown, Heart, ShoppingCart, User, LogIn, LogOut, Package, ShoppingBag, Gift, Search } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Menu, X, ChevronDown, Heart, ShoppingCart, User, LogIn, LogOut, Package, ShoppingBag, Gift, Search, Tag } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { CartDrawer } from "@/components/CartDrawer";
+import { useListProducts, useListCategories } from "@workspace/api-client-react";
 
 const SHOP_CATEGORIES = [
   { label: "All Products", href: "/products", emoji: "🛍️" },
@@ -41,7 +42,9 @@ export function Navbar() {
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [desktopSearchFocused, setDesktopSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { itemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
@@ -67,6 +70,7 @@ export function Navbar() {
     setMoreOpen(false);
     setProfileOpen(false);
     setSearchOpen(false);
+    setDesktopSearchFocused(false);
   }, [location]);
 
   useEffect(() => {
@@ -93,16 +97,58 @@ export function Navbar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchOpen(false);
+      setDesktopSearchFocused(false);
       setSearchQuery("");
     }
   };
+
+  const goToSearchTerm = (term: string) => {
+    navigate(`/products?q=${encodeURIComponent(term)}`);
+    setSearchOpen(false);
+    setDesktopSearchFocused(false);
+    setSearchQuery("");
+  };
+
+  // ─── Autocomplete ────────────────────────────────────────────────────────
+  const trimmedQuery = searchQuery.trim();
+  const showAutocomplete = trimmedQuery.length >= 2;
+  // Debounce the term that drives the suggestion fetch so we only hit the
+  // API once the user pauses typing (and only when the query is meaningful).
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    if (!showAutocomplete) {
+      setDebouncedQuery("");
+      return;
+    }
+    const t = setTimeout(() => setDebouncedQuery(trimmedQuery), 200);
+    return () => clearTimeout(t);
+  }, [trimmedQuery, showAutocomplete]);
+  const { data: suggestionProducts } = useListProducts(
+    debouncedQuery ? { search: debouncedQuery, limit: 6 } : { limit: 6 },
+  );
+  const { data: allCategoriesData } = useListCategories();
+  const matchedCategories = useMemo(() => {
+    if (!showAutocomplete) return [];
+    const q = trimmedQuery.toLowerCase();
+    return (allCategoriesData?.categories || [])
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .slice(0, 4);
+  }, [trimmedQuery, allCategoriesData, showAutocomplete]);
+  const matchedProducts = useMemo(() => {
+    if (!showAutocomplete) return [];
+    return (suggestionProducts?.products || []).slice(0, 6);
+  }, [suggestionProducts, showAutocomplete]);
+  const hasSuggestions = matchedCategories.length + matchedProducts.length > 0;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (desktopSearchRef.current && !desktopSearchRef.current.contains(e.target as Node)) {
+        setDesktopSearchFocused(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -279,11 +325,120 @@ export function Navbar() {
           </nav>
 
           <div className="flex items-center gap-1.5">
-            {/* Search button */}
+            {/* Desktop inline expanded search (lg+) with autocomplete */}
+            <div ref={desktopSearchRef} className="hidden lg:block relative">
+              <form onSubmit={handleSearch}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-full border transition-all w-44 xl:w-60",
+                    desktopSearchFocused
+                      ? "border-orange-300 bg-white ring-2 ring-orange-100"
+                      : "border-gray-200 bg-gray-50/70 hover:bg-white"
+                  )}
+                >
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    type="search"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setDesktopSearchFocused(true)}
+                    className="flex-1 min-w-0 bg-transparent outline-none text-[0.8125rem] font-medium text-gray-800 placeholder:text-gray-400"
+                    autoComplete="off"
+                    aria-label="Search products"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <kbd className="hidden xl:flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-400 border border-gray-200 bg-white shrink-0">
+                      ⌘K
+                    </kbd>
+                  )}
+                </div>
+              </form>
+              <AnimatePresence>
+                {desktopSearchFocused && showAutocomplete && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full right-0 mt-2 w-[22rem] max-w-[90vw] bg-white rounded-2xl shadow-xl shadow-gray-200/60 border border-gray-100 overflow-hidden z-50"
+                  >
+                    {hasSuggestions ? (
+                      <div className="py-2 max-h-[26rem] overflow-y-auto">
+                        {matchedCategories.length > 0 && (
+                          <div className="px-2 pb-1">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2 py-1.5">Categories</div>
+                            {matchedCategories.map((cat) => (
+                              <Link
+                                key={`cat-${cat.id}`}
+                                href={`/products?category=${cat.slug || cat.name.toLowerCase().replace(/\s+/g, "-")}`}
+                                onClick={() => { setDesktopSearchFocused(false); setSearchQuery(""); }}
+                                className="flex items-center gap-3 px-2.5 py-2 rounded-xl text-[0.8125rem] font-semibold text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                              >
+                                <Tag className="w-4 h-4 text-orange-400" />
+                                <span className="truncate">{cat.name}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                        {matchedProducts.length > 0 && (
+                          <div className={cn("px-2 pt-1", matchedCategories.length > 0 && "border-t border-gray-100 mt-1")}>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2 py-1.5">Products</div>
+                            {matchedProducts.map((p) => (
+                              <Link
+                                key={`p-${p.id}`}
+                                href={`/products/${p.slug || p.id}`}
+                                onClick={() => { setDesktopSearchFocused(false); setSearchQuery(""); }}
+                                className="flex items-center gap-3 px-2.5 py-2 rounded-xl hover:bg-orange-50 transition-colors group"
+                              >
+                                {p.imageUrl ? (
+                                  <img src={p.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 shrink-0" />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-lg bg-gray-100 shrink-0" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[0.8125rem] font-semibold text-gray-800 group-hover:text-orange-600 truncate">{p.name}</p>
+                                  <p className="text-[11px] text-gray-400 font-medium">৳{p.discountPrice ?? p.price}</p>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                        <div className="border-t border-gray-100 mt-1 pt-1 px-2">
+                          <button
+                            onClick={() => goToSearchTerm(trimmedQuery)}
+                            className="w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl text-[0.8125rem] font-bold text-orange-600 hover:bg-orange-50 transition-colors"
+                          >
+                            <span className="flex items-center gap-2"><Search className="w-3.5 h-3.5" /> See all results for "{trimmedQuery}"</span>
+                            <ChevronDown className="w-3.5 h-3.5 -rotate-90" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-6 px-4 text-center">
+                        <p className="text-sm font-semibold text-gray-700">No matches yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Press Enter to search "{trimmedQuery}".</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Search button (mobile + tablet) */}
             <button
               onClick={() => setSearchOpen(prev => !prev)}
               className={cn(
-                "hidden md:flex items-center justify-center w-10 h-10 rounded-full transition-all",
+                "flex lg:hidden items-center justify-center w-10 h-10 rounded-full transition-all",
                 searchOpen
                   ? "text-orange-600 bg-orange-50"
                   : "text-gray-500 hover:text-orange-600 hover:bg-orange-50/60"
@@ -568,12 +723,57 @@ export function Navbar() {
                   <X className="w-5 h-5" />
                 </button>
               </form>
+              {showAutocomplete && hasSuggestions && (
+                <div className="mt-3 rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                  {matchedCategories.length > 0 && (
+                    <div className="px-2 py-2">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2 py-1">Categories</div>
+                      <div className="flex flex-wrap gap-1.5 px-2">
+                        {matchedCategories.map((cat) => (
+                          <Link
+                            key={`mcat-${cat.id}`}
+                            href={`/products?category=${cat.slug || cat.name.toLowerCase().replace(/\s+/g, "-")}`}
+                            onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors border border-orange-100"
+                          >
+                            <Tag className="w-3 h-3" />
+                            {cat.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {matchedProducts.length > 0 && (
+                    <div className={cn("px-2 py-2", matchedCategories.length > 0 && "border-t border-gray-100")}>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2 py-1">Products</div>
+                      {matchedProducts.map((p) => (
+                        <Link
+                          key={`mp-${p.id}`}
+                          href={`/products/${p.slug || p.id}`}
+                          onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                          className="flex items-center gap-3 px-2.5 py-2 rounded-xl hover:bg-orange-50 transition-colors"
+                        >
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover bg-gray-100 shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-gray-100 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
+                            <p className="text-[11px] text-gray-400 font-medium">৳{p.discountPrice ?? p.price}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="text-xs text-gray-400 font-semibold">Popular:</span>
                 {['Custom T-Shirt', 'Oversized Hoodie', 'Logo Cap', 'Custom Mug'].map(term => (
                   <button
                     key={term}
-                    onClick={() => { navigate(`/products?search=${encodeURIComponent(term)}`); setSearchOpen(false); setSearchQuery(""); }}
+                    onClick={() => goToSearchTerm(term)}
                     className="px-3 py-1 rounded-full text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors border border-orange-100"
                   >
                     {term}
