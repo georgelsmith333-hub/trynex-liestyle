@@ -7,281 +7,51 @@ function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password + "trynex_salt_2024").digest("hex");
 }
 
-export async function runMigrations(): Promise<void> {
+// Re-export the migration runner under its historical name so callers
+// (artifacts/api-server/src/index.ts) keep working unchanged.
+export { runMigrations } from "./migrationRunner";
+
+async function seedHampersIfEmpty(): Promise<void> {
   try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS admins (
-        id SERIAL PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
+    const existing = await db.execute(sql`SELECT COUNT(*)::int AS c FROM hamper_packages`);
+    const count = (existing as any).rows?.[0]?.c ?? 0;
+    if (count > 0) return;
 
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS admin_sessions (
-        id SERIAL PRIMARY KEY,
-        token_hash TEXT NOT NULL UNIQUE,
-        admin_id INTEGER,
-        role TEXT NOT NULL DEFAULT 'admin',
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        last_used_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        revoked_at TIMESTAMP,
-        user_agent TEXT,
-        ip TEXT
-      )
+      INSERT INTO hamper_packages (slug, name, name_bn, description, category, occasion, image_url, base_price, discount_price, items, featured, sort_order, stock) VALUES
+      ('birthday-classic', 'Birthday Classic Hamper', 'জন্মদিনের ক্লাসিক হ্যাম্পার',
+       'Curated birthday surprise — premium mug, custom t-shirt, and a handwritten card.',
+       'celebration', 'Birthday',
+       'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=800&q=80',
+       1799, 1499,
+       '[{"name":"Premium Ceramic Mug","quantity":1},{"name":"Custom Birthday T-Shirt","quantity":1},{"name":"Handwritten Birthday Card","quantity":1},{"name":"Chocolate Bar","quantity":2}]'::jsonb,
+       true, 1, 50),
+      ('anniversary-romance', 'Anniversary Romance Hamper', 'বিবাহবার্ষিকীর রোমান্স হ্যাম্পার',
+       'Celebrate love with a curated keepsake bundle — engraved mug, photo frame, and roses.',
+       'celebration', 'Anniversary',
+       'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=80',
+       2499, 1999,
+       '[{"name":"Engraved Couple Mug Set","quantity":1},{"name":"Wooden Photo Frame","quantity":1},{"name":"Velvet Rose Bouquet","quantity":1},{"name":"Personalized Card","quantity":1}]'::jsonb,
+       true, 2, 40),
+      ('corporate-premium', 'Corporate Premium Hamper', 'কর্পোরেট প্রিমিয়াম হ্যাম্পার',
+       'Impress clients and team — branded notebook, premium pen, mug, and gourmet snacks.',
+       'corporate', 'Corporate',
+       'https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&q=80',
+       3499, 2999,
+       '[{"name":"Branded Leather Notebook","quantity":1},{"name":"Premium Metal Pen","quantity":1},{"name":"Corporate Logo Mug","quantity":1},{"name":"Gourmet Snack Box","quantity":1},{"name":"Thank-You Card","quantity":1}]'::jsonb,
+       true, 3, 100)
+      ON CONFLICT (slug) DO NOTHING
     `);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash ON admin_sessions(token_hash)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expires_at)`);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS settings (
-        id SERIAL PRIMARY KEY,
-        key TEXT NOT NULL UNIQUE,
-        value TEXT,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        description TEXT,
-        image_url TEXT,
-        product_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        description TEXT,
-        price NUMERIC(10,2) NOT NULL,
-        discount_price NUMERIC(10,2),
-        category_id INTEGER,
-        image_url TEXT,
-        images JSONB DEFAULT '[]',
-        sizes JSONB DEFAULT '[]',
-        colors JSONB DEFAULT '[]',
-        stock INTEGER NOT NULL DEFAULT 0,
-        featured BOOLEAN DEFAULT false,
-        rating NUMERIC(3,2) DEFAULT 0,
-        review_count INTEGER DEFAULT 0,
-        customizable BOOLEAN DEFAULT false,
-        tags JSONB DEFAULT '[]',
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        order_number TEXT NOT NULL UNIQUE,
-        customer_name TEXT NOT NULL,
-        customer_email TEXT NOT NULL,
-        customer_phone TEXT NOT NULL,
-        shipping_address TEXT NOT NULL,
-        shipping_city TEXT,
-        shipping_district TEXT,
-        payment_method TEXT NOT NULL,
-        payment_status TEXT NOT NULL DEFAULT 'pending',
-        status TEXT NOT NULL DEFAULT 'pending',
-        items JSONB NOT NULL DEFAULT '[]',
-        subtotal NUMERIC(10,2) NOT NULL,
-        shipping_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
-        total NUMERIC(10,2) NOT NULL,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS blog_posts (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        excerpt TEXT,
-        content TEXT NOT NULL,
-        image_url TEXT,
-        author TEXT DEFAULT 'TryNex Team',
-        tags TEXT[] DEFAULT '{}',
-        published BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS customers (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        phone TEXT,
-        password_hash TEXT,
-        google_id TEXT UNIQUE,
-        facebook_id TEXT UNIQUE,
-        avatar TEXT,
-        verified BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    // Backfill columns onto pre-existing customers tables. The original
-    // CREATE TABLE above did NOT include guest-account / social-login
-    // columns, so production databases that were initialized before those
-    // features shipped are missing them — which makes /auth/guest fail with
-    // "column guest_sequence does not exist" and /auth/google fail to
-    // upsert. These ALTERs are idempotent and safe to run on every boot.
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS google_id TEXT`);
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS facebook_id TEXT`);
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS avatar TEXT`);
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false`);
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT false`);
-    await db.execute(sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS guest_sequence INTEGER`);
-    await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS customers_google_id_unique
-        ON customers (google_id)
-        WHERE google_id IS NOT NULL
-    `);
-    await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS customers_facebook_id_unique
-        ON customers (facebook_id)
-        WHERE facebook_id IS NOT NULL
-    `);
-    await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS customers_guest_sequence_unique
-        ON customers (guest_sequence)
-        WHERE guest_sequence IS NOT NULL
-    `);
-
-    await db.execute(sql`
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT
-    `);
-    await db.execute(sql`
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_discount NUMERIC(10,2)
-    `);
-    await db.execute(sql`
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER
-    `);
-    await db.execute(sql`
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS studio_assets_missing BOOLEAN NOT NULL DEFAULT false
-    `);
-
-    // Testimonials table for dynamic homepage reviews (Admin Visual Designer, Task #7)
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS testimonials (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT '',
-        location TEXT NOT NULL DEFAULT '',
-        stars INTEGER NOT NULL DEFAULT 5,
-        body TEXT NOT NULL,
-        active BOOLEAN NOT NULL DEFAULT true,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS hamper_packages (
-        id SERIAL PRIMARY KEY,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        name_bn TEXT,
-        description TEXT,
-        description_bn TEXT,
-        category TEXT NOT NULL DEFAULT 'general',
-        occasion TEXT,
-        image_url TEXT,
-        images JSONB DEFAULT '[]',
-        base_price NUMERIC(10,2) NOT NULL,
-        discount_price NUMERIC(10,2),
-        items JSONB NOT NULL DEFAULT '[]',
-        is_customizable BOOLEAN DEFAULT false,
-        active BOOLEAN DEFAULT true,
-        featured BOOLEAN DEFAULT false,
-        sort_order INTEGER DEFAULT 0,
-        stock INTEGER DEFAULT 100,
-        tags JSONB DEFAULT '[]',
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    // Seed demo gift hampers (idempotent — only inserts if hamper_packages is empty)
-    try {
-      const existing = await db.execute(sql`SELECT COUNT(*)::int AS c FROM hamper_packages`);
-      const count = (existing as any).rows?.[0]?.c ?? 0;
-      if (count === 0) {
-        await db.execute(sql`
-          INSERT INTO hamper_packages (slug, name, name_bn, description, category, occasion, image_url, base_price, discount_price, items, featured, sort_order, stock) VALUES
-          ('birthday-classic', 'Birthday Classic Hamper', 'জন্মদিনের ক্লাসিক হ্যাম্পার',
-           'Curated birthday surprise — premium mug, custom t-shirt, and a handwritten card.',
-           'celebration', 'Birthday',
-           'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=800&q=80',
-           1799, 1499,
-           '[{"name":"Premium Ceramic Mug","quantity":1},{"name":"Custom Birthday T-Shirt","quantity":1},{"name":"Handwritten Birthday Card","quantity":1},{"name":"Chocolate Bar","quantity":2}]'::jsonb,
-           true, 1, 50),
-          ('anniversary-romance', 'Anniversary Romance Hamper', 'বিবাহবার্ষিকীর রোমান্স হ্যাম্পার',
-           'Celebrate love with a curated keepsake bundle — engraved mug, photo frame, and roses.',
-           'celebration', 'Anniversary',
-           'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=80',
-           2499, 1999,
-           '[{"name":"Engraved Couple Mug Set","quantity":1},{"name":"Wooden Photo Frame","quantity":1},{"name":"Velvet Rose Bouquet","quantity":1},{"name":"Personalized Card","quantity":1}]'::jsonb,
-           true, 2, 40),
-          ('corporate-premium', 'Corporate Premium Hamper', 'কর্পোরেট প্রিমিয়াম হ্যাম্পার',
-           'Impress clients and team — branded notebook, premium pen, mug, and gourmet snacks.',
-           'corporate', 'Corporate',
-           'https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&q=80',
-           3499, 2999,
-           '[{"name":"Branded Leather Notebook","quantity":1},{"name":"Premium Metal Pen","quantity":1},{"name":"Corporate Logo Mug","quantity":1},{"name":"Gourmet Snack Box","quantity":1},{"name":"Thank-You Card","quantity":1}]'::jsonb,
-           true, 3, 100)
-          ON CONFLICT (slug) DO NOTHING
-        `);
-        logger.info("Seeded 3 demo gift hampers");
-      }
-    } catch (err) {
-      logger.error({ err }, "Hamper seed failed — continuing startup anyway");
-    }
-
-    // blog_posts schema is owned by lib/db/src/schema/index.ts (blogPostsTable)
-    // and applied via `pnpm --filter @workspace/db push` (drizzle-kit).
-
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS reviews (
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER NOT NULL,
-        customer_id INTEGER,
-        customer_name TEXT NOT NULL,
-        customer_email TEXT,
-        rating INTEGER NOT NULL,
-        title TEXT,
-        body TEXT NOT NULL,
-        approved BOOLEAN DEFAULT false,
-        order_id INTEGER,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `);
-
-    logger.info("Database migrations complete");
+    logger.info("Seeded 3 demo gift hampers");
   } catch (err) {
-    logger.error({ err }, "Migration failed — continuing startup anyway");
+    logger.error({ err }, "Hamper seed failed — continuing startup anyway");
   }
 }
 
 export async function autoSeedIfEmpty(): Promise<void> {
   try {
+    await seedHampersIfEmpty();
+
     const existingProducts = await db.select().from(productsTable).limit(1);
     if (existingProducts.length > 0) {
       return;
