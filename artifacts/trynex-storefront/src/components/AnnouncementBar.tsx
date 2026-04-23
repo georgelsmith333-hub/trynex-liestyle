@@ -4,12 +4,6 @@ import { Flame, Megaphone, Gift, Zap, CreditCard, Award, Star, X } from "lucide-
 
 const ICON_MAP = [Flame, Star, Gift, Zap, CreditCard, Award];
 
-const DEFAULT_ANNOUNCEMENTS = [
-  "Free delivery on orders above ৳1500!",
-  "COD available",
-  "WhatsApp: 01903426915",
-];
-
 export function AnnouncementBar() {
   const settings = useSiteSettings();
   const enabled = settings.announcementEnabled !== false;
@@ -50,7 +44,9 @@ export function AnnouncementBar() {
 
   const announcements = settings.announcementBar
     ? settings.announcementBar.split('|').map(t => t.trim()).filter(Boolean)
-    : DEFAULT_ANNOUNCEMENTS;
+    : [];
+
+  if (announcements.length === 0) return null;
 
   const handleClose = () => {
     setVisible(false);

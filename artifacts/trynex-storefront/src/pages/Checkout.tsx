@@ -45,10 +45,6 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 const DISTRICTS = getAllDistricts();
 
-const FALLBACK_PAYMENT_NUMBER = "01747292277";
-const FALLBACK_WHATSAPP_LOCAL = "01903426915";
-const FALLBACK_WHATSAPP_INTL = "+8801903426915";
-
 const inputClass = "w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all placeholder:text-gray-400";
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
 
@@ -62,11 +58,12 @@ export default function Checkout() {
   const { toast } = useToast();
   const settings = useSiteSettings();
 
-  const PAYMENT_NUMBER_LOCAL = settings.bkashNumber || FALLBACK_PAYMENT_NUMBER;
-  const WHATSAPP_NUMBER_LOCAL = settings.whatsappNumber?.replace(/[^0-9]/g, '').replace(/^880/, '') || FALLBACK_WHATSAPP_LOCAL;
-  const WHATSAPP_NUMBER_INTL = settings.whatsappNumber?.replace(/[^+0-9]/g, '') || FALLBACK_WHATSAPP_INTL;
-  const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;
-  const shippingFee = settings.shippingCost ?? 100;
+  const PAYMENT_NUMBER_LOCAL = settings.bkashNumber || "";
+  const WHATSAPP_NUMBER_LOCAL = settings.whatsappNumber?.replace(/[^0-9]/g, '').replace(/^880/, '') || "";
+  const WHATSAPP_NUMBER_INTL = settings.whatsappNumber?.replace(/[^+0-9]/g, '') || "";
+  // Shipping config comes from admin Site Settings; 0/blank ⇒ feature disabled
+  const freeShippingThreshold = settings.freeShippingThreshold || 0;
+  const shippingFee = settings.shippingCost || 0;
 
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('advance');
   const [walletChoice, setWalletChoice] = useState<MobileMethod>('bkash');
@@ -284,10 +281,10 @@ export default function Checkout() {
   }, [items, promoApplied]);
 
   const getPaymentNumber = (method: MobileMethod) => {
-    if (method === 'bkash') return settings.bkashNumber || FALLBACK_PAYMENT_NUMBER;
-    if (method === 'nagad') return settings.nagadNumber || FALLBACK_PAYMENT_NUMBER;
-    if (method === 'upay') return (settings as any).upayNumber || FALLBACK_PAYMENT_NUMBER;
-    return FALLBACK_PAYMENT_NUMBER;
+    if (method === 'bkash') return settings.bkashNumber || "";
+    if (method === 'nagad') return settings.nagadNumber || "";
+    if (method === 'upay') return settings.upayNumber || "";
+    return "";
   };
 
   const validatePromo = async () => {
@@ -329,7 +326,10 @@ export default function Checkout() {
   };
 
   const liveSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCost = liveSubtotal > 0 && liveSubtotal < freeShippingThreshold ? shippingFee : 0;
+  // Shipping is charged unless either: shipping is free (fee=0), no items in cart,
+  // or admin has set a free-shipping threshold and the order qualifies.
+  const qualifiesForFreeShipping = freeShippingThreshold > 0 && liveSubtotal >= freeShippingThreshold;
+  const shippingCost = liveSubtotal > 0 && !qualifiesForFreeShipping ? shippingFee : 0;
   const total = Math.max(0, liveSubtotal + shippingCost - promoDiscount);
   const advanceAmount = Math.ceil(total * 0.15);
 
@@ -342,8 +342,19 @@ export default function Checkout() {
     }
   }, [items.length, step, setLocation]);
 
+  // Suppress checkout render while redirecting to /cart on empty cart.
+  // We render a deterministic loading state instead of `return null` so
+  // the user never sees a flash of empty checkout chrome before the
+  // redirect lands.
   if (items.length === 0 && step === 'form') {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3 text-gray-400">
+          <div className="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+          <p className="text-xs font-medium tracking-wide uppercase">Returning to cart…</p>
+        </div>
+      </div>
+    );
   }
 
   const effectiveGatewayMethod: MobileMethod = walletChoice;
@@ -351,7 +362,8 @@ export default function Checkout() {
 
   const onSubmit = async (data: CheckoutFormData) => {
     const snapSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const snapShipping = snapSubtotal > 0 && snapSubtotal < freeShippingThreshold ? shippingFee : 0;
+    const snapQualifies = freeShippingThreshold > 0 && snapSubtotal >= freeShippingThreshold;
+    const snapShipping = snapSubtotal > 0 && !snapQualifies ? shippingFee : 0;
     const snapTotal = Math.max(0, snapSubtotal + snapShipping - promoDiscount);
     const snapAdvance = Math.ceil(snapTotal * 0.15);
 
@@ -725,22 +737,26 @@ export default function Checkout() {
             </div>
           )}
 
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER_INTL.replace('+', '')}?text=Hi TryNex! My order number is ${createdOrder?.orderNumber}. I need help.`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white text-sm mb-2"
-            style={{ background: '#25D366', boxShadow: '0 4px 20px rgba(37,211,102,0.3)' }}
-          >
-            <MessageCircle className="w-4 h-4" /> WhatsApp — {WHATSAPP_NUMBER_LOCAL}
-          </a>
-          <a
-            href={`tel:${WHATSAPP_NUMBER_INTL}`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm mb-3"
-            style={{ background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)', color: '#16a34a' }}
-          >
-            <Phone className="w-4 h-4" /> Call Us — {WHATSAPP_NUMBER_LOCAL}
-          </a>
+          {WHATSAPP_NUMBER_INTL && (
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER_INTL.replace('+', '')}?text=Hi TryNex! My order number is ${createdOrder?.orderNumber}. I need help.`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white text-sm mb-2"
+              style={{ background: '#25D366', boxShadow: '0 4px 20px rgba(37,211,102,0.3)' }}
+            >
+              <MessageCircle className="w-4 h-4" /> WhatsApp{WHATSAPP_NUMBER_LOCAL ? ` — ${WHATSAPP_NUMBER_LOCAL}` : ""}
+            </a>
+          )}
+          {WHATSAPP_NUMBER_INTL && (
+            <a
+              href={`tel:${WHATSAPP_NUMBER_INTL}`}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm mb-3"
+              style={{ background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)', color: '#16a34a' }}
+            >
+              <Phone className="w-4 h-4" /> Call Us{WHATSAPP_NUMBER_LOCAL ? ` — ${WHATSAPP_NUMBER_LOCAL}` : ""}
+            </a>
+          )}
 
           <button
             onClick={() => {
@@ -920,25 +936,29 @@ export default function Checkout() {
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                 Having trouble? Wrong amount? Contact us immediately — we're here for you.
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER_INTL.replace('+', '')}?text=Hi! I need help with my ${theme.name} payment for order ${createdOrder?.orderNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white text-sm"
-                  style={{ background: '#25D366', boxShadow: '0 4px 15px rgba(37,211,102,0.3)' }}
-                >
-                  <MessageCircle className="w-4 h-4" /> WhatsApp
-                </a>
-                <a
-                  href={`tel:${WHATSAPP_NUMBER_INTL}`}
-                  className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm"
-                  style={{ background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)', color: '#16a34a' }}
-                >
-                  <Phone className="w-4 h-4" /> Call Us
-                </a>
-              </div>
-              <p className="text-center text-xs text-gray-400 mt-2">{WHATSAPP_NUMBER_LOCAL}</p>
+              {WHATSAPP_NUMBER_INTL && (
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER_INTL.replace('+', '')}?text=Hi! I need help with my ${theme.name} payment for order ${createdOrder?.orderNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white text-sm"
+                    style={{ background: '#25D366', boxShadow: '0 4px 15px rgba(37,211,102,0.3)' }}
+                  >
+                    <MessageCircle className="w-4 h-4" /> WhatsApp
+                  </a>
+                  <a
+                    href={`tel:${WHATSAPP_NUMBER_INTL}`}
+                    className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm"
+                    style={{ background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)', color: '#16a34a' }}
+                  >
+                    <Phone className="w-4 h-4" /> Call Us
+                  </a>
+                </div>
+              )}
+              {WHATSAPP_NUMBER_LOCAL && (
+                <p className="text-center text-xs text-gray-400 mt-2">{WHATSAPP_NUMBER_LOCAL}</p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -1435,7 +1455,7 @@ export default function Checkout() {
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
                   <ShieldCheck className="w-3.5 h-3.5 text-primary/50" />
-                  Secure · All 64 Districts · Free Shipping ৳1500+
+                  Secure · All 64 Districts{freeShippingThreshold > 0 ? ` · Free Shipping ৳${freeShippingThreshold}+` : ""}
                 </div>
 
                 <a

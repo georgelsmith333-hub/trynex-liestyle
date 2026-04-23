@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db, ordersTable, productsTable, settingsTable, promoCodesTable, referralsTable, hamperPackagesTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray, lte } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
@@ -186,7 +186,8 @@ function generateOrderNumber(): string {
 async function moveStudioOriginals(
   studioItems: any[],
   orderNumber: string,
-): Promise<void> {
+): Promise<{ assetsMissing: boolean }> {
+  let assetsMissing = false;
   for (let itemIdx = 0; itemIdx < studioItems.length; itemIdx++) {
     const item = studioItems[itemIdx];
     let note: any;
@@ -208,8 +209,9 @@ async function moveStudioOriginals(
         );
         updatedAssets.push({ ...asset, objectPath: newPath });
       } catch (err) {
-        logger.warn({ err }, "moveStudioOriginals: failed to move asset (non-fatal)");
-        updatedAssets.push(asset);
+        logger.warn({ err, orderNumber, itemIdx, asset: asset.filename }, "moveStudioOriginals: failed to move asset — order will be flagged studio_assets_missing");
+        updatedAssets.push({ ...asset, missing: true });
+        assetsMissing = true;
       }
     }
 
@@ -217,6 +219,7 @@ async function moveStudioOriginals(
     note.originalAssetUrls = updatedAssets.map((a: any) => a.objectPath);
     item.customNote = JSON.stringify(note);
   }
+  return { assetsMissing };
 }
 
 function mapOrder(o: any) {
@@ -239,6 +242,7 @@ function mapOrder(o: any) {
     promoDiscount: o.promoDiscount ? parseFloat(o.promoDiscount) || 0 : 0,
     total: parseFloat(o.total ?? "0") || 0,
     notes: o.notes,
+    studioAssetsMissing: !!o.studioAssetsMissing,
     utmSource: o.utmSource || null,
     utmMedium: o.utmMedium || null,
     utmCampaign: o.utmCampaign || null,
@@ -600,23 +604,26 @@ router.post("/orders", async (req, res) => {
     // lifecycle rule on `uploads/orders/` can purge unreferenced prefixes after
     // N days. For a future improvement, consider a post-commit move that reads
     // the committed orderNumber and patches items JSONB in a second UPDATE.
+    let studioAssetsMissing = false;
     if (studioOrderItems.length > 0) {
-      await moveStudioOriginals(studioOrderItems, preGeneratedOrderNumber);
+      const moveResult = await moveStudioOriginals(studioOrderItems, preGeneratedOrderNumber);
+      studioAssetsMissing = moveResult.assetsMissing;
     }
 
     const subtotal = orderItems.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
 
-    let freeThreshold = 1500;
-    let shipCost = 100;
+    // Shipping config is admin-controlled. 0/blank ⇒ feature disabled (no charge / no threshold).
+    let freeThreshold = 0;
+    let shipCost = 0;
     try {
       const settings = await db.select().from(settingsTable);
       const settingsMap = Object.fromEntries(settings.map(s => [s.key, s.value]));
-      if (settingsMap.freeShippingThreshold) freeThreshold = Number(settingsMap.freeShippingThreshold) || 1500;
-      if (settingsMap.shippingCost) shipCost = Number(settingsMap.shippingCost) || 100;
+      if (settingsMap.freeShippingThreshold) freeThreshold = Number(settingsMap.freeShippingThreshold) || 0;
+      if (settingsMap.shippingCost) shipCost = Number(settingsMap.shippingCost) || 0;
     } catch (err) {
-      logger.warn({ err, route: "POST /orders" }, "Failed to load shipping settings; using defaults");
+      logger.warn({ err, route: "POST /orders" }, "Failed to load shipping settings — defaulting to no charge");
     }
-    const shippingCost = subtotal >= freeThreshold ? 0 : shipCost;
+    const shippingCost = freeThreshold > 0 && subtotal >= freeThreshold ? 0 : shipCost;
 
     const wantsPromo = promoCode && typeof promoCode === "string" && promoCode.trim().length > 0;
     const promoCodeNormalized = wantsPromo ? promoCode.trim().toUpperCase() : null;
@@ -750,6 +757,7 @@ router.post("/orders", async (req, res) => {
         promoDiscount: validatedPromoDiscount > 0 ? validatedPromoDiscount.toString() : null,
         total: total.toString(),
         notes,
+        studioAssetsMissing,
       }).returning();
       return created;
     });
@@ -837,7 +845,7 @@ async function sendStatusUpdateNotification(orderData: any, newStatus: string) {
   }
 }
 
-router.put("/orders/:id/status", requireAdmin, async (req, res) => {
+const updateOrderStatusHandler = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     const { status } = req.body;
@@ -858,9 +866,11 @@ router.put("/orders/:id/status", requireAdmin, async (req, res) => {
     req.log.error({ err }, "Failed to update order status");
     res.status(500).json({ error: "internal_error", message: "Failed to update order status" });
   }
-});
+};
+router.put("/orders/:id/status", requireAdmin, updateOrderStatusHandler);
+router.patch("/orders/:id/status", requireAdmin, updateOrderStatusHandler);
 
-router.put("/orders/:id/payment-status", requireAdmin, async (req, res) => {
+const updatePaymentStatusHandler = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     const { paymentStatus } = req.body;
@@ -878,7 +888,9 @@ router.put("/orders/:id/payment-status", requireAdmin, async (req, res) => {
     req.log.error({ err }, "Failed to update payment status");
     res.status(500).json({ error: "internal_error", message: "Failed to update payment status" });
   }
-});
+};
+router.put("/orders/:id/payment-status", requireAdmin, updatePaymentStatusHandler);
+router.patch("/orders/:id/payment-status", requireAdmin, updatePaymentStatusHandler);
 
 router.put("/orders/:id/payment-info", async (req, res) => {
   try {

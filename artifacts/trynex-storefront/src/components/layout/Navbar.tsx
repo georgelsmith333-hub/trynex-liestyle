@@ -148,21 +148,22 @@ export function Navbar() {
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black font-display text-lg shadow-lg transition-transform group-hover:scale-105"
               style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}
             >
-              {(settings.siteName?.trim() || "TryNex Lifestyle")[0]}
+              {(settings.siteName?.trim() || "·")[0]}
             </div>
             <div className="flex flex-col leading-none gap-[3px]">
               <span className="text-[1.35rem] font-black font-display tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
                 {(() => {
-                  const name = settings.siteName?.trim() || "TryNex Lifestyle";
-                  if (name === "TryNex Lifestyle") return <>TRY<span style={{ color: '#E85D04' }}>NEX</span></>;
-                  return <span style={{ color: '#E85D04' }}>{name.split(' ')[0]}</span>;
+                  const name = settings.siteName?.trim() || "";
+                  if (!name) return null;
+                  const first = name.split(' ')[0];
+                  return <span style={{ color: '#E85D04' }}>{first}</span>;
                 })()}
               </span>
               <span className="text-[9px] font-bold text-gray-400 tracking-[0.25em] uppercase">
                 {(() => {
-                  const name = settings.siteName?.trim() || "TryNex Lifestyle";
-                  if (name === "TryNex Lifestyle") return "Lifestyle";
-                  return name.split(' ').slice(1).join(' ') || settings.tagline || "";
+                  const name = settings.siteName?.trim() || "";
+                  const rest = name.split(' ').slice(1).join(' ');
+                  return rest || settings.tagline || "";
                 })()}
               </span>
             </div>

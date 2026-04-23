@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import { db, ordersTable, productsTable, adminTable, customersTable } from "@workspace/db";
 import { eq, sql, desc, lte, asc } from "drizzle-orm";
 import * as crypto from "crypto";
-import { signToken, requireAdmin } from "../middlewares/adminAuth";
+import { requireAdmin } from "../middlewares/adminAuth";
+import { createAdminSession, revokeAdminSession, ADMIN_SESSION_TTL_MS } from "../lib/adminSessions";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -61,13 +62,18 @@ router.post("/admin/login", async (req, res) => {
       res.status(401).json({ error: "unauthorized", message: "Invalid password" });
       return;
     }
-    const token = signToken({ role: "admin" });
+    const adminId = admin[0]?.id ?? null;
+    const { token } = await createAdminSession({
+      adminId,
+      userAgent: req.headers["user-agent"]?.toString().slice(0, 500) ?? null,
+      ip: (req.ip || req.headers["x-forwarded-for"]?.toString() || "").slice(0, 64) || null,
+    });
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("admin_token", token, {
       httpOnly: true,
       sameSite: isProduction ? "none" : "lax",
       secure: isProduction,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: ADMIN_SESSION_TTL_MS,
     });
     res.json({ success: true, token });
   } catch (err) {
@@ -98,7 +104,17 @@ router.post("/admin/reset-password", async (req, res) => {
   }
 });
 
-router.post("/admin/logout", (req, res) => {
+router.post("/admin/logout", async (req, res) => {
+  try {
+    const bearer = req.headers.authorization?.replace("Bearer ", "");
+    const cookieToken = (req as any).cookies?.admin_token;
+    const token = bearer ?? cookieToken;
+    if (token) {
+      await revokeAdminSession(token);
+    }
+  } catch (err) {
+    req.log.warn({ err }, "Failed to revoke admin session on logout");
+  }
   res.clearCookie("admin_token");
   res.json({ success: true, message: "Logged out" });
 });

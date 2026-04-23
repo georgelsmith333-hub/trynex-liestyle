@@ -19,6 +19,23 @@ export async function runMigrations(): Promise<void> {
     `);
 
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS admin_sessions (
+        id SERIAL PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        admin_id INTEGER,
+        role TEXT NOT NULL DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        last_used_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        revoked_at TIMESTAMP,
+        user_agent TEXT,
+        ip TEXT
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash ON admin_sessions(token_hash)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expires_at)`);
+
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS settings (
         id SERIAL PRIMARY KEY,
         key TEXT NOT NULL UNIQUE,
@@ -155,6 +172,9 @@ export async function runMigrations(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INTEGER
     `);
+    await db.execute(sql`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS studio_assets_missing BOOLEAN NOT NULL DEFAULT false
+    `);
 
     // Testimonials table for dynamic homepage reviews (Admin Visual Designer, Task #7)
     await db.execute(sql`
@@ -233,6 +253,9 @@ export async function runMigrations(): Promise<void> {
     } catch (err) {
       logger.error({ err }, "Hamper seed failed — continuing startup anyway");
     }
+
+    // blog_posts schema is owned by lib/db/src/schema/index.ts (blogPostsTable)
+    // and applied via `pnpm --filter @workspace/db push` (drizzle-kit).
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS reviews (

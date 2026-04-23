@@ -226,7 +226,12 @@ export default function Account() {
     setPasswordSaving(false);
   };
 
-  if (isLoading) {
+  // Suppress account UI render until BOTH:
+  //   1. Auth state has resolved (isLoading === false), AND
+  //   2. We have a customer object to render with.
+  // This prevents the brief flash of empty-account chrome between
+  // session resolution and the redirect-to-/login effect firing.
+  if (isLoading || !isAuthenticated || !customer) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
         <Navbar />
@@ -236,8 +241,6 @@ export default function Account() {
       </div>
     );
   }
-
-  if (!customer) return null;
 
   const tabs = [
     { id: "profile" as const, label: "Profile", icon: User },

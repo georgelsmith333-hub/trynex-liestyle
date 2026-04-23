@@ -336,7 +336,17 @@ export default function AdminOrders() {
                         transition={{ delay: i * 0.02 }}
                         className="border-t border-white/5 hover:bg-white/[0.02] transition-colors group"
                       >
-                        <td className="px-4 py-4 font-mono text-xs font-bold text-primary whitespace-nowrap">{order.orderNumber}</td>
+                        <td className="px-4 py-4 font-mono text-xs font-bold text-primary whitespace-nowrap">
+                          {order.orderNumber}
+                          {order.studioAssetsMissing && (
+                            <span
+                              className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider text-red-700 bg-red-50 border border-red-200"
+                              title="One or more customer-uploaded design files failed to copy. Source artwork may need to be re-collected from the customer."
+                            >
+                              ⚠ Files missing
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-4 text-xs text-gray-500 whitespace-nowrap">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-BD', { day: '2-digit', month: 'short' }) : 'N/A'}
                           <br />

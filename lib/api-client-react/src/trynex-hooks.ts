@@ -73,6 +73,7 @@ export interface Order {
   promoCode?: string | null;
   promoDiscount?: string | null;
   customerId?: number | null;
+  studioAssetsMissing?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -313,6 +314,15 @@ export interface FetchSocialUrl200Post {
 export interface SiteSettings {
   studioTshirtColors?: string;
   studioMugColors?: string;
+  siteName?: string;
+  tagline?: string;
+  footerDescription?: string;
+  whatsappNumber?: string;
+  phone?: string;
+  email?: string;
+  upayNumber?: string;
+  freeShippingThreshold?: string;
+  shippingCost?: string;
   [key: string]: unknown;
 }
 
@@ -435,6 +445,44 @@ export const useListCategories = (_opts?: ReqOpts) => {
   });
 };
 
+export const useCreateCategory = (opts?: ReqOpts) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<Category>) =>
+      customFetch<Category>("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/categories"] }),
+  });
+};
+
+export const useUpdateCategory = (opts?: ReqOpts) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Category> }) =>
+      customFetch<Category>(`/api/categories/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/categories"] }),
+  });
+};
+
+export const useDeleteCategory = (opts?: ReqOpts) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      customFetch<void>(`/api/categories/${id}`, {
+        method: "DELETE",
+        headers: { ...(opts?.request?.headers ?? {}) },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/categories"] }),
+  });
+};
+
 // ─── Testimonial Hooks ───────────────────────────────────────────────────────
 
 export const useGetTestimonials = () => {
@@ -500,12 +548,14 @@ export const useCreateOrder = () => {
   });
 };
 
-export const useTrackOrder = (orderNumber: string) => {
-  return useQuery({
-    queryKey: ["/api/orders/track", orderNumber],
-    queryFn: () => customFetch<{ order: Order }>(`/api/orders/track/${orderNumber}`),
-    enabled: !!orderNumber,
-    retry: false,
+export const useTrackOrder = () => {
+  return useMutation({
+    mutationFn: ({ orderNumber, email, phone }: { orderNumber: string; email?: string; phone?: string }) =>
+      customFetch<Order>("/api/orders/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber, email, phone }),
+      }),
   });
 };
 

@@ -7,6 +7,19 @@ export const adminTable = pgTable("admins", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const adminSessionsTable = pgTable("admin_sessions", {
+  id: serial("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  adminId: integer("admin_id"),
+  role: text("role").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  userAgent: text("user_agent"),
+  ip: text("ip"),
+});
+
 export const settingsTable = pgTable("settings", {
   id: serial("id").primaryKey(),
   key: text("key").notNull().unique(),
@@ -66,6 +79,10 @@ export const ordersTable = pgTable("orders", {
   promoCode: text("promo_code"),
   promoDiscount: numeric("promo_discount", { precision: 10, scale: 2 }),
   customerId: integer("customer_id"),
+  // Set when one or more customer-uploaded design files failed to copy from
+  // the temp staging area into the order's permanent folder. Order is still
+  // created, but admin must follow up to recover the source artwork.
+  studioAssetsMissing: boolean("studio_assets_missing").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -186,6 +203,8 @@ export const referralsTable = pgTable("referrals", {
 
 export type Admin = typeof adminTable.$inferSelect;
 export type InsertAdmin = typeof adminTable.$inferInsert;
+export type AdminSession = typeof adminSessionsTable.$inferSelect;
+export type InsertAdminSession = typeof adminSessionsTable.$inferInsert;
 export type Setting = typeof settingsTable.$inferSelect;
 export type Category = typeof categoriesTable.$inferSelect;
 export type InsertCategory = typeof categoriesTable.$inferInsert;

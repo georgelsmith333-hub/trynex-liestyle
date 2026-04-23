@@ -23,13 +23,18 @@ export function Footer() {
   const settings = useSiteSettings();
   const { toast } = useToast();
 
-  const facebookUrl = settings.facebookUrl || "https://facebook.com/trynexlifestyle";
-  const instagramUrl = settings.instagramUrl || "https://instagram.com/trynexlifestyle";
-  const youtubeUrl = settings.youtubeUrl || "https://youtube.com/@trynex";
-  const contactPhone = settings.phone || "+8801903426915";
-  const contactEmail = settings.email || "hello@trynexshop.com";
-  const contactAddress = settings.address || "Dhaka, Bangladesh";
+  const facebookUrl = settings.facebookUrl?.trim() || "";
+  const instagramUrl = settings.instagramUrl?.trim() || "";
+  const youtubeUrl = settings.youtubeUrl?.trim() || "";
+  const contactPhone = settings.phone?.trim() || "";
+  const contactEmail = settings.email?.trim() || "";
+  const contactAddress = settings.address?.trim() || "";
   const phoneHref = contactPhone.replace(/[^+0-9]/g, '');
+  const socialLinks = [
+    facebookUrl ? { icon: Facebook, href: facebookUrl, color: "#1877f2" } : null,
+    instagramUrl ? { icon: Instagram, href: instagramUrl, color: "#e1306c" } : null,
+    youtubeUrl ? { icon: Youtube, href: youtubeUrl, color: "#ff0000" } : null,
+  ].filter(Boolean) as Array<{ icon: typeof Facebook; href: string; color: string }>;
 
   const handleSecretTap = useCallback(() => {
     setTapFeedback(true);
@@ -134,18 +139,17 @@ export function Footer() {
             <Link href="/" className="inline-flex items-center gap-2.5 mb-5 group">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black font-display text-white text-base"
                 style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
-                {(settings.siteName?.trim() || "TryNex Lifestyle")[0]}
+                {(settings.siteName?.trim() || "·")[0]}
               </div>
               <span className="text-2xl font-black font-display tracking-tight text-white">
                 {(() => {
-                  const name = settings.siteName?.trim() || "TryNex Lifestyle";
-                  if (name === "TryNex Lifestyle") return (
-                    <>TRY<span style={{ color: '#FB8500' }}>NEX</span>
-                      <span className="block text-[9px] font-semibold text-gray-500 tracking-[0.2em] uppercase">Lifestyle</span>
-                    </>
-                  );
+                  const name = settings.siteName?.trim() || "";
+                  if (!name) return null;
+                  const parts = name.split(' ');
+                  const head = parts[0];
+                  const tail = parts.slice(1).join(' ');
                   return (
-                    <>{name.split(' ')[0]}<span style={{ color: '#FB8500' }}>{name.split(' ').slice(1).join(' ') ? ` ${name.split(' ').slice(1).join(' ')}` : ''}</span>
+                    <>{head}{tail && <span style={{ color: '#FB8500' }}>{` ${tail}`}</span>}
                       <span className="block text-[9px] font-semibold text-gray-500 tracking-[0.2em] uppercase">{settings.tagline || ""}</span>
                     </>
                   );
@@ -153,7 +157,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-sm leading-relaxed text-gray-500 mb-6 max-w-xs">
-              {settings.tagline || "You imagine, we craft."} Bangladesh's premier custom apparel brand — premium fabrics, bold designs, fast delivery to all 64 districts.
+              {settings.tagline || ""} {settings.footerDescription || ""}
             </p>
 
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-3">We Accept</p>
@@ -168,11 +172,7 @@ export function Footer() {
             </div>
 
             <div className="flex gap-3">
-              {[
-                { icon: Facebook, href: facebookUrl, color: "#1877f2" },
-                { icon: Instagram, href: instagramUrl, color: "#e1306c" },
-                { icon: Youtube, href: youtubeUrl, color: "#ff0000" },
-              ].map(({ icon: Icon, href, color }) => (
+              {socialLinks.map(({ icon: Icon, href, color }) => (
                 <a key={href} href={href} target="_blank" rel="noopener noreferrer"
                   className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:-translate-y-1"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -235,18 +235,24 @@ export function Footer() {
           <div className="lg:col-span-3">
             <p className="text-[11px] font-black uppercase tracking-widest text-gray-600 mb-4">Contact</p>
             <ul className="space-y-4 mb-6">
-              <li className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                <span className="text-sm text-gray-500">{contactAddress}</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-orange-500 shrink-0" />
-                <a href={`tel:${phoneHref}`} className="text-sm text-gray-500 hover:text-orange-400 transition-colors">{contactPhone}</a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-orange-500 shrink-0" />
-                <a href={`mailto:${contactEmail}`} className="text-sm text-gray-500 hover:text-orange-400 transition-colors">{contactEmail}</a>
-              </li>
+              {contactAddress && (
+                <li className="flex items-start gap-3">
+                  <MapPin className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+                  <span className="text-sm text-gray-500">{contactAddress}</span>
+                </li>
+              )}
+              {contactPhone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-orange-500 shrink-0" />
+                  <a href={`tel:${phoneHref}`} className="text-sm text-gray-500 hover:text-orange-400 transition-colors">{contactPhone}</a>
+                </li>
+              )}
+              {contactEmail && (
+                <li className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-orange-500 shrink-0" />
+                  <a href={`mailto:${contactEmail}`} className="text-sm text-gray-500 hover:text-orange-400 transition-colors">{contactEmail}</a>
+                </li>
+              )}
             </ul>
             <Link href="/products"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white text-xs transition-all hover:-translate-y-0.5"
@@ -263,7 +269,7 @@ export function Footer() {
             in Bangladesh
           </p>
           <p className="text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} {settings.siteName?.trim() || "TryNex Lifestyle"}. All rights reserved.
+            &copy; {new Date().getFullYear()}{settings.siteName?.trim() ? ` ${settings.siteName.trim()}.` : ""} All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-xs text-gray-600">
             <Link href="/privacy-policy" className="hover:text-gray-400 transition-colors">Privacy Policy</Link>

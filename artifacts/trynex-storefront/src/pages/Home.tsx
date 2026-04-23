@@ -537,7 +537,7 @@ function LiveSocialProof({ stats, primaryColor = 'var(--color-primary)' }: { sta
 }
 
 export default function Home() {
-  const { data: productsData, isLoading } = useListProducts({ limit: 8, featured: true });
+  const { data: productsData, isLoading } = useListProducts({ limit: 9, featured: true });
   const { data: testimonialsData } = useGetTestimonials();
   const publicStats = usePublicStats();
   const featuredProducts = productsData?.products || [];
@@ -656,64 +656,6 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════
-          FEATURED PRODUCTS (moved above Categories per UX checklist)
-      ═══════════════════════════════════════ */}
-      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
-            <div>
-              <motion.span
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="section-eyebrow mb-4"
-              >
-                <Sparkles className="w-3 h-3" /> Featured Products
-              </motion.span>
-              <h2 className="section-heading mt-4">
-                <SplitTextReveal text="Best Sellers" delay={0.04} />
-              </h2>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.25 }}
-                className="text-gray-500 mt-3 max-w-lg"
-              >
-                Our most-loved products — hand-picked for quality and style.
-              </motion.p>
-            </div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <Link href="/products"
-                className="flex items-center gap-2 font-bold text-orange-600 hover:text-orange-700 transition-colors shrink-0 group">
-                View All <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </motion.div>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5" aria-label="Loading products" aria-busy="true">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : (
-            <ErrorBoundary section="featured products">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-                {featuredProducts.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))}
-              </div>
-            </ErrorBoundary>
-          )}
-        </div>
-      </section>}
-
-      {/* ═══════════════════════════════════════
           CATEGORIES GRID
       ═══════════════════════════════════════ */}
       {settings.sectionCategoriesEnabled !== false && <section className="py-20 px-4" style={{ background: '#FAFAFA' }}>
@@ -789,6 +731,70 @@ export default function Home() {
               );
             })}
           </div>
+        </div>
+      </section>}
+
+      {/* ═══════════════════════════════════════
+          FEATURED PRODUCTS
+      ═══════════════════════════════════════ */}
+      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          {/* Promo banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative overflow-hidden rounded-3xl mb-10 px-6 py-8 sm:px-10 sm:py-10"
+            style={{
+              background: 'linear-gradient(135deg, #1a0a02 0%, #4a1a04 50%, #E85D04 100%)',
+              boxShadow: '0 20px 60px -20px rgba(232,93,4,0.45)',
+            }}
+          >
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20" style={{ background: '#FB8500' }} />
+            <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full opacity-10" style={{ background: '#FFB703' }} />
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="text-white">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/15 backdrop-blur-sm">
+                  <Sparkles className="w-3 h-3" /> Limited Time
+                </span>
+                <h2 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl mt-3 leading-tight">
+                  Special Offers — Save Big Today
+                </h2>
+                <p className="text-white/80 text-sm sm:text-base mt-2 max-w-xl">
+                  Hand-picked best sellers at exclusive prices. Free design preview &amp; fast nationwide delivery.
+                </p>
+              </div>
+              <Link href="/products"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-white text-orange-600 hover:bg-orange-50 transition-colors shadow-lg shrink-0 group">
+                Shop All Offers
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </motion.div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5" aria-label="Loading products" aria-busy="true">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : featuredProducts.length === 0 ? null : (
+            <ErrorBoundary section="featured products">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5">
+                {featuredProducts.slice(0, 9).map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+              <div className="flex justify-center mt-10">
+                <Link href="/products"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white transition-transform hover:-translate-y-0.5 group"
+                  style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 10px 30px -10px rgba(232,93,4,0.5)' }}>
+                  Browse Full Catalogue
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </ErrorBoundary>
+          )}
         </div>
       </section>}
 

@@ -4,6 +4,7 @@ import { useGetSettings } from "@workspace/api-client-react";
 interface SiteSettings {
   siteName: string;
   tagline: string;
+  footerDescription: string;
   phone: string;
   whatsappNumber: string;
   email: string;
@@ -19,6 +20,7 @@ interface SiteSettings {
   bkashNumber: string;
   nagadNumber: string;
   rocketNumber: string;
+  upayNumber: string;
   facebookUrl: string;
   instagramUrl: string;
   youtubeUrl: string;
@@ -104,8 +106,9 @@ const cached = getCachedSettings();
 const c = (key: keyof SiteSettings) => (cached[key] as any) ?? undefined;
 
 const defaults: SiteSettings = {
-  siteName: c("siteName") || "TryNex Lifestyle",
-  tagline: c("tagline") || "You Imagine, We Craft.",
+  siteName: c("siteName") || "",
+  tagline: c("tagline") || "",
+  footerDescription: c("footerDescription") || "",
   phone: c("phone") || "",
   whatsappNumber: c("whatsappNumber") || "",
   email: c("email") || "",
@@ -116,11 +119,12 @@ const defaults: SiteSettings = {
   googleAnalyticsId: c("googleAnalyticsId") || "",
   facebookPixelId: c("facebookPixelId") || "",
   googleAdsId: c("googleAdsId") || "",
-  freeShippingThreshold: c("freeShippingThreshold") ?? 1500,
-  shippingCost: c("shippingCost") ?? 100,
+  freeShippingThreshold: c("freeShippingThreshold") ?? 0,
+  shippingCost: c("shippingCost") ?? 0,
   bkashNumber: c("bkashNumber") || "",
   nagadNumber: c("nagadNumber") || "",
   rocketNumber: c("rocketNumber") || "",
+  upayNumber: c("upayNumber") || "",
   facebookUrl: c("facebookUrl") || "",
   instagramUrl: c("instagramUrl") || "",
   youtubeUrl: c("youtubeUrl") || "",

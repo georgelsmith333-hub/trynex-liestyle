@@ -5,41 +5,7 @@ import { requireAdmin, validateToken } from "../middlewares/adminAuth";
 
 const router: IRouter = Router();
 
-let blogTableReady: Promise<void> | null = null;
-function ensureBlogTable(): Promise<void> {
-  if (!blogTableReady) {
-    blogTableReady = db.execute(sql`
-      CREATE TABLE IF NOT EXISTS blog_posts (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        excerpt TEXT,
-        content TEXT NOT NULL,
-        image_url TEXT,
-        author TEXT DEFAULT 'TryNex Team',
-        author_bio TEXT,
-        author_avatar_url TEXT,
-        category TEXT DEFAULT 'General',
-        tags TEXT[] DEFAULT '{}',
-        published BOOLEAN DEFAULT false,
-        featured BOOLEAN DEFAULT false,
-        reading_time_override INTEGER,
-        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-      )
-    `).then(() =>
-      db.execute(sql`
-        ALTER TABLE blog_posts
-          ADD COLUMN IF NOT EXISTS author_bio TEXT,
-          ADD COLUMN IF NOT EXISTS author_avatar_url TEXT,
-          ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General',
-          ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false,
-          ADD COLUMN IF NOT EXISTS reading_time_override INTEGER
-      `)
-    ).then(() => {}).catch(() => { blogTableReady = null; }) as Promise<void>;
-  }
-  return blogTableReady ?? Promise.resolve();
-}
+// blog_posts table is created at startup by lib/autoSeed.ts
 
 function calcReadingTime(content: string): number {
   const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -72,14 +38,13 @@ function mapPost(p: any) {
 
 router.get("/blog", async (req, res) => {
   try {
-    await ensureBlogTable();
     const { published, page = "1", limit = "12", category } = req.query;
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const offset = (pageNum - 1) * limitNum;
 
     const token = req.headers.authorization?.replace("Bearer ", "") ?? req.cookies?.admin_token;
-    const isAdmin = token ? validateToken(token) : false;
+    const isAdmin = token ? await validateToken(token) : false;
     const conditions: any[] = [];
     if (!isAdmin || published === "true") conditions.push(eq(blogPostsTable.published, true));
     if (category && category !== "All") conditions.push(eq(blogPostsTable.category, category as string));
@@ -105,7 +70,6 @@ router.get("/blog", async (req, res) => {
 
 router.get("/blog/:id", async (req, res) => {
   try {
-    await ensureBlogTable();
     const idOrSlug = req.params.id;
     const numericId = parseInt(idOrSlug, 10);
 
@@ -129,7 +93,6 @@ router.get("/blog/:id", async (req, res) => {
 
 router.get("/blog/:id/related", async (req, res) => {
   try {
-    await ensureBlogTable();
     const idOrSlug = req.params.id;
     const numericId = parseInt(idOrSlug, 10);
 
@@ -190,7 +153,6 @@ router.get("/blog/:id/related", async (req, res) => {
 
 router.post("/blog", requireAdmin, async (req, res) => {
   try {
-    await ensureBlogTable();
     const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = req.body;
     if (!title || !slug || !content) {
       res.status(400).json({ error: "validation_error", message: "title, slug, content are required" });
@@ -215,7 +177,6 @@ router.post("/blog", requireAdmin, async (req, res) => {
 
 router.put("/blog/:id", requireAdmin, async (req, res) => {
   try {
-    await ensureBlogTable();
     const id = parseInt(req.params.id as string, 10);
     const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = req.body;
 
@@ -248,7 +209,6 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
 
 router.delete("/blog/:id", requireAdmin, async (req, res) => {
   try {
-    await ensureBlogTable();
     const id = parseInt(req.params.id as string, 10);
     const [post] = await db.delete(blogPostsTable).where(eq(blogPostsTable.id, id)).returning();
     if (!post) {

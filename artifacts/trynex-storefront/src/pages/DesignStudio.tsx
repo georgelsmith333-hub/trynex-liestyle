@@ -6,6 +6,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useCartActions, type OriginalAsset } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { getApiUrl } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGesture } from "@use-gesture/react";
@@ -221,6 +222,7 @@ export default function DesignStudio() {
   /* ── Draft persistence (localStorage) ──────────────── */
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [hasDraft, setHasDraft] = useState(false);
+  const [legacyDraftFound, setLegacyDraftFound] = useState<{ version: number } | null>(null);
   const draftRestoredRef = useRef(false);
 
   // Restore draft on mount (runs once)
@@ -244,6 +246,10 @@ export default function DesignStudio() {
             ? typeof l.text === "string" && typeof l.fontSize === "number"
             : typeof l.src === "string" && typeof l.naturalW === "number" && typeof l.naturalH === "number");
         const validLayers = Array.isArray(data?.layers) ? (data!.layers as any[]).filter(isValidLayer) as Layer[] : [];
+        // For older-format drafts, prompt the user before discarding (data not lost silently)
+        if (data && typeof data.version === "number" && data.version !== DRAFT_VERSION) {
+          setLegacyDraftFound({ version: data.version });
+        }
         if (data && data.version === DRAFT_VERSION) {
           if (typeof data.productId === "string") {
             const p = PRODUCTS.find(x => x.id === data.productId);
@@ -290,7 +296,14 @@ export default function DesignStudio() {
     }
 
     if (layers.length === 0) {
-      // Nothing meaningful to save — clear any prior draft so a refresh starts fresh.
+      // Nothing meaningful to save. We DO NOT touch the persisted draft key
+      // when there is an unresolved legacy draft awaiting the user's
+      // decision — otherwise the saved work would be deleted silently
+      // before the confirm dialog is answered.
+      if (legacyDraftFound) {
+        setSaveStatus("idle");
+        return;
+      }
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
       setHasDraft(false);
       setSaveStatus("idle");
@@ -316,7 +329,7 @@ export default function DesignStudio() {
       }
     }, 500);
     return () => window.clearTimeout(handle);
-  }, [layers, selectedProduct, selectedColor, selectedSize]);
+  }, [layers, selectedProduct, selectedColor, selectedSize, legacyDraftFound]);
 
   const clearDraft = useCallback(() => {
     try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
@@ -1029,14 +1042,31 @@ export default function DesignStudio() {
       />
       <Navbar />
 
+      {/*
+        Spacer reserves vertical space for the fixed AnnouncementBar + Navbar
+        so the sticky page header below can use `top` without also stacking a
+        margin (avoids double-offset on mobile when the announcement bar is
+        visible).
+      */}
+      <div
+        aria-hidden
+        style={{ height: "calc(var(--announcement-height, 0px) + 4.25rem)" }}
+      />
+
       {/* Page header */}
-      <div className="border-b border-gray-200 sticky top-0 z-30" style={{ background: "white" }}>
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div>
-            <h1 className="font-display font-black text-xl text-gray-900">Design Studio</h1>
-            <p className="text-xs text-gray-500 mt-0.5">You imagine — we craft it.</p>
+      <div
+        className="border-b border-gray-200 sticky z-30"
+        style={{
+          background: "white",
+          top: "calc(var(--announcement-height, 0px) + 4.25rem)",
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-shrink">
+            <h1 className="font-display font-black text-base sm:text-xl text-gray-900 truncate">Design Studio</h1>
+            <p className="hidden sm:block text-xs text-gray-500 mt-0.5">You imagine — we craft it.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Saved indicator */}
             {(saveStatus !== "idle" || hasDraft) && (
               <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
@@ -1928,6 +1958,21 @@ export default function DesignStudio() {
       </div>
 
       <Footer />
+
+      <ConfirmDialog
+        open={!!legacyDraftFound}
+        title="Older design draft found"
+        description={`We found a saved design from an older version of the editor (v${legacyDraftFound?.version ?? "?"}). It can't be restored automatically. Discard it and start fresh?`}
+        confirmText="Discard old draft"
+        cancelText="Keep for now"
+        variant="warning"
+        onConfirm={() => {
+          try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+          setLegacyDraftFound(null);
+          toast({ title: "Old draft discarded", description: "You can now start fresh." });
+        }}
+        onCancel={() => setLegacyDraftFound(null)}
+      />
     </div>
   );
 }

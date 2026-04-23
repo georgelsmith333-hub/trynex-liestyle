@@ -10,7 +10,7 @@ export function WhatsAppButton() {
   const [minimized, setMinimized] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const settings = useSiteSettings();
-  const whatsappNumber = settings.whatsappNumber?.replace(/[^0-9]/g, '') || "8801903426915";
+  const whatsappNumber = settings.whatsappNumber?.replace(/[^0-9]/g, '') || "";
 
   useEffect(() => {
     const timer = setTimeout(() => setMinimized(false), 3000);
@@ -35,10 +35,13 @@ export function WhatsAppButton() {
   }, []);
 
   const handleChat = () => {
+    if (!whatsappNumber) return;
     const num = whatsappNumber.startsWith('88') ? whatsappNumber : `88${whatsappNumber}`;
     const url = `https://wa.me/${num}?text=${encodeURIComponent(DEFAULT_MESSAGE)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
+
+  if (!whatsappNumber) return null;
 
   if (minimized) {
     return (

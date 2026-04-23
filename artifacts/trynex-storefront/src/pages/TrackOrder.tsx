@@ -170,7 +170,7 @@ export default function TrackOrder() {
 
   const TRYNEX_NUMBER = settings.whatsappNumber
     ? (settings.whatsappNumber.startsWith('+') ? settings.whatsappNumber : `+88${settings.whatsappNumber.replace(/[^0-9]/g, '')}`)
-    : (settings.phone || "+8801903426915");
+    : (settings.phone || "");
 
   const paymentMethodLabel: Record<string, string> = {
     cod: 'Cash on Delivery', bkash: 'bKash', nagad: 'Nagad', rocket: 'Rocket'
@@ -317,7 +317,7 @@ export default function TrackOrder() {
               >
                 <XCircle className="w-6 h-6 mx-auto mb-2 opacity-70" />
                 Order not found. Please check your Order Number and Email, then try again.
-                <p className="text-xs text-gray-400 mt-2">Need help? WhatsApp: {TRYNEX_NUMBER}</p>
+                {TRYNEX_NUMBER && <p className="text-xs text-gray-400 mt-2">Need help? WhatsApp: {TRYNEX_NUMBER}</p>}
               </motion.div>
             )}
           </AnimatePresence>
@@ -556,20 +556,22 @@ export default function TrackOrder() {
                   </div>
                 </div>
 
-                <div className="p-5 rounded-2xl text-center"
-                  style={{ background: 'rgba(255,107,43,0.05)', border: '1px solid rgba(255,107,43,0.1)' }}>
-                  <p className="text-sm text-gray-500">
-                    Questions? WhatsApp us at{' '}
-                    <a
-                      href={`https://wa.me/${TRYNEX_NUMBER.replace(/[^0-9]/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-black text-orange-600 hover:underline"
-                    >
-                      {TRYNEX_NUMBER}
-                    </a>
-                  </p>
-                </div>
+                {TRYNEX_NUMBER && (
+                  <div className="p-5 rounded-2xl text-center"
+                    style={{ background: 'rgba(255,107,43,0.05)', border: '1px solid rgba(255,107,43,0.1)' }}>
+                    <p className="text-sm text-gray-500">
+                      Questions? WhatsApp us at{' '}
+                      <a
+                        href={`https://wa.me/${TRYNEX_NUMBER.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-black text-orange-600 hover:underline"
+                      >
+                        {TRYNEX_NUMBER}
+                      </a>
+                    </p>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

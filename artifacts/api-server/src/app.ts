@@ -6,7 +6,7 @@ import pinoHttp from "pino-http";
 import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { verifyAdminToken } from "./middlewares/adminAuth";
+import { validateAdminSession } from "./lib/adminSessions";
 
 const app: Express = express();
 
@@ -130,12 +130,12 @@ const orderLimiter = rateLimit({
   // operator can place test orders without burning through the budget.
   // We *fully verify* the JWT — a stray "Bearer x" header from an
   // anonymous client must NOT be enough to bypass the limit.
-  skip: (req) => {
+  skip: async (req) => {
     const auth = req.headers.authorization;
     if (!auth) return false;
     const m = /^Bearer\s+(.+)$/i.exec(auth);
     if (!m) return false;
-    return verifyAdminToken(m[1].trim()) !== null;
+    return (await validateAdminSession(m[1].trim())) !== null;
   },
   message: {
     error: "rate_limited",
