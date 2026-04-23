@@ -91,11 +91,3 @@ externalPort = 4200
 
 [nix]
 channel = "stable-25_05"
-
-[userenv]
-
-[userenv.shared]
-R2_ACCOUNT_ID = "060a0f28c7f62affa5ac09be3b1dd1a9"
-R2_BUCKET = "trynex"
-R2_ENDPOINT = "https://060a0f28c7f62affa5ac09be3b1dd1a9.r2.cloudflarestorage.com"
-GOOGLE_CLIENT_ID = "66391492938-39sou5jlsoheuctgsan3jtpt8t5hnoc8.apps.googleusercontent.com"

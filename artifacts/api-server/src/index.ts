@@ -115,7 +115,7 @@ if (process.env.NODE_ENV === "production") {
   logger.info({ present, storageBackend }, "[env] All required env vars confirmed present");
 }
 
-app.listen(port, async (err) => {
+const server = app.listen(port, async (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -129,3 +129,22 @@ app.listen(port, async (err) => {
   await runMigrations();
   await autoSeedIfEmpty();
 });
+
+// Graceful shutdown — give in-flight requests up to 10 s to drain before
+// forcefully exiting. Render (and any other container host) sends SIGTERM
+// before killing the process; without a handler the server dies immediately
+// and in-flight requests are dropped.
+function gracefulShutdown(signal: string) {
+  logger.info({ signal }, "Shutdown signal received, draining…");
+  server.close(() => {
+    logger.info("All connections closed, exiting cleanly.");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    logger.warn("Drain timeout exceeded, forcing exit.");
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT",  () => gracefulShutdown("SIGINT"));

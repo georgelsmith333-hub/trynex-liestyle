@@ -59,7 +59,9 @@ router.post("/reviews", async (req, res) => {
       .where(eq(ordersTable.customerEmail, customerEmail));
     for (const order of orders) {
       const items = order.items as any[];
-      if (items?.some((item: any) => item.productId === productId)) {
+      // Use Number() on both sides to handle string/number type mismatch in
+      // JSON order items (e.g. productId stored as string "42" vs number 42).
+      if (items?.some((item: any) => Number(item.productId) === Number(productId))) {
         verified = true;
         break;
       }
@@ -72,6 +74,7 @@ router.post("/reviews", async (req, res) => {
       rating,
       body: text || "",
       approved: false,
+      verified,
     }).returning();
 
     res.status(201).json({ ...review, message: "Review submitted! It will appear after approval." });

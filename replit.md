@@ -22,8 +22,9 @@ The platform is built as a pnpm workspace monorepo using TypeScript.
 ### API Server
 -   **Technology**: Express 5, TypeScript.
 -   **Functionality**: Manages 18+ route modules including products, orders, categories, authentication, blog, reviews, settings, and administration.
--   **Security**: Rate limiting on critical endpoints, JWT authentication for admin panel.
+-   **Security**: Rate limiting on all critical endpoints (auth, admin login, orders, reviews, promo codes, order tracking, public reads). JWT authentication for admin panel. Admin token uses dual defense: `sessionStorage` in the browser + HttpOnly Secure cookie set by the server simultaneously. CSRF protection on cookie-only admin mutations. Graceful SIGTERM/SIGINT shutdown with 10s drain window (required by Render free tier).
 -   **Database Integration**: Auto-migration and auto-seeding on startup for new databases.
+-   **Reviews**: `verified` flag correctly stored on insert (checks if reviewer email has matching order). productId type-safe comparison with `Number()` on both sides.
 
 ### Database
 -   **Technology**: PostgreSQL with Drizzle ORM.
@@ -38,7 +39,10 @@ The platform is built as a pnpm workspace monorepo using TypeScript.
 -   **Design Studio**: Realtime custom apparel designer with photographic mockup templates and precise print area calibration.
 -   **Social Integration**: Facebook product import, Google/Facebook sign-in.
 -   **Marketing**: Referral system, promo codes, product review system.
--   **SEO & Performance**: Canonical domain `https://trynexshop.com`, per-route SEO with unique titles, descriptions, and canonicals. Structured data (JSON-LD) for key pages. Optimized LCP and Core Web Vitals through image preloading, explicit dimensions, font subsetting, and API preconnects. Dynamic sitemap and robots.txt.
+-   **SEO & Performance**: Canonical domain `https://trynexshop.com`. SEOHead auto-generates canonical URLs from the current route when no explicit prop is given, so every page always has a canonical. `hreflang` tags (`en-BD` + `x-default`) on all pages. Google Search Console verification meta tag driven by `googleSiteVerification` setting (no code deploy needed). Structured data (JSON-LD) for key pages (Product, BreadcrumbList, BlogPosting, FAQPage, etc.). Optimized LCP and Core Web Vitals through image preloading, explicit dimensions, font subsetting, and API preconnects. Dynamic sitemap and robots.txt.
+-   **Admin token security**: Stored in `sessionStorage` (not `localStorage`) — clears on tab/window close. Server simultaneously sets an HttpOnly Secure cookie as a second auth layer. One-time migration on app load moves any legacy localStorage token to sessionStorage without disrupting existing sessions.
+-   **React Query caching**: Default staleTime upgraded from 30s to 3 minutes; gcTime 10 minutes. Reduces redundant API calls significantly on typical browsing sessions.
+-   **TrackingPixels**: Reads from SiteSettingsContext (already loaded globally) instead of triggering a duplicate `/settings` API call.
 -   **Cart Performance**: Optimized with split contexts, debounced `localStorage` writes, and memoized components to minimize re-renders.
 
 ## Search-Engine Submission Checklist (post-deploy)

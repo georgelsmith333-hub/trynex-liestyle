@@ -19,7 +19,7 @@ export default function AdminLogin() {
     try {
       const res = await login({ username: "admin", password });
       if (res.token) {
-        localStorage.setItem('trynex_admin_token', res.token);
+        sessionStorage.setItem('trynex_admin_token', res.token);
         setLocation("/admin");
       } else {
         setErrorMsg("Incorrect password. Please try again.");

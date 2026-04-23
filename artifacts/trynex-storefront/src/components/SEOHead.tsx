@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { useLocation } from "wouter";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 interface SEOHeadProps {
@@ -26,18 +27,23 @@ export function SEOHead({
   jsonLd,
 }: SEOHeadProps) {
   const settings = useSiteSettings() as any;
+  const [location] = useLocation();
+
   const siteName = settings.siteName;
   const seoDefaultTitle = settings.seoDefaultTitle || `${siteName} | Premium Custom Apparel Bangladesh`;
   const seoDefaultDescription = settings.seoDefaultDescription || "Bangladesh's #1 premium custom apparel brand. Custom T-shirts, Hoodies, Mugs & Caps. Fast delivery across all 64 districts.";
   const seoDefaultKeywords = settings.seoDefaultKeywords;
   const seoOgImage = settings.seoOgImage || DEFAULT_IMAGE;
   const seoTwitterHandle = settings.seoTwitterHandle;
+  const googleSiteVerification = settings.googleSiteVerification;
 
   const fullTitle = title ? `${title} | ${siteName}` : seoDefaultTitle;
   const finalDescription = description || seoDefaultDescription;
   const finalKeywords = keywords || seoDefaultKeywords;
   const finalOgImage = ogImage || seoOgImage;
-  const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined;
+
+  const canonicalPath = canonical ?? location;
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
   const fullOgImage = finalOgImage.startsWith("http") ? finalOgImage : `${SITE_URL}${finalOgImage}`;
 
   return (
@@ -50,14 +56,23 @@ export function SEOHead({
       ) : (
         <meta name="robots" content="index, follow, max-image-preview:large" />
       )}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      <link rel="canonical" href={canonicalUrl} />
+
+      {/* hreflang — tells Google this is Bangladesh English content */}
+      <link rel="alternate" hrefLang="en-BD" href={canonicalUrl} />
+      <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
+
+      {/* Google Search Console verification */}
+      {googleSiteVerification && (
+        <meta name="google-site-verification" content={googleSiteVerification} />
+      )}
 
       <meta property="og:type" content={ogType} />
       <meta property="og:site_name" content={siteName} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={finalDescription} />
       <meta property="og:image" content={fullOgImage} />
-      {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:locale" content="en_BD" />
 
       <meta name="twitter:card" content="summary_large_image" />

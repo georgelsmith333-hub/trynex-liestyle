@@ -26,7 +26,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const token = localStorage.getItem('trynex_admin_token');
+  const token = sessionStorage.getItem('trynex_admin_token');
 
   const { data, isLoading, isError } = useAdminMe();
   const { mutateAsync: logout } = useAdminLogout();
@@ -37,13 +37,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!isLoading && (isError || (data && !data.admin))) {
-      localStorage.removeItem('trynex_admin_token');
+      sessionStorage.removeItem('trynex_admin_token');
       setLocation("/admin/login");
     }
   }, [isLoading, isError, data, setLocation, token]);
 
   const handleLogout = async () => {
-    localStorage.removeItem('trynex_admin_token');
+    sessionStorage.removeItem('trynex_admin_token');
     await logout().catch(() => {});
     setLocation("/admin/login");
   };

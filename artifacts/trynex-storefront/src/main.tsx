@@ -24,6 +24,17 @@ if (typeof window !== "undefined") {
   );
 }
 
-setAuthTokenGetter(() => localStorage.getItem("trynex_admin_token"));
+// One-time migration: move any legacy admin token from localStorage to
+// sessionStorage (only within the current tab; other tabs are unaffected).
+// This keeps existing admin sessions alive across the security upgrade.
+if (typeof window !== "undefined") {
+  const legacy = localStorage.getItem("trynex_admin_token");
+  if (legacy) {
+    sessionStorage.setItem("trynex_admin_token", legacy);
+    localStorage.removeItem("trynex_admin_token");
+  }
+}
+
+setAuthTokenGetter(() => sessionStorage.getItem("trynex_admin_token"));
 
 createRoot(document.getElementById("root")!).render(<App />);

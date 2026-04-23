@@ -93,7 +93,12 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30000,
+      // 3 minutes default stale time — settings/products don't change every
+      // 30 s. Reduces redundant API calls without sacrificing freshness.
+      staleTime: 3 * 60 * 1000,
+      // Keep unused query data for 10 minutes so navigating back to a page
+      // shows instant cached content while revalidating in the background.
+      gcTime: 10 * 60 * 1000,
     }
   }
 });

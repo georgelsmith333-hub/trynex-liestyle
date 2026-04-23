@@ -172,6 +172,16 @@ const publicReadLimiter = rateLimit({
   message: { error: "rate_limited", message: "Slow down — too many requests." },
 });
 
+// Review submissions: 5 per 10 minutes per IP is more than enough for a
+// legitimate buyer. Prevents spam review campaigns.
+const reviewSubmitLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", message: "Too many review submissions. Please try again in 10 minutes." },
+});
+
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
@@ -190,6 +200,7 @@ app.use("/api/products", publicReadLimiter);
 app.use("/api/categories", publicReadLimiter);
 app.use("/api/blog", publicReadLimiter);
 app.use("/api/reviews", publicReadLimiter);
+app.post("/api/reviews", reviewSubmitLimiter);
 
 app.use("/api", (_req, res, next) => {
   const url = _req.originalUrl;

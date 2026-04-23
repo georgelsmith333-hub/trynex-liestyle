@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useGetSettings } from "@workspace/api-client-react";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useLocation } from "wouter";
 import {
   initGoogleAnalytics,
@@ -9,24 +9,24 @@ import {
 } from "@/lib/tracking";
 
 export function TrackingPixels() {
-  const { data: settings } = useGetSettings();
+  const settings = useSiteSettings();
   const [location] = useLocation();
   const initialized = useRef(false);
 
   useEffect(() => {
-    if (!settings || initialized.current) return;
+    if (!settings.isLoaded || initialized.current) return;
     initialized.current = true;
 
     if (settings.googleAnalyticsId) {
-      initGoogleAnalytics(settings.googleAnalyticsId as string);
+      initGoogleAnalytics(settings.googleAnalyticsId);
     }
     if (settings.facebookPixelId) {
-      initFacebookPixel(settings.facebookPixelId as string);
+      initFacebookPixel(settings.facebookPixelId);
     }
     if (settings.googleAdsId) {
-      initGoogleAds(settings.googleAdsId as string);
+      initGoogleAds(settings.googleAdsId);
     }
-  }, [settings]);
+  }, [settings.isLoaded, settings.googleAnalyticsId, settings.facebookPixelId, settings.googleAdsId]);
 
   useEffect(() => {
     if (initialized.current) {

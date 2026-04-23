@@ -15,7 +15,7 @@ export function formatPrice(price: number): string {
 }
 
 export function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('trynex_admin_token');
+  const token = sessionStorage.getItem('trynex_admin_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
