@@ -3,7 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { SEOHead } from "@/components/SEOHead";
-import { InstagramFeed } from "@/components/InstagramFeed";
+import { ConnectWithUs } from "@/components/ConnectWithUs";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -1282,7 +1282,7 @@ export default function Home() {
 
       {/* Recently Viewed + Instagram */}
       <RecentlyViewed />
-      <InstagramFeed />
+      <ConnectWithUs />
 
       {/* ═══════════════════════════════════════
           CTA SECTION — Glowing animated border

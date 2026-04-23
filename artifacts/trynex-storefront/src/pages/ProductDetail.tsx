@@ -921,7 +921,9 @@ export default function ProductDetail() {
               {product.colors && product.colors.length > 0 && (
                 <div className="mb-6">
                   <p className="font-bold text-gray-900 text-sm mb-3">
-                    Color {selectedColor && <span className="text-orange-600 font-normal">— {selectedColor}</span>}
+                    {selectedColor
+                      ? <>Selected: <span className="text-orange-600">{selectedColor}</span></>
+                      : <>Choose a color <span className="font-normal text-gray-400">(optional)</span></>}
                   </p>
                   <div className="flex flex-wrap gap-3">
                     {product.colors.map((color: string, colorIdx: number) => (
