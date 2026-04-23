@@ -228,25 +228,23 @@ export function Navbar() {
 
           <Link href="/" className="flex items-center gap-3 group select-none">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black font-display text-lg shadow-lg transition-transform group-hover:scale-105"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 shrink-0"
               style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}
             >
-              {(settings.siteName?.trim() || "·")[0]}
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M3 4h16M11 4v14" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="17.5" cy="4" r="2" fill="#FFD580"/>
+              </svg>
             </div>
             <div className="flex flex-col leading-none gap-[3px]">
               <span className="text-[1.35rem] font-black font-display tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
-                {(() => {
-                  const name = settings.siteName?.trim() || "";
-                  if (!name) return null;
-                  const first = name.split(' ')[0];
-                  return <span style={{ color: '#E85D04' }}>{first}</span>;
-                })()}
+                <span style={{ color: '#E85D04' }}>{(settings.siteName?.trim() || "TryNex").split(' ')[0]}</span>
               </span>
               <span className="text-[9px] font-bold text-gray-400 tracking-[0.25em] uppercase">
                 {(() => {
-                  const name = settings.siteName?.trim() || "";
+                  const name = settings.siteName?.trim() || "TryNex Lifestyle";
                   const rest = name.split(' ').slice(1).join(' ');
-                  return rest || settings.tagline || "";
+                  return rest || settings.tagline || "Lifestyle";
                 })()}
               </span>
             </div>

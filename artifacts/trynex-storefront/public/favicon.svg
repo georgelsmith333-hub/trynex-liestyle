@@ -1,11 +1,17 @@
-<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#E85D04"/>
-      <stop offset="1" stop-color="#FB8500"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E85D04"/>
+      <stop offset="100%" stop-color="#FB8500"/>
     </linearGradient>
   </defs>
-  <rect width="180" height="180" rx="40" fill="url(#g)"/>
-  <path d="M44 56 H136 V76 H106 V138 H74 V76 H44 Z" fill="#fff"/>
-  <circle cx="138" cy="46" r="9" fill="#fff" opacity="0.95"/>
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <!-- Bold T crossbar -->
+  <rect x="76" y="130" width="360" height="80" rx="40" fill="white"/>
+  <!-- T stem -->
+  <rect x="216" y="130" width="80" height="265" rx="40" fill="white"/>
+  <!-- Spark dot top-right -->
+  <circle cx="430" cy="110" r="32" fill="#FFD580"/>
+  <circle cx="430" cy="110" r="18" fill="white"/>
 </svg>

@@ -764,7 +764,7 @@ export default function Home() {
                   Hand-picked best sellers at exclusive prices. Free design preview &amp; fast nationwide delivery.
                 </p>
               </div>
-              <Link href="/products"
+              <Link href="/products?tab=offers"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-white text-orange-600 hover:bg-orange-50 transition-colors shadow-lg shrink-0 group">
                 Shop All Offers
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -847,7 +847,7 @@ export default function Home() {
             <CountdownTimer />
 
             <Link
-              href="/products"
+              href="/products?tab=offers"
               className="relative group px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black text-gray-900 text-sm sm:text-base flex items-center gap-2 transition-all duration-300 hover:-translate-y-1 hover:scale-105 shimmer-btn"
               style={{
                 background: 'linear-gradient(135deg, #FFB347 0%, var(--color-primary) 40%, var(--color-primary) 100%)',

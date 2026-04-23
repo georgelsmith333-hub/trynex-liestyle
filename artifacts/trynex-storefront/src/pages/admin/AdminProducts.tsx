@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
 import { getAuthHeaders, formatPrice, getApiUrl } from "@/lib/utils";
-import { Plus, Trash2, X, Package, Edit3, AlertTriangle, Search, Star, Upload, FileText, CheckCircle } from "lucide-react";
+import { Plus, Trash2, X, Package, Edit3, AlertTriangle, Search, Star, Upload, FileText, CheckCircle, Zap } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -55,6 +55,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
+  const [isSpecialOffer, setIsSpecialOffer] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
   const [showLowStock, setShowLowStock] = useState(filterLowStock);
 
@@ -74,12 +75,15 @@ export default function AdminProducts() {
 
   const openAddModal = () => {
     setEditingProduct(null);
+    setIsSpecialOffer(false);
     reset({ featured: false, customizable: true, stock: 0, categoryId: categories[0]?.id });
     setModalOpen(true);
   };
 
   const openEditModal = (product: Product) => {
     setEditingProduct({ id: product.id, slug: product.slug } as EditingProduct);
+    const tags: string[] = Array.isArray(product.tags) ? (product.tags as string[]) : [];
+    setIsSpecialOffer(tags.includes("special-offer"));
     reset({
       name: product.name,
       slug: product.slug,
@@ -101,10 +105,19 @@ export default function AdminProducts() {
     try {
       const sizes = formData.sizes ? formData.sizes.split(',').map(s => s.trim()).filter(Boolean) : [];
       const colors = formData.colors ? formData.colors.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      // Compute tags: preserve existing non-special-offer tags, toggle "special-offer"
+      const currentProduct = editingProduct ? data?.products?.find(p => p.id === editingProduct.id) : null;
+      const existingTags: string[] = currentProduct && Array.isArray(currentProduct.tags)
+        ? (currentProduct.tags as string[]).filter(t => t !== "special-offer")
+        : [];
+      const computedTags = isSpecialOffer ? [...existingTags, "special-offer"] : existingTags;
+
       const payload = {
         ...formData,
         sizes,
         colors,
+        tags: computedTags,
         discountPrice: formData.discountPrice || undefined,
         customizable: formData.customizable ?? true,
         featured: formData.featured ?? false,
@@ -114,7 +127,7 @@ export default function AdminProducts() {
       };
 
       if (editingProduct) {
-        const updatePayload: UpdateProductRequest = {
+        const updatePayload = {
           name: payload.name,
           slug: payload.slug,
           description: payload.description,
@@ -127,11 +140,12 @@ export default function AdminProducts() {
           colors: payload.colors,
           featured: payload.featured,
           customizable: payload.customizable,
-        };
+          tags: payload.tags,
+        } as UpdateProductRequest & { tags?: string[] };
         await updateProduct({ id: editingProduct.id, data: updatePayload });
         toast({ title: "✓ Product updated successfully!" });
       } else {
-        const createPayload: CreateProductRequest = {
+        const createPayload = {
           name: payload.name,
           slug: payload.slug,
           description: payload.description,
@@ -144,7 +158,8 @@ export default function AdminProducts() {
           colors: payload.colors,
           featured: payload.featured,
           customizable: payload.customizable,
-        };
+          tags: payload.tags,
+        } as CreateProductRequest & { tags?: string[] };
         await createProduct({ data: createPayload });
         toast({ title: "✓ Product added successfully!" });
       }
@@ -547,6 +562,19 @@ export default function AdminProducts() {
                   <div className="flex items-center gap-3">
                     <input type="checkbox" {...register("featured")} id="featured" className="w-4 h-4 rounded accent-orange-500" />
                     <label htmlFor="featured" className="text-sm font-semibold text-gray-600 cursor-pointer">Mark as Featured</label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isSpecialOffer"
+                      checked={isSpecialOffer}
+                      onChange={e => setIsSpecialOffer(e.target.checked)}
+                      className="w-4 h-4 rounded accent-orange-500"
+                    />
+                    <label htmlFor="isSpecialOffer" className="flex items-center gap-1.5 text-sm font-semibold cursor-pointer">
+                      <Zap className="w-3.5 h-3.5 text-orange-500" />
+                      <span className="text-gray-800">Show in Special Offers & Deals tab</span>
+                    </label>
                   </div>
                   <div className="flex items-center gap-3">
                     <input type="checkbox" {...register("customizable")} id="customizable" className="w-4 h-4 rounded accent-orange-500" />

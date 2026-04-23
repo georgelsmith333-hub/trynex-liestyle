@@ -120,11 +120,15 @@ function SkeletonCard() {
   );
 }
 
-export function ProductOffersSection() {
+export function ProductOffersSection({ fullPage = false }: { fullPage?: boolean }) {
   const { data, isLoading } = useListProducts({ limit: 20 });
 
   const liveProducts: DisplayProduct[] = (() => {
     const all = data?.products ?? [];
+    const specialOfferTagged = all.filter((p) => {
+      const tags: string[] = Array.isArray(p.tags) ? (p.tags as unknown as string[]) : [];
+      return tags.includes("special-offer");
+    });
     const discounted = all
       .filter((p) => p.discountPrice && p.discountPrice < p.price)
       .sort((a, b) => {
@@ -132,7 +136,11 @@ export function ProductOffersSection() {
         const savB = ((b.price - (b.discountPrice ?? b.price)) / b.price) * 100;
         return savB - savA;
       });
-    const source = discounted.length >= 3 ? discounted : all;
+    const merged = [...specialOfferTagged, ...discounted.filter(p => {
+      const tags: string[] = Array.isArray(p.tags) ? (p.tags as unknown as string[]) : [];
+      return !tags.includes("special-offer");
+    })];
+    const source = merged.length >= 3 ? merged : (discounted.length >= 3 ? discounted : all);
     return source.slice(0, 9).map((p, i) => ({
       id: p.id,
       name: p.name,
