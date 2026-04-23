@@ -1,8 +1,9 @@
+import React from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useGetAdminStats, type AdminStatsWeeklyDataItem, type AdminStatsPaymentDistributionItem } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
 import { getAuthHeaders, formatPrice } from "@/lib/utils";
-import { TrendingUp, ShoppingCart, Package, AlertTriangle, ArrowUpRight, RefreshCw, Star } from "lucide-react";
+import { TrendingUp, ShoppingCart, Package, AlertTriangle, ArrowUpRight, RefreshCw, Star, Info, X } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -51,6 +52,13 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 
 export default function AdminDashboard() {
   const { data: rawStats, isLoading, refetch, dataUpdatedAt } = useGetAdminStats();
+  const [showProdNotice, setShowProdNotice] = React.useState(
+    () => localStorage.getItem("trynex_prod_notice_dismissed") !== "1"
+  );
+  const dismissProdNotice = () => {
+    localStorage.setItem("trynex_prod_notice_dismissed", "1");
+    setShowProdNotice(false);
+  };
 
   if (isLoading || !rawStats) return <AdminLayout><Loader /></AdminLayout>;
 
@@ -140,6 +148,21 @@ export default function AdminDashboard() {
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
+
+      {/* Production DB Notice */}
+      {showProdNotice && (
+        <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-6 text-sm">
+          <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+          <div className="flex-1 text-blue-800">
+            <span className="font-semibold">Production database is separate.</span> Your live site on{" "}
+            <span className="font-medium">trynexshop.com</span> uses the Render database — which starts empty.
+            Add your products, categories, and settings via this admin panel after each new deployment.
+          </div>
+          <button onClick={dismissProdNotice} className="text-blue-400 hover:text-blue-600 mt-0.5 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
