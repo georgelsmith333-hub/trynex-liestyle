@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { formatPrice, getApiUrl } from "@/lib/utils";
 import {
   User, Mail, Phone, LogOut, Edit3, Check, X, Package, Heart,
@@ -83,6 +84,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function Account() {
   const [, navigate] = useLocation();
   const { customer, isLoading, isAuthenticated, updateProfile, logout } = useAuth();
+  const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -172,7 +174,12 @@ export default function Account() {
 
   const handleSave = async () => {
     setSaving(true);
-    await updateProfile({ name: editName, phone: editPhone });
+    try {
+      await updateProfile({ name: editName, phone: editPhone });
+      toast({ title: "✓ Profile updated", description: "Your changes have been saved." });
+    } catch {
+      toast({ title: "Could not save changes", description: "Please try again.", variant: "destructive" });
+    }
     setSaving(false);
     setEditing(false);
   };

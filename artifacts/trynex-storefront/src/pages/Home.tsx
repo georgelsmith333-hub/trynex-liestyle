@@ -656,69 +656,6 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════
-          FLASH SALE BANNER
-      ═══════════════════════════════════════ */}
-      {settings.sectionFlashSaleEnabled !== false && <section className="py-8 sm:py-12 px-4" style={{ background: 'white' }}>
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-3xl p-6 sm:p-10 flex flex-col items-center text-center gap-6"
-            style={{
-              background: 'linear-gradient(160deg, #1a1512 0%, #231c17 40%, #1C1917 100%)',
-              border: '1px solid rgba(232,93,4,0.15)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 80px rgba(232,93,4,0.08)',
-            }}
-          >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] rounded-full blur-[100px] opacity-15"
-              style={{ background: 'radial-gradient(ellipse, var(--color-primary), transparent)' }} />
-            <div className="absolute bottom-0 right-0 w-[300px] h-[200px] rounded-full blur-[80px] opacity-10"
-              style={{ background: 'radial-gradient(circle, var(--color-primary), transparent)' }} />
-            <div className="absolute inset-0 opacity-[0.03]"
-              style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-
-            <div className="relative">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
-                style={{ background: 'rgba(232,93,4,0.12)', border: '1px solid rgba(232,93,4,0.25)' }}>
-                <Flame className="w-4 h-4 text-orange-400 animate-pulse" />
-                <span className="text-orange-400 font-black text-xs uppercase tracking-[0.2em]">Flash Sale</span>
-                <Flame className="w-4 h-4 text-orange-400 animate-pulse" />
-              </div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white mb-2 leading-tight">
-                {(() => {
-                  const title = settings.promoBannerTitle || "Up to";
-                  const discount = settings.promoBannerDiscount || "30% OFF";
-                  if (title.toLowerCase().includes(discount.toLowerCase())) {
-                    return <>{title.replace(new RegExp(discount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '')} <span className="relative" style={{ color: 'var(--color-primary)' }}>{discount}<div className="absolute -inset-1 blur-lg opacity-30" style={{ background: 'var(--color-primary)' }} /></span></>;
-                  }
-                  return <>{title} <span className="relative" style={{ color: 'var(--color-primary)' }}>{discount}<div className="absolute -inset-1 blur-lg opacity-30" style={{ background: 'var(--color-primary)' }} /></span></>;
-                })()}
-              </h2>
-              <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
-                {settings.promoBannerSubtitle || "On selected T-shirts & Hoodies. Limited stock — don't miss out!"}
-              </p>
-            </div>
-
-            <CountdownTimer />
-
-            <Link
-              href="/products"
-              className="relative group px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black text-gray-900 text-sm sm:text-base flex items-center gap-2 transition-all duration-300 hover:-translate-y-1 hover:scale-105 shimmer-btn"
-              style={{
-                background: 'linear-gradient(135deg, #FFB347 0%, var(--color-primary) 40%, var(--color-primary) 100%)',
-                boxShadow: '0 8px 32px var(--color-primary-medium), 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)',
-              }}
-            >
-              <Flame className="w-4 h-4 transition-transform group-hover:rotate-12" /> {settings.promoBannerCTA || "Shop the Sale"}
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </motion.div>
-        </div>
-      </section>}
-
-      {/* ═══════════════════════════════════════
           CATEGORIES GRID
       ═══════════════════════════════════════ */}
       {settings.sectionCategoriesEnabled !== false && <section className="py-20 px-4" style={{ background: '#FAFAFA' }}>
@@ -852,6 +789,69 @@ export default function Home() {
               </div>
             </ErrorBoundary>
           )}
+        </div>
+      </section>}
+
+      {/* ═══════════════════════════════════════
+          FLASH SALE BANNER (now after products)
+      ═══════════════════════════════════════ */}
+      {settings.sectionFlashSaleEnabled !== false && <section className="py-8 sm:py-12 px-4" style={{ background: 'white' }}>
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden rounded-3xl p-6 sm:p-10 flex flex-col items-center text-center gap-6"
+            style={{
+              background: 'linear-gradient(160deg, #1a1512 0%, #231c17 40%, #1C1917 100%)',
+              border: '1px solid rgba(232,93,4,0.15)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 80px rgba(232,93,4,0.08)',
+            }}
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] rounded-full blur-[100px] opacity-15"
+              style={{ background: 'radial-gradient(ellipse, var(--color-primary), transparent)' }} />
+            <div className="absolute bottom-0 right-0 w-[300px] h-[200px] rounded-full blur-[80px] opacity-10"
+              style={{ background: 'radial-gradient(circle, var(--color-primary), transparent)' }} />
+            <div className="absolute inset-0 opacity-[0.03]"
+              style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+
+            <div className="relative">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
+                style={{ background: 'rgba(232,93,4,0.12)', border: '1px solid rgba(232,93,4,0.25)' }}>
+                <Flame className="w-4 h-4 text-orange-400 animate-pulse" />
+                <span className="text-orange-400 font-black text-xs uppercase tracking-[0.2em]">Flash Sale</span>
+                <Flame className="w-4 h-4 text-orange-400 animate-pulse" />
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white mb-2 leading-tight">
+                {(() => {
+                  const title = settings.promoBannerTitle || "Up to";
+                  const discount = settings.promoBannerDiscount || "30% OFF";
+                  if (title.toLowerCase().includes(discount.toLowerCase())) {
+                    return <>{title.replace(new RegExp(discount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '')} <span className="relative" style={{ color: 'var(--color-primary)' }}>{discount}<div className="absolute -inset-1 blur-lg opacity-30" style={{ background: 'var(--color-primary)' }} /></span></>;
+                  }
+                  return <>{title} <span className="relative" style={{ color: 'var(--color-primary)' }}>{discount}<div className="absolute -inset-1 blur-lg opacity-30" style={{ background: 'var(--color-primary)' }} /></span></>;
+                })()}
+              </h2>
+              <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
+                {settings.promoBannerSubtitle || "On selected T-shirts & Hoodies. Limited stock — don't miss out!"}
+              </p>
+            </div>
+
+            <CountdownTimer />
+
+            <Link
+              href="/products"
+              className="relative group px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black text-gray-900 text-sm sm:text-base flex items-center gap-2 transition-all duration-300 hover:-translate-y-1 hover:scale-105 shimmer-btn"
+              style={{
+                background: 'linear-gradient(135deg, #FFB347 0%, var(--color-primary) 40%, var(--color-primary) 100%)',
+                boxShadow: '0 8px 32px var(--color-primary-medium), 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)',
+              }}
+            >
+              <Flame className="w-4 h-4 transition-transform group-hover:rotate-12" /> {settings.promoBannerCTA || "Shop the Sale"}
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </motion.div>
         </div>
       </section>}
 

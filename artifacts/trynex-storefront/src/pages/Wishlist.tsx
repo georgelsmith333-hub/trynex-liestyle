@@ -83,7 +83,7 @@ function VariantPicker({ product, onClose, onAdd }: {
               {colors.length > 0 && (
                 <div>
                   <p className="font-bold text-sm text-gray-900 mb-2">
-                    Color {selectedColor && <span className="text-orange-600 font-normal">— {selectedColor}</span>}
+                    Color {selectedColor && <span className="text-orange-600 font-normal">· Selected: {selectedColor}</span>}
                   </p>
                   <div className="flex flex-wrap gap-2.5">
                     {colors.map((color) => (
@@ -278,8 +278,12 @@ export default function Wishlist() {
                           <ShoppingCart className="w-4 h-4" /> Add to Cart
                         </button>
                         <button
-                          onClick={() => removeFromWishlist(item.id)}
-                          className="p-2.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all border border-gray-200"
+                          onClick={() => {
+                            removeFromWishlist(item.id);
+                            toast({ title: "Removed from wishlist", description: item.name });
+                          }}
+                          aria-label={`Remove ${item.name} from wishlist`}
+                          className="p-2.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all border border-gray-200 btn-press"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

@@ -136,11 +136,19 @@ import { useLocation } from "wouter";
       >
         <div
           ref={cardRef}
+          role="link"
+          tabIndex={0}
+          aria-label={`View ${product.name}`}
           onMouseEnter={() => setHovered(true)}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onClick={goToDetail}
-          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col"
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if ((e.target as HTMLElement).closest('button, a, input, [role="button"]')) return;
+            if (e.key === 'Enter') { e.preventDefault(); goToDetail(); }
+          }}
+          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
           style={{
             border: hovered ? '1.5px solid #fbd5b4' : '1.5px solid #f0e8e0',
             boxShadow: hovered

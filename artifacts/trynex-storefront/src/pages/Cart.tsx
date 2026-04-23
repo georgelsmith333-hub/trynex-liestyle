@@ -273,7 +273,7 @@ export default function Cart() {
       <SEOHead title="Your Cart" description="Review your shopping cart at TryNex Lifestyle." noindex />
       <Navbar />
 
-      <main className="flex-1 pt-header pb-24">
+      <main className={`flex-1 pt-header ${items.length > 0 ? 'pb-32 lg:pb-24' : 'pb-24'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6 sm:mb-10 pt-4 sm:pt-0">
             <p className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-1 sm:mb-2">Your Cart</p>
@@ -410,6 +410,25 @@ export default function Cart() {
           )}
         </div>
       </main>
+
+      {/* Mobile sticky checkout bar — visible only when cart has items, on small screens */}
+      {items.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] bg-white/95 backdrop-blur border-t border-gray-200" style={{ boxShadow: '0 -8px 24px rgba(0,0,0,0.06)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total</span>
+              <span className="font-black text-xl text-orange-600 leading-none tabular-nums">{formatPrice(total)}</span>
+            </div>
+            <button
+              onClick={() => setLocation("/checkout")}
+              className="flex-1 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm btn-press"
+              style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 16px rgba(232,93,4,0.35)', minHeight: '48px' }}
+            >
+              Checkout <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
