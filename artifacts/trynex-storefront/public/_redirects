@@ -4,15 +4,9 @@
 # DELETE traffic doesn't get rewritten to /index.html.
 /api/*    https://trynex-api.onrender.com/api/:splat    200
 
-# Serve the live, DB-backed sitemap (every product, hamper, blog post,
-# category) from the API. Bots requesting trynexshop.com/sitemap.xml
-# get the always-fresh version. Note: a 200 rewrite does NOT fall back
-# to the static /sitemap.xml in /public if the API is down — it returns
-# the upstream error. The static files in /public exist for local dev
-# and as a manually swappable safety net (change the rule to a 404
-# fallback rewrite if the API outage is ever long-running).
-/sitemap.xml    https://trynex-api.onrender.com/sitemap.xml    200
-/robots.txt     https://trynex-api.onrender.com/robots.txt     200
+# sitemap.xml and robots.txt are served as static files from /public
+# so Google can always read them even when the Render API is sleeping.
+# Do NOT add proxy rules for these paths here.
 
 # SPA fallback — every non-API path is served by index.html so client
 # routing works on hard refresh.

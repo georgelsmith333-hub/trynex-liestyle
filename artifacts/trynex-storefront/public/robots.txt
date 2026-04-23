@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /account
+Disallow: /login
+Disallow: /signup
+
+Sitemap: https://trynexshop.com/sitemap.xml
