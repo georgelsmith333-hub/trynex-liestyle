@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Facebook, Instagram, Mail, MapPin, Phone, Truck, ShieldCheck, Clock, Youtube, Heart, ExternalLink } from "lucide-react";
+import { Facebook, Instagram, Mail, MapPin, Phone, Truck, ShieldCheck, Clock, Youtube, Heart, ExternalLink, Loader2 } from "lucide-react";
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -19,6 +19,7 @@ export function Footer() {
   const [tapFeedback, setTapFeedback] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const settings = useSiteSettings();
   const { toast } = useToast();
 
@@ -48,10 +49,14 @@ export function Footer() {
 
   const handleNewsletter = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email || subscribing) return;
+    setSubscribing(true);
+    // Simulate brief async confirmation so users see a pending state.
+    setTimeout(() => {
+      setSubscribing(false);
       setSubscribed(true);
       toast({ title: "✓ Subscribed!", description: "Watch your inbox for exclusive deals." });
-    }
+    }, 400);
   };
 
   return (
@@ -111,8 +116,11 @@ export function Footer() {
                   style={{ background: 'white', border: '1.5px solid rgba(255,255,255,0.1)', boxShadow: 'none' }}
                 />
                 <button type="submit"
-                  className="px-5 py-3 rounded-xl font-bold text-white text-sm transition-all hover:opacity-90"
+                  disabled={subscribing}
+                  aria-busy={subscribing}
+                  className="px-5 py-3 rounded-xl font-bold text-white text-sm transition-all hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
+                  {subscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Subscribe
                 </button>
               </form>
