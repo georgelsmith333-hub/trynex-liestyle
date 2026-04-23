@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ShoppingCart, Zap, Star, Package, Shield, Paintbrush, Loader2 } from "lucide-react";
+import { ShoppingCart, Zap, Star, Package, Shield, Paintbrush } from "lucide-react";
 import { Link } from "wouter";
 import { useListProducts } from "@workspace/api-client-react";
 import { formatPrice } from "@/lib/utils";
@@ -20,6 +20,92 @@ const cardVariant = {
   }),
 };
 
+interface DisplayProduct {
+  id: string | number;
+  name: string;
+  emoji?: string;
+  imageUrl?: string | null;
+  description?: string | null;
+  price: number;
+  discountPrice?: number | null;
+  tag?: string;
+  tagColor?: string;
+  highlight?: boolean;
+  href: string;
+}
+
+const SHOWCASE_PRODUCTS: DisplayProduct[] = [
+  {
+    id: "s1",
+    name: "General Mug",
+    emoji: "☕",
+    description: "Fully Customized Just for You",
+    price: 600,
+    href: "/design-studio",
+  },
+  {
+    id: "s2",
+    name: "Love Shape Mug",
+    emoji: "💝",
+    description: "Small Gift, Big Smiles 😊",
+    price: 690,
+    tag: "Romantic",
+    tagColor: "#e1306c",
+    href: "/design-studio",
+  },
+  {
+    id: "s3",
+    name: "Water Bottle",
+    emoji: "🍶",
+    description: "Free Image Editing Included",
+    price: 650,
+    href: "/design-studio",
+  },
+  {
+    id: "s4",
+    name: "2 General Mugs",
+    emoji: "☕☕",
+    description: "Perfect for couples or gifting",
+    price: 1200,
+    discountPrice: 899,
+    tag: "Popular",
+    tagColor: "#2563eb",
+    href: "/design-studio",
+  },
+  {
+    id: "s5",
+    name: "1 General + 1 Love Mug",
+    emoji: "☕💝",
+    description: "We Accept Any Custom Request",
+    price: 1290,
+    discountPrice: 1170,
+    href: "/design-studio",
+  },
+  {
+    id: "s6",
+    name: "2 Water Bottles",
+    emoji: "🍶🍶",
+    description: "Auto discount applied",
+    price: 1300,
+    discountPrice: 1100,
+    tag: "Deal",
+    tagColor: "#16a34a",
+    href: "/design-studio",
+  },
+  {
+    id: "s7",
+    name: "Mega Combo Pack",
+    emoji: "🎁",
+    description: "1 General Mug + 1 Love Mug + 1 Water Bottle",
+    price: 1940,
+    discountPrice: 1390,
+    tag: "BEST VALUE",
+    tagColor: "#E85D04",
+    highlight: true,
+    href: "/design-studio",
+  },
+];
+
 function SkeletonCard() {
   return (
     <div className="rounded-3xl border border-gray-100 bg-white overflow-hidden animate-pulse">
@@ -37,7 +123,7 @@ function SkeletonCard() {
 export function ProductOffersSection() {
   const { data, isLoading } = useListProducts({ limit: 20 });
 
-  const products = (() => {
+  const liveProducts: DisplayProduct[] = (() => {
     const all = data?.products ?? [];
     const discounted = all
       .filter((p) => p.discountPrice && p.discountPrice < p.price)
@@ -46,18 +132,36 @@ export function ProductOffersSection() {
         const savB = ((b.price - (b.discountPrice ?? b.price)) / b.price) * 100;
         return savB - savA;
       });
-    if (discounted.length >= 3) return discounted.slice(0, 9);
-    return all.slice(0, 9);
+    const source = discounted.length >= 3 ? discounted : all;
+    return source.slice(0, 9).map((p, i) => ({
+      id: p.id,
+      name: p.name,
+      imageUrl: p.imageUrl,
+      description: p.description,
+      price: p.price,
+      discountPrice: p.discountPrice,
+      highlight: i === 0,
+      tag: (() => {
+        if (!p.discountPrice) return undefined;
+        const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+        if (i === 0) return "BEST DEAL";
+        if (pct >= 30) return `${pct}% OFF`;
+        if (pct >= 15) return "ON SALE";
+        return undefined;
+      })(),
+      tagColor: (() => {
+        if (!p.discountPrice) return undefined;
+        const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+        if (i === 0) return "#E85D04";
+        if (pct >= 30) return "#16a34a";
+        return "#2563eb";
+      })(),
+      href: `/product/${p.id}`,
+    }));
   })();
 
-  const getTag = (p: typeof products[number], rank: number) => {
-    if (!p.discountPrice) return undefined;
-    const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
-    if (rank === 0) return { label: "BEST DEAL", color: "#E85D04" };
-    if (pct >= 30) return { label: `${pct}% OFF`, color: "#16a34a" };
-    if (pct >= 15) return { label: "ON SALE", color: "#2563eb" };
-    return undefined;
-  };
+  const products: DisplayProduct[] =
+    !isLoading && liveProducts.length > 0 ? liveProducts : SHOWCASE_PRODUCTS;
 
   return (
     <section
@@ -117,32 +221,30 @@ export function ProductOffersSection() {
         </motion.div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-orange-300" />
-            <p className="text-sm font-semibold">Loading offers…</p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {products.map((product, i) => {
-              const isHighlight = i === 0;
-              const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+              const isHighlight = !!product.highlight;
+              const hasDiscount =
+                product.discountPrice != null && product.discountPrice < product.price;
               const savings = hasDiscount
                 ? Math.round(product.price - (product.discountPrice ?? product.price))
                 : 0;
               const discountPct = hasDiscount
-                ? Math.round(((product.price - (product.discountPrice ?? product.price)) / product.price) * 100)
+                ? Math.round(
+                    ((product.price - (product.discountPrice ?? product.price)) / product.price) *
+                      100,
+                  )
                 : 0;
-              const tag = getTag(product, i);
 
               return (
                 <motion.div
-                  key={product.id}
+                  key={String(product.id)}
                   custom={i}
                   initial="hidden"
                   whileInView="visible"
@@ -167,13 +269,13 @@ export function ProductOffersSection() {
                     />
                   )}
 
-                  {tag && (
+                  {product.tag && (
                     <div className="absolute top-3 right-3 z-10">
                       <span
                         className="px-2.5 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-wide"
-                        style={{ background: tag.color }}
+                        style={{ background: product.tagColor ?? "#E85D04" }}
                       >
-                        {tag.label}
+                        {product.tag}
                       </span>
                     </div>
                   )}
@@ -191,11 +293,10 @@ export function ProductOffersSection() {
                       </div>
                     ) : (
                       <div
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shrink-0"
-                        style={{ background: "linear-gradient(135deg,#fff4ee,#fde8d0)" }}
+                        className={`${isHighlight ? "text-5xl" : "text-4xl"} mb-3`}
                         aria-hidden="true"
                       >
-                        🎁
+                        {product.emoji ?? "🎁"}
                       </div>
                     )}
 
@@ -216,31 +317,33 @@ export function ProductOffersSection() {
                       {hasDiscount && (
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm text-gray-400 line-through font-medium">
-                            {formatPrice(product.price)}
+                            ৳{product.price.toLocaleString()}
                           </span>
                           {savings > 0 && (
                             <span
                               className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
                               style={{ background: "#16a34a" }}
                             >
-                              Save {formatPrice(savings)}
+                              Save ৳{savings.toLocaleString()}
                             </span>
                           )}
                         </div>
                       )}
+
                       <div className="flex items-end gap-1 mb-4">
                         <span
                           className={`font-black leading-none ${isHighlight ? "text-4xl" : "text-3xl"}`}
                           style={{ color: "#E85D04" }}
                         >
-                          {formatPrice(product.discountPrice ?? product.price)}
+                          ৳{(product.discountPrice ?? product.price).toLocaleString()}
                         </span>
+                        <span className="text-xs text-gray-400 mb-1">Tk</span>
                       </div>
 
                       {isHighlight && savings > 0 && (
                         <div className="text-[11px] text-orange-700 font-bold mb-3 flex items-center gap-1">
                           <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> Best value
-                          — save {formatPrice(savings)}!
+                          — save ৳{savings.toLocaleString()}!
                         </div>
                       )}
 
@@ -251,7 +354,7 @@ export function ProductOffersSection() {
                       )}
 
                       <Link
-                        href={`/product/${product.id}`}
+                        href={product.href}
                         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
                         style={{
                           background: isHighlight
@@ -261,7 +364,7 @@ export function ProductOffersSection() {
                           boxShadow: isHighlight ? "0 4px 14px rgba(232,93,4,0.35)" : "none",
                         }}
                       >
-                        <ShoppingCart className="w-4 h-4" /> View Offer
+                        <ShoppingCart className="w-4 h-4" /> Order Now
                       </Link>
                     </div>
                   </div>

@@ -26,19 +26,13 @@ export function getAuthHeaders(): Record<string, string> {
 export const PRODUCTION_API_BASE_URL = "https://trynex-api.onrender.com";
 
 export function getApiBaseUrl(): string {
+  // In Vite dev mode the dev server proxy rewrites /api/* → localhost:8080
+  // no matter what domain the page is served from (localhost *or* the
+  // Replit preview URL). Always use same-origin so the proxy handles it.
+  if (import.meta.env.DEV) return '';
+
   const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '');
   if (fromEnv) return fromEnv;
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    // Local dev only uses same-origin (Vite proxy → API on localhost).
-    // Every other host — including Cloudflare Pages preview deploys —
-    // hits the production Render API directly. We deliberately do NOT
-    // special-case any Replit host here; production must be provably
-    // independent of Replit infrastructure.
-    if (host === 'localhost' || host === '127.0.0.1') {
-      return '';
-    }
-  }
   return PRODUCTION_API_BASE_URL;
 }
 
