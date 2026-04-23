@@ -85,6 +85,15 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
+    // Real-name validation — letters (incl. unicode), spaces, hyphens, apostrophes only.
+    // Rejects digits, emails, phone numbers, junk symbols. Length 2–50.
+    const trimmedName = String(name).trim().replace(/\s+/g, " ");
+    const nameRegex = /^[\p{L}][\p{L}\s'-]{1,49}$/u;
+    if (trimmedName.length < 2 || /\d/.test(trimmedName) || /@/.test(trimmedName) || !nameRegex.test(trimmedName)) {
+      res.status(400).json({ error: "validation_error", message: "Please enter a valid name (letters only, 2–50 characters)" });
+      return;
+    }
+
     if (password.length < 6) {
       res.status(400).json({ error: "validation_error", message: "Password must be at least 6 characters" });
       return;
@@ -96,6 +105,12 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
+    // Phone is optional, but validate if provided
+    if (phone && !/^[+\d][\d\s-]{6,18}$/.test(String(phone).trim())) {
+      res.status(400).json({ error: "validation_error", message: "Invalid phone number" });
+      return;
+    }
+
     const existing = await db.select().from(customersTable).where(eq(customersTable.email, email.toLowerCase())).limit(1);
     if (existing.length > 0) {
       res.status(409).json({ error: "conflict", message: "An account with this email already exists" });
@@ -103,7 +118,7 @@ router.post("/auth/register", async (req, res) => {
     }
 
     const [customer] = await db.insert(customersTable).values({
-      name: name.trim(),
+      name: trimmedName,
       email: email.toLowerCase().trim(),
       phone: phone?.trim() || null,
       passwordHash: hashPassword(password),

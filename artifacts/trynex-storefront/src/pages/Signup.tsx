@@ -20,7 +20,7 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; phone?: string; password?: string; confirmPassword?: string }>({});
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const googleInitRef = useRef(false);
 
@@ -83,10 +83,21 @@ export default function Signup() {
     e.preventDefault();
     setError("");
     const errs: typeof fieldErrors = {};
-    if (!name.trim()) errs.name = "Full name is required";
-    else if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+    const trimmedName = name.trim().replace(/\s+/g, " ");
+    // Real names: letters (incl. unicode), spaces, hyphens, apostrophes only.
+    // Reject digits, emails, phone-numbers, symbols.
+    const nameRegex = /^[\p{L}][\p{L}\s'-]{1,49}$/u;
+    if (!trimmedName) errs.name = "Full name is required";
+    else if (trimmedName.length < 2) errs.name = "Name must be at least 2 characters";
+    else if (/\d/.test(trimmedName)) errs.name = "Name cannot contain numbers";
+    else if (/@/.test(trimmedName)) errs.name = "Please enter your name, not an email";
+    else if (!nameRegex.test(trimmedName)) errs.name = "Please enter a valid name (letters only)";
     if (!email) errs.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Enter a valid email address";
+    if (phone && !/^[+\d][\d\s-]{6,18}$/.test(phone)) {
+      // optional field — only validate if filled
+      (errs as any).phone = "Enter a valid phone number";
+    }
     if (!password) errs.password = "Password is required";
     else if (password.length < 6) errs.password = "Password must be at least 6 characters";
     if (password && password !== confirmPassword) errs.confirmPassword = "Passwords do not match";
@@ -237,11 +248,18 @@ export default function Signup() {
                     autoComplete="tel"
                     enterKeyHint="next"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      // Allow digits, spaces, +, - only — strip everything else
+                      const cleaned = e.target.value.replace(/[^\d+\s-]/g, "");
+                      setPhone(cleaned);
+                      if (fieldErrors.phone) setFieldErrors(p => ({ ...p, phone: undefined }));
+                    }}
                     placeholder="01XXXXXXXXX"
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-sm"
+                    aria-invalid={!!fieldErrors.phone}
+                    className={`w-full pl-11 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-orange-100 outline-none transition-all text-sm ${fieldErrors.phone ? "border-red-400 bg-red-50" : "border-gray-200 focus:border-orange-400"}`}
                   />
                 </div>
+                {fieldErrors.phone && <p role="alert" className="text-red-500 text-xs mt-1.5">{fieldErrors.phone}</p>}
               </div>
 
               <div>

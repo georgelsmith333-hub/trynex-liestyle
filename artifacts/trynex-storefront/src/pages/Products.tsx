@@ -11,6 +11,7 @@ import { Search, SlidersHorizontal, X, ArrowUpDown, Grid3X3, LayoutList, Sparkle
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { ProductOffersSection } from "@/components/home/ProductOffersSection";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name" | "rating";
 
@@ -112,6 +113,10 @@ export default function Products() {
       <Navbar />
 
       <main className="flex-1 pt-header pb-20">
+        {/* Special Offers / Combo deals — shown above the catalog so customers
+            see the high-value bundles first. */}
+        <ProductOffersSection />
+
         <div className="bg-white border-b border-gray-100 py-4 sm:py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>

@@ -93,6 +93,30 @@
   h1, h2, h3, h4, h5 { @apply font-display; }
   img { max-width: 100%; height: auto; }
   input, textarea, select, button { font-family: inherit; }
+
+  /* Global click affordances — every button & link should feel clickable. */
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Keyboard focus ring — visible only on keyboard nav, never on mouse click.
+     Uses brand orange so it matches the visual language. */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 @layer utilities {
