@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useAuth } from "@/context/AuthContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -12,6 +13,7 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   const { googleClientId, facebookAppId } = useSiteSettings();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,8 +34,10 @@ export default function Login() {
         setLoading(true);
         setError("");
         const result = await loginWithGoogle(response.credential);
-        if (result.success) navigate(redirectTo);
-        else setError(result.error || "Google login failed");
+        if (result.success) {
+          toast({ title: "✓ Signed in", description: "Welcome back!" });
+          navigate(redirectTo);
+        } else setError(result.error || "Google login failed");
         setLoading(false);
       },
       ux_mode: "popup",
@@ -75,6 +79,7 @@ export default function Login() {
     setLoading(true);
     const result = await login(email, password);
     if (result.success) {
+      toast({ title: "✓ Signed in", description: "Welcome back!" });
       navigate(redirectTo);
     } else {
       setError(result.error || "Login failed");

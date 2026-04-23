@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useAuth } from "@/context/AuthContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -12,6 +13,7 @@ export default function Signup() {
   const [, navigate] = useLocation();
   const { register, loginWithGoogle, loginWithFacebook } = useAuth();
   const { googleClientId, facebookAppId } = useSiteSettings();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -49,8 +51,10 @@ export default function Signup() {
         setLoading(true);
         setError("");
         const result = await loginWithGoogle(response.credential);
-        if (result.success) navigate(redirectTo);
-        else setError(result.error || "Google login failed");
+        if (result.success) {
+          toast({ title: "✓ Account created", description: "Welcome to TryNex!" });
+          navigate(redirectTo);
+        } else setError(result.error || "Google login failed");
         setLoading(false);
       },
       ux_mode: "popup",
@@ -106,6 +110,7 @@ export default function Signup() {
     setLoading(true);
     const result = await register({ name, email, phone: phone || undefined, password });
     if (result.success) {
+      toast({ title: "✓ Account created", description: "Welcome to TryNex!" });
       navigate(redirectTo);
     } else {
       setError(result.error || "Registration failed");

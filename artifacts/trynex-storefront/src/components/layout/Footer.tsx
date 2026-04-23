@@ -3,6 +3,7 @@ import { Facebook, Instagram, Mail, MapPin, Phone, Truck, ShieldCheck, Clock, Yo
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
+import { useToast } from "@/hooks/use-toast";
 
 const PAYMENT_BADGES = [
   { name: "bKash", color: "#e2136e", bg: "#fde8f1" },
@@ -19,6 +20,7 @@ export function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const settings = useSiteSettings();
+  const { toast } = useToast();
 
   const facebookUrl = settings.facebookUrl || "https://facebook.com/trynexlifestyle";
   const instagramUrl = settings.instagramUrl || "https://instagram.com/trynexlifestyle";
@@ -46,7 +48,10 @@ export function Footer() {
 
   const handleNewsletter = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) { setSubscribed(true); }
+    if (email) {
+      setSubscribed(true);
+      toast({ title: "✓ Subscribed!", description: "Watch your inbox for exclusive deals." });
+    }
   };
 
   return (

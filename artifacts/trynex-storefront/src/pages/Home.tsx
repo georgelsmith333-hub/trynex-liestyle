@@ -656,6 +656,64 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════
+          FEATURED PRODUCTS (moved above Categories per UX checklist)
+      ═══════════════════════════════════════ */}
+      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
+            <div>
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="section-eyebrow mb-4"
+              >
+                <Sparkles className="w-3 h-3" /> Featured Products
+              </motion.span>
+              <h2 className="section-heading mt-4">
+                <SplitTextReveal text="Best Sellers" delay={0.04} />
+              </h2>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.25 }}
+                className="text-gray-500 mt-3 max-w-lg"
+              >
+                Our most-loved products — hand-picked for quality and style.
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <Link href="/products"
+                className="flex items-center gap-2 font-bold text-orange-600 hover:text-orange-700 transition-colors shrink-0 group">
+                View All <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </motion.div>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5" aria-label="Loading products" aria-busy="true">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <ErrorBoundary section="featured products">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                {featuredProducts.map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+            </ErrorBoundary>
+          )}
+        </div>
+      </section>}
+
+      {/* ═══════════════════════════════════════
           CATEGORIES GRID
       ═══════════════════════════════════════ */}
       {settings.sectionCategoriesEnabled !== false && <section className="py-20 px-4" style={{ background: '#FAFAFA' }}>
@@ -735,9 +793,9 @@ export default function Home() {
       </section>}
 
       {/* ═══════════════════════════════════════
-          FEATURED PRODUCTS
+          (FEATURED PRODUCTS section moved above)
       ═══════════════════════════════════════ */}
-      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white">
+      {false && <section className="py-20 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
             <div>

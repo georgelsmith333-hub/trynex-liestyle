@@ -8,9 +8,10 @@ import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag, ShieldCheck, XCircle, Image as ImageIcon, Gift, ChevronDown, ChevronUp, Heart, Sparkles } from "lucide-react";
 import { CartItemThumbnail } from "@/components/CartItemThumbnail";
 import { useCartItemPreview } from "@/hooks/useCartItemPreview";
-import { memo, useState, useEffect, lazy, Suspense } from "react";
+import { memo, useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FreeShippingProgress } from "@/components/FreeShippingProgress";
+import { useToast } from "@/hooks/use-toast";
 
 const CartViewer3D = lazy(() => import("@/components/CartViewer3D"));
 
@@ -255,7 +256,17 @@ function useCutoffCountdown() {
 
 export default function Cart() {
   const { items, subtotal } = useCartState();
-  const { changeQuantity, removeFromCart, clearCart } = useCartActions();
+  const { changeQuantity, removeFromCart: removeFromCartRaw, clearCart: clearCartRaw } = useCartActions();
+  const { toast } = useToast();
+  const removeFromCart = useCallback((id: string) => {
+    const removed = items.find((it) => it.id === id);
+    removeFromCartRaw(id);
+    toast({ title: "✓ Removed from bag", description: removed?.name ?? "Item removed" });
+  }, [items, removeFromCartRaw, toast]);
+  const clearCart = useCallback(() => {
+    clearCartRaw();
+    toast({ title: "✓ Cart cleared", description: "All items have been removed." });
+  }, [clearCartRaw, toast]);
   const [, setLocation] = useLocation();
   const settings = useSiteSettings();
   const freeShippingThreshold = settings.freeShippingThreshold ?? 1500;

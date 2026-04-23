@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
   import { ShoppingCart, Star, Heart, Check, Eye, ArrowRight, MessageCircle, Flame } from "lucide-react";
   import { formatPrice } from "@/lib/utils";
   import type { Product } from "@workspace/api-client-react";
@@ -136,19 +136,10 @@ import { useLocation } from "wouter";
       >
         <div
           ref={cardRef}
-          role="link"
-          tabIndex={0}
-          aria-label={`View ${product.name}`}
           onMouseEnter={() => setHovered(true)}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          onClick={goToDetail}
-          onKeyDown={(e) => {
-            if (e.target !== e.currentTarget) return;
-            if ((e.target as HTMLElement).closest('button, a, input, [role="button"]')) return;
-            if (e.key === 'Enter') { e.preventDefault(); goToDetail(); }
-          }}
-          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2"
+          className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col focus-within:ring-2 focus-within:ring-orange-400 focus-within:ring-offset-2"
           style={{
             border: hovered ? '1.5px solid #fbd5b4' : '1.5px solid #f0e8e0',
             boxShadow: hovered
@@ -162,6 +153,13 @@ import { useLocation } from "wouter";
             transformStyle: 'preserve-3d',
           }}
         >
+          {/* Stretched semantic link — covers card for click + keyboard nav */}
+          <Link
+            href={`/product/${product.id}`}
+            aria-label={`View ${product.name}`}
+            className="absolute inset-0 z-10 rounded-2xl focus:outline-none"
+          />
+
           {/* Glare overlay */}
           {hovered && !isMobile && (
             <div
@@ -204,7 +202,7 @@ import { useLocation } from "wouter";
             )}
 
             {/* Discount / Stock Badges */}
-            <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5">
+            <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
               {discount > 0 && (
                 <span className="px-2.5 py-1 rounded-lg text-xs font-black text-white"
                   style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 2px 8px rgba(232,93,4,0.4)' }}>
@@ -231,10 +229,11 @@ import { useLocation } from "wouter";
 
             {/* Wishlist — larger touch target (40px) with heart-pop animation */}
             <motion.button
+              type="button"
               onClick={handleWishlist}
               aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
               aria-pressed={wishlisted}
-              className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 overflow-visible"
+              className="pointer-events-auto absolute top-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 overflow-visible"
               style={{
                 background: wishlisted ? '#fff1f0' : 'rgba(255,255,255,0.92)',
                 border: wishlisted ? '1.5px solid #fecaca' : '1px solid rgba(0,0,0,0.08)',
@@ -281,8 +280,9 @@ import { useLocation } from "wouter";
                   className="absolute bottom-3 left-3 right-3 z-20"
                 >
                   <button
+                    type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToDetail(); }}
-                    className="w-full py-2 rounded-xl font-bold text-sm text-gray-700 flex items-center justify-center gap-2 transition-all"
+                    className="pointer-events-auto w-full py-2 rounded-xl font-bold text-sm text-gray-700 flex items-center justify-center gap-2 transition-all"
                     style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,0,0,0.08)' }}
                   >
                     <Eye className="w-3.5 h-3.5" /> Quick View
@@ -293,7 +293,7 @@ import { useLocation } from "wouter";
           </div>
 
           {/* Product Info */}
-          <div className="p-3 sm:p-4 flex-1 flex flex-col">
+          <div className="p-3 sm:p-4 flex-1 flex flex-col relative z-20 pointer-events-none">
             {/* Rating */}
             <div className="flex items-center gap-1 mb-1.5">
               {Array.from({ length: 5 }).map((_, j) => (
@@ -347,11 +347,12 @@ import { useLocation } from "wouter";
               {/* Desktop cart button */}
               {!isMobile && (
                 <motion.button
+                  type="button"
                   onClick={handleQuickAdd}
                   disabled={product.stock === 0}
                   whileTap={{ scale: 0.9 }}
                   aria-label="Add to cart"
-                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  className="pointer-events-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   style={{
                     background: isAdding ? 'rgba(22,163,74,0.1)' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                     border: isAdding ? '1px solid rgba(22,163,74,0.3)' : 'none',
@@ -366,8 +367,9 @@ import { useLocation } from "wouter";
 
             {/* Mobile: full-width Add to Bag button */}
             {isMobile && (
-              <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-3 flex gap-2 pointer-events-auto">
                 <motion.button
+                  type="button"
                   onClick={handleQuickAdd}
                   disabled={product.stock === 0}
                   whileTap={{ scale: 0.97 }}
@@ -392,7 +394,6 @@ import { useLocation } from "wouter";
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
                   aria-label="Order via WhatsApp"
                   className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-95"
                   style={{ background: '#25D366', boxShadow: '0 2px 8px rgba(37,211,102,0.3)', minHeight: '44px' }}

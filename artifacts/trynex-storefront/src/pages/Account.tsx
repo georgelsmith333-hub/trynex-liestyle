@@ -214,11 +214,11 @@ export default function Account() {
       if (!resp.ok) {
         setPasswordError(data.message || "Failed to change password");
       } else {
-        setPasswordSuccess("Password changed successfully!");
+        toast({ title: "✓ Password changed", description: "Your new password is now active." });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmNewPassword("");
-        setTimeout(() => { setChangingPassword(false); setPasswordSuccess(""); }, 2000);
+        setChangingPassword(false);
       }
     } catch {
       setPasswordError("Network error. Please try again.");
