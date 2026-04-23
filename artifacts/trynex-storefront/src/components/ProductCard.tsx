@@ -288,7 +288,7 @@ import { Link, useLocation } from "wouter";
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToDetail(); }}
-                    className="pointer-events-auto w-full py-2 rounded-xl font-bold text-sm text-gray-700 flex items-center justify-center gap-2 transition-all"
+                    className="btn-press pointer-events-auto w-full py-2 rounded-xl font-bold text-sm text-gray-700 flex items-center justify-center gap-2 transition-all"
                     style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,0,0,0.08)' }}
                   >
                     <Eye className="w-3.5 h-3.5" /> Quick View
@@ -359,7 +359,7 @@ import { Link, useLocation } from "wouter";
                   aria-busy={isPending}
                   whileTap={{ scale: 0.9 }}
                   aria-label="Add to cart"
-                  className="pointer-events-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+                  className="btn-press pointer-events-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                   style={{
                     background: isAdding ? 'rgba(22,163,74,0.1)' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                     border: isAdding ? '1px solid rgba(22,163,74,0.3)' : 'none',
@@ -381,7 +381,7 @@ import { Link, useLocation } from "wouter";
                   disabled={product.stock === 0 || isPending}
                   aria-busy={isPending}
                   whileTap={{ scale: 0.97 }}
-                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-1.5 active:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  className="btn-press flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-1.5 active:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                   style={{
                     background: isAdding ? 'rgba(22,163,74,0.12)' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                     border: isAdding ? '1px solid rgba(22,163,74,0.3)' : 'none',

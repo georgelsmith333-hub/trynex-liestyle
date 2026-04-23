@@ -55,22 +55,22 @@ const HamperCartLine = memo(function HamperCartLine({ item, onChangeQuantity, on
                 </p>
               )}
             </div>
-            <button onClick={() => onRemove(item.id)} aria-label="Remove item" className="touch-target rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0">
+            <button onClick={() => onRemove(item.id)} aria-label="Remove item" className="btn-press touch-target rounded-lg hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center rounded-xl border border-orange-200 overflow-hidden bg-white">
-              <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-orange-400 hover:text-orange-700"><Minus className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onChangeQuantity(item.id, -1)} className="btn-press touch-target text-orange-400 hover:text-orange-700"><Minus className="w-3.5 h-3.5" /></button>
               <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-              <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-orange-400 hover:text-orange-700"><Plus className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onChangeQuantity(item.id, +1)} className="btn-press touch-target text-orange-400 hover:text-orange-700"><Plus className="w-3.5 h-3.5" /></button>
             </div>
             <span className="font-black text-base text-gray-900">{formatPrice(item.price * item.quantity)}</span>
           </div>
         </div>
       </div>
       <button onClick={() => setOpen(!open)}
-        className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-orange-700 border-t border-orange-100 hover:bg-orange-50 transition-colors">
+        className="btn-press w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-orange-700 border-t border-orange-100 hover:bg-orange-50 transition-colors">
         <span>{open ? 'Hide' : 'View'} hamper contents</span>
         {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
@@ -190,7 +190,7 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
             </div>
             <button
               onClick={() => onRemove(item.id)}
-              aria-label="Remove item" className="touch-target rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
+              aria-label="Remove item" className="btn-press touch-target rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 text-gray-300 shrink-0"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -199,11 +199,11 @@ const CatalogCartLine = memo(function CatalogCartLine({ item, onChangeQuantity, 
           <div className="flex items-center justify-between mt-3">
             <div className="flex flex-col gap-2">
               <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f9fafb' }}>
-                <button onClick={() => onChangeQuantity(item.id, -1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                <button onClick={() => onChangeQuantity(item.id, -1)} className="btn-press touch-target text-gray-400 hover:text-gray-700 transition-colors">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <span className="font-black w-8 text-center text-sm text-gray-900">{item.quantity}</span>
-                <button onClick={() => onChangeQuantity(item.id, +1)} className="touch-target text-gray-400 hover:text-gray-700 transition-colors active:scale-90">
+                <button onClick={() => onChangeQuantity(item.id, +1)} className="btn-press touch-target text-gray-400 hover:text-gray-700 transition-colors">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -335,7 +335,7 @@ export default function Cart() {
                     onClick={() => {
                       if (confirm("Remove all items from your cart?")) clearCart();
                     }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
+                    className="btn-press flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
                   >
                     <XCircle className="w-3.5 h-3.5" /> Clear Cart
                   </button>

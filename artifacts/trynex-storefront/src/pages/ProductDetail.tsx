@@ -1010,7 +1010,7 @@ export default function ProductDetail() {
                               className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
                             <button
                               onClick={() => setCustomImages(prev => prev.filter((_, i) => i !== idx))}
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="btn-press absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <XIcon className="w-3 h-3" />
                             </button>
@@ -1027,14 +1027,14 @@ export default function ProductDetail() {
                 <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors font-bold"
+                    className="btn-press px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors font-bold"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
                   <span className="px-5 font-black text-gray-900 text-lg min-w-[3rem] text-center">{quantity}</span>
                   <button
                     onClick={() => setQuantity(Math.min(quantity + 1, product.stock))}
-                    className="px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
+                    className="btn-press px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>

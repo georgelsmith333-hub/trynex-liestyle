@@ -351,7 +351,7 @@ export function Navbar() {
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                      className="btn-press text-gray-400 hover:text-gray-600 shrink-0"
                       aria-label="Clear search"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -438,7 +438,7 @@ export function Navbar() {
             <button
               onClick={() => setSearchOpen(prev => !prev)}
               className={cn(
-                "flex lg:hidden items-center justify-center w-10 h-10 rounded-full transition-all",
+                "btn-press flex lg:hidden items-center justify-center w-10 h-10 rounded-full transition-all",
                 searchOpen
                   ? "text-orange-600 bg-orange-50"
                   : "text-gray-500 hover:text-orange-600 hover:bg-orange-50/60"
@@ -453,7 +453,7 @@ export function Navbar() {
               <div ref={profileRef} className="relative hidden sm:block">
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-orange-50/70 transition-all"
+                  className="btn-press flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-orange-50/70 transition-all"
                   title={customer?.name}
                 >
                   {customer?.avatar ? (
@@ -501,7 +501,7 @@ export function Navbar() {
                       <div className="p-1.5 border-t border-gray-100">
                         <button
                           onClick={async () => { await logout(); setProfileOpen(false); }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                          className="btn-press w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-red-500 hover:bg-red-50 transition-colors"
                         >
                           <LogOut className="w-4 h-4" /> Sign Out
                         </button>
@@ -513,7 +513,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
+                className="btn-press relative hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
                 title="Sign in"
               >
                 <LogIn className="w-[1.15rem] h-[1.15rem]" />
@@ -522,7 +522,7 @@ export function Navbar() {
 
             <Link
               href="/wishlist"
-              className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
+              className="btn-press relative hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
             >
               <Heart className="w-[1.15rem] h-[1.15rem]" />
               {wishlistCount > 0 && (
@@ -558,7 +558,7 @@ export function Navbar() {
 
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden flex items-center justify-center w-10 h-10 rounded-full text-gray-600 hover:text-orange-600 hover:bg-orange-50 transition-all"
+              className="btn-press md:hidden flex items-center justify-center w-10 h-10 rounded-full text-gray-600 hover:text-orange-600 hover:bg-orange-50 transition-all"
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -718,7 +718,7 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => setSearchOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                  className="btn-press w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
