@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, productsTable, categoriesTable } from "@workspace/db";
-import { eq, ilike, and, sql, desc } from "drizzle-orm";
+import { eq, ilike, or, and, sql, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
 
 const router: IRouter = Router();
@@ -37,7 +37,16 @@ router.get("/products", async (req, res) => {
 
     const conditions: any[] = [];
     if (categoryId) conditions.push(eq(productsTable.categoryId, parseInt(categoryId as string, 10)));
-    if (search) conditions.push(ilike(productsTable.name, `%${search}%`));
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(productsTable.name, pattern),
+          ilike(productsTable.description, pattern),
+          ilike(sql`array_to_string(${productsTable.tags}, ' ')`, pattern),
+        )!,
+      );
+    }
     if (featured === "true") conditions.push(eq(productsTable.featured, true));
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;

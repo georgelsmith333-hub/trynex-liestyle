@@ -1,88 +1,8 @@
 import { motion } from "framer-motion";
-import { ShoppingCart, Zap, Star, Package, Shield, Paintbrush } from "lucide-react";
+import { ShoppingCart, Zap, Star, Package, Shield, Paintbrush, Loader2 } from "lucide-react";
 import { Link } from "wouter";
-
-interface OfferProduct {
-  id: number;
-  title: string;
-  emoji: string;
-  desc: string;
-  regularPrice?: number;
-  offerPrice: number;
-  savings?: number;
-  tag?: string;
-  tagColor?: string;
-  highlight?: boolean;
-}
-
-const PRODUCTS: OfferProduct[] = [
-  {
-    id: 1,
-    title: "General Mug",
-    emoji: "☕",
-    desc: "Fully Customized Just for You",
-    offerPrice: 600,
-  },
-  {
-    id: 2,
-    title: "Love Shape Mug",
-    emoji: "💝",
-    desc: "Small Gift, Big Smiles 😊",
-    offerPrice: 690,
-    tag: "Romantic",
-    tagColor: "#e1306c",
-  },
-  {
-    id: 3,
-    title: "Water Bottle",
-    emoji: "🍶",
-    desc: "Free Image Editing Included",
-    offerPrice: 650,
-  },
-  {
-    id: 4,
-    title: "2 General Mugs",
-    emoji: "☕☕",
-    desc: "Perfect for couples or gifting",
-    regularPrice: 1200,
-    offerPrice: 899,
-    savings: 301,
-    tag: "Popular",
-    tagColor: "#2563eb",
-  },
-  {
-    id: 5,
-    title: "1 General + 1 Love Mug",
-    emoji: "☕💝",
-    desc: "We Accept Any Custom Request",
-    regularPrice: 1290,
-    offerPrice: 1170,
-    savings: 120,
-  },
-  {
-    id: 6,
-    title: "2 Water Bottles",
-    emoji: "🍶🍶",
-    desc: "Auto discount applied",
-    regularPrice: 1300,
-    offerPrice: 1100,
-    savings: 200,
-    tag: "Deal",
-    tagColor: "#16a34a",
-  },
-  {
-    id: 7,
-    title: "Mega Combo Pack",
-    emoji: "🎁",
-    desc: "1 General Mug + 1 Love Mug + 1 Water Bottle",
-    regularPrice: 1940,
-    offerPrice: 1390,
-    savings: 550,
-    tag: "BEST VALUE",
-    tagColor: "#E85D04",
-    highlight: true,
-  },
-];
+import { useListProducts } from "@workspace/api-client-react";
+import { formatPrice } from "@/lib/utils";
 
 const TRUST_ITEMS = [
   { icon: Paintbrush, label: "Free Editing" },
@@ -96,21 +16,64 @@ const cardVariant = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.07, duration: 0.55, ease: [0.23, 1, 0.32, 1] },
+    transition: { delay: i * 0.07, duration: 0.55, ease: [0.23, 1, 0.32, 1] as number[] },
   }),
 };
 
-export function ProductOffersSection() {
+function SkeletonCard() {
   return (
-    <section id="product-offers" className="py-20 px-4 relative overflow-hidden" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fff8f3 50%, #ffffff 100%)" }}>
+    <div className="rounded-3xl border border-gray-100 bg-white overflow-hidden animate-pulse">
+      <div className="p-5 space-y-3">
+        <div className="w-16 h-16 rounded-2xl bg-gray-100" />
+        <div className="h-4 bg-gray-100 rounded w-3/4" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-8 bg-gray-100 rounded w-1/3 mt-4" />
+        <div className="h-10 bg-gray-100 rounded-xl mt-2" />
+      </div>
+    </div>
+  );
+}
 
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{ backgroundImage: "radial-gradient(circle,#E85D04 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+export function ProductOffersSection() {
+  const { data, isLoading } = useListProducts({ limit: 20 });
+
+  const products = (() => {
+    const all = data?.products ?? [];
+    const discounted = all
+      .filter((p) => p.discountPrice && p.discountPrice < p.price)
+      .sort((a, b) => {
+        const savA = ((a.price - (a.discountPrice ?? a.price)) / a.price) * 100;
+        const savB = ((b.price - (b.discountPrice ?? b.price)) / b.price) * 100;
+        return savB - savA;
+      });
+    if (discounted.length >= 3) return discounted.slice(0, 9);
+    return all.slice(0, 9);
+  })();
+
+  const getTag = (p: typeof products[number], rank: number) => {
+    if (!p.discountPrice) return undefined;
+    const pct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+    if (rank === 0) return { label: "BEST DEAL", color: "#E85D04" };
+    if (pct >= 30) return { label: `${pct}% OFF`, color: "#16a34a" };
+    if (pct >= 15) return { label: "ON SALE", color: "#2563eb" };
+    return undefined;
+  };
+
+  return (
+    <section
+      id="product-offers"
+      className="py-20 px-4 relative overflow-hidden"
+      style={{ background: "linear-gradient(180deg, #ffffff 0%, #fff8f3 50%, #ffffff 100%)" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: "radial-gradient(circle,#E85D04 1px,transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
 
       <div className="max-w-7xl mx-auto relative z-10">
-
-        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -118,12 +81,16 @@ export function ProductOffersSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-4"
-            style={{ background: "#fff4ee", color: "#E85D04", border: "1.5px solid #fdd5b4" }}>
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-4"
+            style={{ background: "#fff4ee", color: "#E85D04", border: "1.5px solid #fdd5b4" }}
+          >
             <Zap className="w-4 h-4" /> Special Offers
           </div>
-          <h2 className="font-display font-black leading-tight text-gray-900 mb-3"
-            style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", letterSpacing: "-0.03em" }}>
+          <h2
+            className="font-display font-black leading-tight text-gray-900 mb-3"
+            style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", letterSpacing: "-0.03em" }}
+          >
             Choose Your Perfect Gift 🎁
           </h2>
           <p className="text-gray-500 text-base max-w-xl mx-auto">
@@ -131,7 +98,6 @@ export function ProductOffersSection() {
           </p>
         </motion.div>
 
-        {/* Trust Bar */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -140,107 +106,171 @@ export function ProductOffersSection() {
           className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-12"
         >
           {TRUST_ITEMS.map((t) => (
-            <div key={t.label} className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
-              style={{ background: "#fff4ee", color: "#E85D04", border: "1px solid #fdd5b4" }}>
+            <div
+              key={t.label}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
+              style={{ background: "#fff4ee", color: "#E85D04", border: "1px solid #fdd5b4" }}
+            >
               <t.icon className="w-3.5 h-3.5" /> {t.label}
             </div>
           ))}
         </motion.div>
 
-        {/* Product Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {PRODUCTS.map((product, i) => (
-            <motion.div
-              key={product.id}
-              custom={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={cardVariant}
-              whileHover={{ y: -4, transition: { duration: 0.25 } }}
-              className={`relative flex flex-col rounded-3xl border overflow-hidden transition-shadow hover:shadow-2xl ${product.highlight ? "lg:col-span-1 xl:col-span-1" : ""}`}
-              style={{
-                background: product.highlight ? "linear-gradient(145deg, #fff8f3, #fff4ee)" : "white",
-                borderColor: product.highlight ? "#fdd5b4" : "#f0ede8",
-                boxShadow: product.highlight
-                  ? "0 4px 24px rgba(232,93,4,0.18), 0 1px 4px rgba(0,0,0,0.06)"
-                  : "0 1px 6px rgba(0,0,0,0.05)",
-              }}
-            >
-              {/* Highlight ring */}
-              {product.highlight && (
-                <div className="absolute inset-0 rounded-3xl pointer-events-none"
-                  style={{ border: "2px solid #E85D04", boxShadow: "inset 0 0 0 1px #fdd5b4" }} />
-              )}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-orange-300" />
+            <p className="text-sm font-semibold">Loading offers…</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {products.map((product, i) => {
+              const isHighlight = i === 0;
+              const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+              const savings = hasDiscount
+                ? Math.round(product.price - (product.discountPrice ?? product.price))
+                : 0;
+              const discountPct = hasDiscount
+                ? Math.round(((product.price - (product.discountPrice ?? product.price)) / product.price) * 100)
+                : 0;
+              const tag = getTag(product, i);
 
-              {/* Tag */}
-              {product.tag && (
-                <div className="absolute top-3 right-3 z-10">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-wide"
-                    style={{ background: product.tagColor }}>
-                    {product.tag}
-                  </span>
-                </div>
-              )}
+              return (
+                <motion.div
+                  key={product.id}
+                  custom={i}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  variants={cardVariant}
+                  whileHover={{ y: -4, transition: { duration: 0.25 } }}
+                  className="relative flex flex-col rounded-3xl border overflow-hidden transition-shadow hover:shadow-2xl"
+                  style={{
+                    background: isHighlight
+                      ? "linear-gradient(145deg, #fff8f3, #fff4ee)"
+                      : "white",
+                    borderColor: isHighlight ? "#fdd5b4" : "#f0ede8",
+                    boxShadow: isHighlight
+                      ? "0 4px 24px rgba(232,93,4,0.18), 0 1px 4px rgba(0,0,0,0.06)"
+                      : "0 1px 6px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  {isHighlight && (
+                    <div
+                      className="absolute inset-0 rounded-3xl pointer-events-none"
+                      style={{ border: "2px solid #E85D04", boxShadow: "inset 0 0 0 1px #fdd5b4" }}
+                    />
+                  )}
 
-              <div className="p-5 flex flex-col flex-1">
-                {/* Emoji */}
-                <div className={`text-4xl mb-3 ${product.highlight ? "text-5xl" : ""}`} aria-hidden="true">{product.emoji}</div>
+                  {tag && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <span
+                        className="px-2.5 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-wide"
+                        style={{ background: tag.color }}
+                      >
+                        {tag.label}
+                      </span>
+                    </div>
+                  )}
 
-                {/* Title & Desc */}
-                <h3 className={`font-black text-gray-900 leading-tight mb-1 ${product.highlight ? "text-lg" : "text-base"}`}>
-                  {product.title}
-                </h3>
-                <p className="text-xs text-gray-500 mb-4 leading-relaxed">{product.desc}</p>
+                  <div className="p-5 flex flex-col flex-1">
+                    {product.imageUrl ? (
+                      <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4 bg-gray-50">
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-3 shrink-0"
+                        style={{ background: "linear-gradient(135deg,#fff4ee,#fde8d0)" }}
+                        aria-hidden="true"
+                      >
+                        🎁
+                      </div>
+                    )}
 
-                {/* Price Block */}
-                <div className="mt-auto">
-                  {product.regularPrice && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-400 line-through font-medium">৳{product.regularPrice.toLocaleString()}</span>
-                      {product.savings && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
-                          style={{ background: "#16a34a" }}>
-                          Save ৳{product.savings}
-                        </span>
+                    <h3
+                      className={`font-black text-gray-900 leading-tight mb-1 ${
+                        isHighlight ? "text-lg" : "text-base"
+                      }`}
+                    >
+                      {product.name}
+                    </h3>
+                    {product.description && (
+                      <p className="text-xs text-gray-500 mb-4 leading-relaxed line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="mt-auto">
+                      {hasDiscount && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm text-gray-400 line-through font-medium">
+                            {formatPrice(product.price)}
+                          </span>
+                          {savings > 0 && (
+                            <span
+                              className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
+                              style={{ background: "#16a34a" }}
+                            >
+                              Save {formatPrice(savings)}
+                            </span>
+                          )}
+                        </div>
                       )}
+                      <div className="flex items-end gap-1 mb-4">
+                        <span
+                          className={`font-black leading-none ${isHighlight ? "text-4xl" : "text-3xl"}`}
+                          style={{ color: "#E85D04" }}
+                        >
+                          {formatPrice(product.discountPrice ?? product.price)}
+                        </span>
+                      </div>
+
+                      {isHighlight && savings > 0 && (
+                        <div className="text-[11px] text-orange-700 font-bold mb-3 flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> Best value
+                          — save {formatPrice(savings)}!
+                        </div>
+                      )}
+
+                      {discountPct > 0 && !isHighlight && (
+                        <div className="text-[11px] text-green-700 font-bold mb-3 flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> {discountPct}% off today
+                        </div>
+                      )}
+
+                      <Link
+                        href={`/product/${product.id}`}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                          background: isHighlight
+                            ? "linear-gradient(135deg,#E85D04,#FB8500)"
+                            : "linear-gradient(135deg,#f3f4f6,#e9eaec)",
+                          color: isHighlight ? "white" : "#374151",
+                          boxShadow: isHighlight ? "0 4px 14px rgba(232,93,4,0.35)" : "none",
+                        }}
+                      >
+                        <ShoppingCart className="w-4 h-4" /> View Offer
+                      </Link>
                     </div>
-                  )}
-                  <div className="flex items-end gap-1 mb-4">
-                    <span className={`font-black leading-none ${product.highlight ? "text-4xl" : "text-3xl"}`}
-                      style={{ color: "#E85D04" }}>
-                      ৳{product.offerPrice.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-gray-400 mb-1">Tk</span>
                   </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-                  {/* Microcopy */}
-                  {product.highlight && (
-                    <div className="text-[11px] text-orange-700 font-bold mb-3 flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> Best value — save ৳{product.savings}!
-                    </div>
-                  )}
-
-                  {/* CTA */}
-                  <Link href="/design-studio"
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{
-                      background: product.highlight
-                        ? "linear-gradient(135deg,#E85D04,#FB8500)"
-                        : "linear-gradient(135deg,#f3f4f6,#e9eaec)",
-                      color: product.highlight ? "white" : "#374151",
-                      boxShadow: product.highlight ? "0 4px 14px rgba(232,93,4,0.35)" : "none",
-                    }}
-                  >
-                    <ShoppingCart className="w-4 h-4" /> Order Now
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Bottom trust bar */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -249,7 +279,12 @@ export function ProductOffersSection() {
           className="mt-12 py-5 px-6 rounded-2xl flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-sm font-semibold text-gray-600"
           style={{ background: "#f9fafb", border: "1px solid #e9e9e9" }}
         >
-          {["Free Image Editing Included", "Fully Customized Just for You", "We Accept Any Custom Request", "HD Print Quality Guaranteed"].map((t) => (
+          {[
+            "Free Image Editing Included",
+            "Fully Customized Just for You",
+            "We Accept Any Custom Request",
+            "HD Print Quality Guaranteed",
+          ].map((t) => (
             <span key={t} className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
               {t}
