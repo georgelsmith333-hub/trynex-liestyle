@@ -84,7 +84,7 @@ const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCl
             <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white">
               <button
                 onClick={() => onChangeQuantity(item.id, -1)}
-                className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
+                className="btn-press flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
                 style={{ width: '36px', height: '36px' }}
                 aria-label="Decrease quantity"
               >
@@ -93,7 +93,7 @@ const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCl
               <span className="font-black w-8 text-center text-sm text-gray-900 select-none">{item.quantity}</span>
               <button
                 onClick={() => onChangeQuantity(item.id, +1)}
-                className="flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
+                className="btn-press flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors active:bg-gray-100"
                 style={{ width: '36px', height: '36px' }}
                 aria-label="Increase quantity"
               >
@@ -114,7 +114,7 @@ const CartLine = memo(function CartLine({ item, onChangeQuantity, onRemove, onCl
       </div>
       <button
         onClick={() => onRemove(item.id)}
-        className="self-start flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors active:scale-90"
+        className="btn-press self-start flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
         style={{ width: '32px', height: '32px' }}
         aria-label={`Remove ${item.name}`}
       >
@@ -212,7 +212,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               </div>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center"
+                className="btn-press w-9 h-9 rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center"
                 aria-label="Close cart"
               >
                 <X className="w-5 h-5 text-gray-500" />
