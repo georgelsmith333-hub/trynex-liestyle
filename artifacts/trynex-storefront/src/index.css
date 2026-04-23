@@ -181,10 +181,21 @@
     text-decoration: none;
   }
   .btn-primary:hover {
-    box-shadow: 0 8px 32px rgba(232,93,4,0.45);
-    transform: translateY(-1px);
+    box-shadow: 0 10px 36px rgba(232,93,4,0.5);
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.05);
   }
-  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.08s;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    transform: none;
+    cursor: not-allowed;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    filter: grayscale(0.3);
+  }
 
   /* Secondary outlined button */
   .btn-outline {

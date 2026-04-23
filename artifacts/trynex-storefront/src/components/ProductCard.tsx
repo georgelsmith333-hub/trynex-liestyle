@@ -221,20 +221,47 @@ import { useLocation } from "wouter";
               )}
             </div>
 
-            {/* Wishlist — larger touch target (40px) */}
-            <button
+            {/* Wishlist — larger touch target (40px) with heart-pop animation */}
+            <motion.button
               onClick={handleWishlist}
               aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+              aria-pressed={wishlisted}
+              className="absolute top-3 right-3 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 overflow-visible"
               style={{
                 background: wishlisted ? '#fff1f0' : 'rgba(255,255,255,0.92)',
                 border: wishlisted ? '1.5px solid #fecaca' : '1px solid rgba(0,0,0,0.08)',
                 backdropFilter: 'blur(8px)',
               }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
-              <Heart className="w-4 h-4"
-                style={{ color: wishlisted ? '#E85D04' : '#9ca3af', fill: wishlisted ? '#E85D04' : 'none' }} />
-            </button>
+              {/* Radiating burst when adding to wishlist */}
+              <AnimatePresence>
+                {wishlisted && (
+                  <motion.span
+                    key="burst"
+                    initial={{ scale: 0, opacity: 0.7 }}
+                    animate={{ scale: 2.2, opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #E85D04 0%, transparent 70%)' }}
+                    aria-hidden="true"
+                  />
+                )}
+              </AnimatePresence>
+              {/* Heart with spring-bounce on toggle */}
+              <motion.span
+                key={wishlisted ? "filled" : "empty"}
+                initial={{ scale: wishlisted ? 0.4 : 1 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 600, damping: 14 }}
+                className="relative z-10 flex items-center justify-center"
+              >
+                <Heart className="w-4 h-4 transition-colors duration-200"
+                  style={{ color: wishlisted ? '#E85D04' : '#9ca3af', fill: wishlisted ? '#E85D04' : 'none' }} />
+              </motion.span>
+            </motion.button>
 
             {/* Quick view — desktop hover */}
             <AnimatePresence>
