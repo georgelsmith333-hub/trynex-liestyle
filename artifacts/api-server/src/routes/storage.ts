@@ -1,9 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { requireAdmin } from "../middlewares/adminAuth";
 
-// Hand-rolled validator (api-server has no zod dep). Limit upload size to
-// 25 MB so a malicious caller can't request multi-GB presigned URLs.
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 function parseUploadBody(body: unknown):
   | { ok: true; data: { name: string; size: number; contentType: string } }
   | { ok: false } {
@@ -20,9 +20,9 @@ const objectStorageService = new ObjectStorageService();
 
 /**
  * POST /storage/uploads/request-url
- *
- * Returns a presigned URL the client uploads the file to directly.
- * The active backend (R2 / S3 / Replit sidecar) is auto-detected at runtime.
+ * Returns an upload URL the client sends the file to.
+ * - R2/S3 backends: returns a presigned PUT URL pointing at the cloud bucket.
+ * - Local backend:  returns a PUT URL pointing at /api/storage/upload-direct/<uuid>.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = parseUploadBody(req.body);
@@ -48,9 +48,33 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 });
 
 /**
+ * PUT /storage/upload-direct/:objectId
+ * Accepts a raw binary body and saves it to local disk.
+ * Only active when the local backend is in use — on R2/S3 the client
+ * uploads directly to the cloud bucket using the presigned URL.
+ */
+router.put("/storage/upload-direct/:objectId", async (req: Request, res: Response) => {
+  if (objectStorageService.getBackendName() !== "local") {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const { objectId } = req.params;
+  if (!objectId || !/^[a-zA-Z0-9-]+$/.test(objectId)) {
+    res.status(400).json({ error: "Invalid object id" });
+    return;
+  }
+  try {
+    await objectStorageService.saveLocalUpload(objectId, req as unknown as import("stream").Readable);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Local upload failed");
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+/**
  * GET /storage/public-objects/<path>
- * Serves files from the public area (R2/S3 prefix `public/` or
- * PUBLIC_OBJECT_SEARCH_PATHS for the Replit sidecar).
+ * Serves files from the public area.
  */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
@@ -84,19 +108,17 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /storage/objects/sign-download?path=/objects/<id>
- * Returns a short-lived presigned download URL for the admin
- * "Download original print file" button. Admin-only.
+ * GET /storage/sign-download?path=/objects/<id>
+ * Returns a short-lived download URL for the admin "Download original" button.
  */
-import { requireAdmin } from "../middlewares/adminAuth";
 router.get("/storage/sign-download", requireAdmin, async (req: Request, res: Response) => {
   try {
-    const path = String(req.query.path || "");
-    if (!path.startsWith("/objects/")) {
+    const p = String(req.query.path || "");
+    if (!p.startsWith("/objects/")) {
       res.status(400).json({ error: "validation_error", message: "path must start with /objects/" });
       return;
     }
-    const url = await objectStorageService.getObjectDownloadURL(path, 900);
+    const url = await objectStorageService.getObjectDownloadURL(p, 900);
     res.json({ url, expiresInSeconds: 900 });
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {

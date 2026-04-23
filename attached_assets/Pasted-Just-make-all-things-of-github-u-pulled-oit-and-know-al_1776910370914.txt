@@ -1,0 +1,362 @@
+Just make all things of github u pulled oit and know all things and then start ur work
+
+And also : E-commerce storefront with product browsing, cart, and checkout
+A 3D Design Studio powered by Three.js for customizing apparel
+Admin dashboard for managing products, orders, customers, and content
+Gift hampers section, wishlist, referral system, and social login support
+Blog, order tracking, and customer reviews....
+
+
+
+
+
+
+
+ anywayyyyss::::
+
+1. Do design with oerfrction you made errors here and website is looking buggy its overlapped just after the site announcement bar or after title of site. As u can see: Bangladesh #1 custom Apaprel Brands.
+
+2. It should be placed where it will match and looks perfect not like this type and also make sure that to be responsive for any devices with no problems and issues and fully optimized and premium styles features as much as needed do more than that to feel real premium site browsing not only for this thing but for All of any things you fond to fix or i told to fix for those all same rule.
+
+
+3. The mockup with custom added design is ok for t shirt and hoodie but the mug print area should be full from below to upside of an mug - just u can keep a little area to both up and downs side as a boarder of a mug not draw the border its likely needed to be see buyer when they click on their design or when hovering or when scaling out/in etc things but instantly if touch/clicks outside of the customized picture area or back button or 
+Etc type things mean user trying to see now what they customized so that time all boarders to the mockup if shows then will auto hide instant smoothly to give user a very mobile user friendly feel with responsive touch and also best for any kinds of screen resolutions devices it can be pc, desktop,laptop,mackbook,iphone, ipad,tablet,android or etc any kind device will be work because full complete site perfectly youll made responsive but make sure to Not break anything. And also u needed to fix all mockups looks more realistic with the clients uploaded image for customize perfectly and keep options to edit instantly but like a best editor with best more powerful and great fearures for canva. Also u needed to fix 2d all mockups very working realistic perfect real working  mockup 
+
+
+
+
+
+
+
+4.   The studio remove background is not perfectly placed where needed and a user cannot easily find it because its included in the upload image section where client after uploading a image already they no need to go back their right so lots of customer who Will not go there will not see the remove bg and uscalings. So i need you to make sure to fix all things and make all things working as needed and more than that more premiumness and best with best canva or automated ai upscaling color correction and dslr effect presets effects + also canva type cropping system or more updated and very responsive and mouse or touch those all should work with no lags bugs and touch to any working things mean it will work instantly and smoothly not lag type. As much as possible by showing buyer their item and also add the things or editing with dropdown or best system u find for my website and mission you can understand and find better thing. So i Hope you will do it.
+
+
+
+5. Every 3D Mockup when i click i see there not showing any data like the 2d should be looklike perfectly at 3D and can be seen from wny angles by swiping and in 3d there is no back or front. Because its 3d so from every site a client can see what they customized and how its looking on those items like: t shirt, mug, water bottle, long sleeve, pullover hoodie, cap etc all things when a user or client will click or wanted to see 3d they need to see it exactly as the same textures as 2d but iits same type work in 3d mockup and in any device responsive so in phone its also will work best and also this rule is for all items not for just t shirt or just mug, you should implement to all and eprfectly. Eg: now i see if i add any image at first t shirt mock at 2d is ok and look good but not perfectly blended like other print on demand website preview of using customize logo at real product mockup type needed. Anyway so if i just swap 2d to 3d view and i see that 3d now its some of them ok but but not perfectly also and other all products also totally not working at 3d ans showing fakex mirrored, wrong poditioned or more issues is just not perfect. Hope you will do apologise for your wrong build up and surely do all things now from ok. So subtotal is in 2d front and back 2 view is needed thats okay, but if 3d selected then there is not needed to show or keep the option of back for any item becaude at 3d user can swipe scroll to see 180° angles.
+
+
+
+5.
+I need google indexing so i need total help and total audit check to fix any kind of issues, wiring, or bugs and make sure all things perfectly work and my site really rank. And also keep option and more advance features as needed or more than that give the powers to admin panel to add more keywords or other things to rank at 1## but make sure you will use all strategies and everything perfectly coded embedded and you will just output the dashboard clean optimized looking good bur in background also everything is too much aggressively and perfectly optimization Strategies applies to really rank at 1 at lots of keywords in google or any search engines or also at most of the ai sites too.
+
+
+
+6. You should make full website audit 2 times to re check re verify and re edit and re fix all errors and make guarantee that everything from now will be the final one with real actual best ever optimized possible you did that thing to my trynex project, i expect you will really do so.
+
+
+7.
+The website has some issues more lefts like the homepage hero sections or just below the heading section the pinned something which is telling Bangladesh #1 etc.... Which is not responsive and thats why it took space of another thing and dhowing there. I need you ro resolve this things in few mintues by gurantee because you know everything. 
+
+
+
+8. After all you do final complete audit, remake sure that everything as ive askwd you did + you also more improvements at logics, wiring up to each others, tabs and all things + you will do push 50 seo friendly seo optimized great ranking based 50 blogs different tyles so people can see us from everywhere. And also do add 21 products now at our real shop and total 30 real products should must be like this types here is some: Create a high-converting "Product Offers Section" component for an e-commerce website (TRYNEX brand).
+
+GOAL:
+- Display multiple product variants clearly
+- Be mobile-first and conversion-focused
+- Clean, premium, emotional design
+- No confusion in pricing
+
+-----------------------------------
+🎨 DESIGN STYLE
+-----------------------------------
+- Premium, clean, minimal
+- White background with soft red/pink accents
+- Card-based layout
+- Rounded corners (modern UI)
+- Soft shadows
+- Clear typography (no clutter)
+- Mobile-first (single column on mobile)
+
+-----------------------------------
+🧠 UX BEHAVIOR
+-----------------------------------
+- Each product = separate card
+- Highlight BEST OFFER visually
+- Show regular price (if exists), offer price, savings
+- CTA button on every card: "Order Now"
+- Add subtle hover/animation effects
+
+-----------------------------------
+🛍️ PRODUCT DATA (STRICT)
+-----------------------------------
+
+1. General Mug
+Price: 600 Tk
+
+2. Love Shape Mug
+Price: 690 Tk
+
+3. Water Bottle
+Price: 650 Tk
+
+4. 2 General Mugs
+Regular: 1200 Tk
+Offer: 899 Tk
+
+5. 1 General + 1 Love Mug
+Regular: 1290 Tk
+Offer: 1170 Tk
+
+6. 2 Water Bottles
+Regular: 1300 Tk
+Offer: 1100 Tk
+Note: Auto discount applied
+
+7. MAIN COMBO (Highlight this card)
+1 General Mug + 1 Love Mug + 1 Bottle
+Regular: 1940 Tk
+Offer: 1390 Tk
+Savings: 550 Tk
+Tag: BEST VALUE
+
+-----------------------------------
+📦 COMPONENT STRUCTURE
+-----------------------------------
+
+Build using React + Tailwind:
+
+Component name: ProductOffersSection
+
+Each card includes:
+- Product title
+- Short description (1 line emotional)
+- Price block:
+   - Regular price (crossed)
+   - Offer price (bold, large)
+   - Savings badge (if applicable)
+- Optional tag (Best Value / Popular)
+- CTA button: Order Now
+
+-----------------------------------
+💬 MICROCOPY (VERY IMPORTANT)
+-----------------------------------
+
+Use these lines:
+
+- "Small Gift, Big Smiles 😊"
+- "Fully Customized Just for You"
+- "Free Image Editing Included"
+- "We Accept Any Custom Request"
+
+-----------------------------------
+📱 MOBILE OPTIMIZATION
+-----------------------------------
+
+- Stack cards vertically
+- Large buttons
+- Big price text
+- No horizontal scroll
+
+-----------------------------------
+⚡ EXTRA CONVERSION BOOST
+-----------------------------------
+
+Add above section:
+Headline: "Choose Your Perfect Gift 🎁"
+
+Add below section:
+Trust bar:
+- Free Editing
+- HD Print
+- Safe Delivery
+
+-----------------------------------
+FINAL OUTPUT:
+-----------------------------------
+- Clean reusable React component
+- Tailwind styled
+- Easy to edit product data
+- Ready to plug into homepage
+Ready to mark it for facebook campaign type advances strtegies applied and all thing should work like bullet proof.
+
+
+
+
+
+After this: add about us and contact us pages also in the menubar dropdowns with terms and conditions etc. Also write this things as per my case by understanding actual fcts from myside From buyer side both too and best policies u should do implement on the pages for writing and also if needed for validting too.
+
+
+9.
+So you will keep a message or notification symbol with notification processed here and all updates about any thing about which can benefits users or affect users if any case occurs like these things then from admin panel i can choose to send a notification or a custome notification tekplate which will come like customer get an phone sms like that full sound and shows arrow symbol to check there to see notifications or also skip options available perfectly and then both you guys fully do fix everything for me as needed and let me do fix my website as i needed actually no more dwpwndency and no more badness i want to be straight with you im gigonv you full power, and you hsve to must use your replits era to prove you will use your unique best ever best ai version for me to get the latest of most of everything we wants. Hope you will do these things frol your but ive thought and just thats a complimenty!  Just start and best lerfectly finishing your work kindly ldt me know + push the codes too. All things should be really bullet proof needed. 
+
+
+
+After these: add magical hover affects and background animated lightly but looks so high premium dedicated best website for sure type and ull work like 20 subagents helping u and u are co ordanating or organizing their outputs which valids and like that until we fullfilled with these above all things you will not be selectavle to best ai anymore, so to prove yourself that you are the best i mean replit is better than any for sure and proof it by developing my site to more high end working best more improvements anywgere everywhere and do polishment also if needed and after doing everything let me know u should push directly to my cloudflare+render deploying which can be possible using the github oush which is connected with u already.  Just make all things of github u pulled oit and know all things and then started ur work.
+
+
+
+
+Just make all things of github u pulled oit and know all things and then start ur work
+
+
+
+1. Do design with oerfrction you made errors here and website is looking buggy its overlapped just after the site announcement bar or after title of site. As u can see: Bangladesh #1 custom Apaprel Brands.
+
+2. It should be placed where it will match and looks perfect not like this type and also make sure that to be responsive for any devices with no problems and issues and fully optimized and premium styles features as much as needed do more than that to feel real premium site browsing not only for this thing but for All of any things you fond to fix or i told to fix for those all same rule.
+
+
+3. The mockup with custom added design is ok for t shirt and hoodie but the mug print area should be full from below to upside of an mug - just u can keep a little area to both up and downs side as a boarder of a mug not draw the border its likely needed to be see buyer when they click on their design or when hovering or when scaling out/in etc things but instantly if touch/clicks outside of the customized picture area or back button or 
+Etc type things mean user trying to see now what they customized so that time all boarders to the mockup if shows then will auto hide instant smoothly to give user a very mobile user friendly feel with responsive touch and also best for any kinds of screen resolutions devices it can be pc, desktop,laptop,mackbook,iphone, ipad,tablet,android or etc any kind device will be work because full complete site perfectly youll made responsive but make sure to Not break anything. And also u needed to fix all mockups looks more realistic with the clients uploaded image for customize perfectly and keep options to edit instantly but like a best editor with best more powerful and great fearures for canva. Also u needed to fix 2d all mockups very working realistic perfect real working  mockup 
+
+
+
+
+
+
+
+4.   The studio remove background is not perfectly placed where needed and a user cannot easily find it because its included in the upload image section where client after uploading a image already they no need to go back their right so lots of customer who Will not go there will not see the remove bg and uscalings. So i need you to make sure to fix all things and make all things working as needed and more than that more premiumness and best with best canva or automated ai upscaling color correction and dslr effect presets effects + also canva type cropping system or more updated and very responsive and mouse or touch those all should work with no lags bugs and touch to any working things mean it will work instantly and smoothly not lag type. As much as possible by showing buyer their item and also add the things or editing with dropdown or best system u find for my website and mission you can understand and find better thing. So i Hope you will do it.
+
+
+
+5. Every 3D Mockup when i click i see there not showing any data like the 2d should be looklike perfectly at 3D and can be seen from wny angles by swiping and in 3d there is no back or front. Because its 3d so from every site a client can see what they customized and how its looking on those items like: t shirt, mug, water bottle, long sleeve, pullover hoodie, cap etc all things when a user or client will click or wanted to see 3d they need to see it exactly as the same textures as 2d but iits same type work in 3d mockup and in any device responsive so in phone its also will work best and also this rule is for all items not for just t shirt or just mug, you should implement to all and eprfectly. Eg: now i see if i add any image at first t shirt mock at 2d is ok and look good but not perfectly blended like other print on demand website preview of using customize logo at real product mockup type needed. Anyway so if i just swap 2d to 3d view and i see that 3d now its some of them ok but but not perfectly also and other all products also totally not working at 3d ans showing fakex mirrored, wrong poditioned or more issues is just not perfect. Hope you will do apologise for your wrong build up and surely do all things now from ok. So subtotal is in 2d front and back 2 view is needed thats okay, but if 3d selected then there is not needed to show or keep the option of back for any item becaude at 3d user can swipe scroll to see 180° angles.
+
+
+
+5.
+I need google indexing so i need total help and total audit check to fix any kind of issues, wiring, or bugs and make sure all things perfectly work and my site really rank. And also keep option and more advance features as needed or more than that give the powers to admin panel to add more keywords or other things to rank at 1## but make sure you will use all strategies and everything perfectly coded embedded and you will just output the dashboard clean optimized looking good bur in background also everything is too much aggressively and perfectly optimization Strategies applies to really rank at 1 at lots of keywords in google or any search engines or also at most of the ai sites too.
+
+
+
+6. You should make full website audit 2 times to re check re verify and re edit and re fix all errors and make guarantee that everything from now will be the final one with real actual best ever optimized possible you did that thing to my trynex project, i expect you will really do so.
+
+
+7.
+The website has some issues more lefts like the homepage hero sections or just below the heading section the pinned something which is telling Bangladesh #1 etc.... Which is not responsive and thats why it took space of another thing and dhowing there. I need you ro resolve this things in few mintues by gurantee because you know everything. 
+
+
+
+8. After all you do final complete audit, remake sure that everything as ive askwd you did + you also more improvements at logics, wiring up to each others, tabs and all things + you will do push 50 seo friendly seo optimized great ranking based 50 blogs different tyles so people can see us from everywhere. And also do add 21 products now at our real shop and total 30 real products should must be like this types here is some: Create a high-converting "Product Offers Section" component for an e-commerce website (TRYNEX brand).
+
+GOAL:
+- Display multiple product variants clearly
+- Be mobile-first and conversion-focused
+- Clean, premium, emotional design
+- No confusion in pricing
+
+-----------------------------------
+🎨 DESIGN STYLE
+-----------------------------------
+- Premium, clean, minimal
+- White background with soft red/pink accents
+- Card-based layout
+- Rounded corners (modern UI)
+- Soft shadows
+- Clear typography (no clutter)
+- Mobile-first (single column on mobile)
+
+-----------------------------------
+🧠 UX BEHAVIOR
+-----------------------------------
+- Each product = separate card
+- Highlight BEST OFFER visually
+- Show regular price (if exists), offer price, savings
+- CTA button on every card: "Order Now"
+- Add subtle hover/animation effects
+
+-----------------------------------
+🛍️ PRODUCT DATA (STRICT)
+-----------------------------------
+
+1. General Mug
+Price: 600 Tk
+
+2. Love Shape Mug
+Price: 690 Tk
+
+3. Water Bottle
+Price: 650 Tk
+
+4. 2 General Mugs
+Regular: 1200 Tk
+Offer: 899 Tk
+
+5. 1 General + 1 Love Mug
+Regular: 1290 Tk
+Offer: 1170 Tk
+
+6. 2 Water Bottles
+Regular: 1300 Tk
+Offer: 1100 Tk
+Note: Auto discount applied
+
+7. MAIN COMBO (Highlight this card)
+1 General Mug + 1 Love Mug + 1 Bottle
+Regular: 1940 Tk
+Offer: 1390 Tk
+Savings: 550 Tk
+Tag: BEST VALUE
+
+-----------------------------------
+📦 COMPONENT STRUCTURE
+-----------------------------------
+
+Build using React + Tailwind:
+
+Component name: ProductOffersSection
+
+Each card includes:
+- Product title
+- Short description (1 line emotional)
+- Price block:
+   - Regular price (crossed)
+   - Offer price (bold, large)
+   - Savings badge (if applicable)
+- Optional tag (Best Value / Popular)
+- CTA button: Order Now
+
+-----------------------------------
+💬 MICROCOPY (VERY IMPORTANT)
+-----------------------------------
+
+Use these lines:
+
+- "Small Gift, Big Smiles 😊"
+- "Fully Customized Just for You"
+- "Free Image Editing Included"
+- "We Accept Any Custom Request"
+
+-----------------------------------
+📱 MOBILE OPTIMIZATION
+-----------------------------------
+
+- Stack cards vertically
+- Large buttons
+- Big price text
+- No horizontal scroll
+
+-----------------------------------
+⚡ EXTRA CONVERSION BOOST
+-----------------------------------
+
+Add above section:
+Headline: "Choose Your Perfect Gift 🎁"
+
+Add below section:
+Trust bar:
+- Free Editing
+- HD Print
+- Safe Delivery
+
+-----------------------------------
+FINAL OUTPUT:
+-----------------------------------
+- Clean reusable React component
+- Tailwind styled
+- Easy to edit product data
+- Ready to plug into homepage
+Ready to mark it for facebook campaign type advances strtegies applied and all thing should work like bullet proof.
+
+
+
+
+
+After this: add about us and contact us pages also in the menubar dropdowns with terms and conditions etc. Also write this things as per my case by understanding actual fcts from myside From buyer side both too and best policies u should do implement on the pages for writing and also if needed for validting too.
+
+
+9.
+So you will keep a message or notification symbol with notification processed here and all updates about any thing about which can benefits users or affect users if any case occurs like these things then from admin panel i can choose to send a notification or a custome notification tekplate which will come like customer get an phone sms like that full sound and shows arrow symbol to check there to see notifications or also skip options available perfectly and then both you guys fully do fix everything for me as needed and let me do fix my website as i needed actually no more dwpwndency and no more badness i want to be straight with you im gigonv you full power, and you hsve to must use your replits era to prove you will use your unique best ever best ai version for me to get the latest of most of everything we wants. Hope you will do these things frol your but ive thought and just thats a complimenty!  Just start and best lerfectly finishing your work kindly ldt me know + push the codes too. All things should be really bullet proof needed. 
+
+
+
+After these: add magical hover affects and background animated lightly but looks so high premium dedicated best website for sure type and ull work like 20 subagents helping u and u are co ordanating or organizing their outputs which valids and like that until we fullfilled with these above all things you will not be selectavle to best ai anymore, so to prove yourself that you are the best i mean replit is better than any for sure and proof it by developing my site to more high end working best more improvements anywgere everywhere and do polishment also if needed and after doing everything let me know u should push directly to my cloudflare+render deploying which can be possible using the github oush which is connected with u already.  Just make all things of github u pulled oit and know all things and then started ur work.

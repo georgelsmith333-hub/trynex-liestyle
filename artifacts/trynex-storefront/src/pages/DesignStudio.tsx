@@ -1721,6 +1721,28 @@ export default function DesignStudio() {
                       </div>
                     )}
 
+                    {/* AI Tools for image layers — shown prominently in the Layers tab */}
+                    {selectedLayer?.type === 'image' && (
+                      <div className='pt-3 border-t border-gray-100 space-y-2'>
+                        <div className='text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2'>✨ AI Image Tools</div>
+                        <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
+                          className='w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]'
+                          style={{ background: 'linear-gradient(135deg,#fff4ee,#ffe4cc)', color: '#E85D04', border: '1.5px solid #fdd5b4', boxShadow: '0 2px 8px rgba(232,93,4,0.15)' }}
+                        >
+                          {isRemoving
+                            ? <><Loader2 className='w-4 h-4 animate-spin' /> Removing background...</>
+                            : <><Scissors className='w-4 h-4' /> Remove Background</>}
+                        </button>
+                        <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
+                          className='w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]'
+                          style={{ background: 'linear-gradient(135deg,#FEF3C7,#FDE68A)', color: '#92400E', border: '1.5px solid #FCD34D', boxShadow: '0 2px 8px rgba(146,64,14,0.15)' }}
+                        >
+                          {isUpscaling
+                            ? <><Loader2 className='w-4 h-4 animate-spin' /> Upscaling…</>
+                            : <><Wand2 className='w-4 h-4' /> Upscale to HD (2×)</>}
+                        </button>
+                      </div>
+                    )}
                     {/* Adjust selected layer */}
                     {selectedLayer && (
                       <div className="pt-3 border-t border-gray-100 space-y-3">

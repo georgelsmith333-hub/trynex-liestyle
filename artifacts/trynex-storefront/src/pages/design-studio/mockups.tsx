@@ -57,7 +57,7 @@ export const TSHIRT_PZ: PrintZone        = { x: 320, y: 270, w: 360, h: 430 };
 export const LONGSLEEVE_PZ: PrintZone    = { x: 330, y: 285, w: 340, h: 410 };
 export const HOODIE_PZ: PrintZone        = { x: 335, y: 305, w: 330, h: 380 };
 export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
-export const MUG_PZ: PrintZone           = { x: 250, y: 305, w: 400, h: 410 };
+export const MUG_PZ: PrintZone           = { x: 150, y: 180, w: 700, h: 640 };
 
 const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;

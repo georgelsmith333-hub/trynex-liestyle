@@ -19,6 +19,7 @@ import {
 import { motion, useInView } from "framer-motion";
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { TypewriterHero } from "@/components/home/TypewriterHero";
+import { ProductOffersSection } from "@/components/home/ProductOffersSection";
 
 const MARQUEE_ITEMS = [
   "PREMIUM QUALITY", "CUSTOM DESIGNS", "FAST DELIVERY", "MADE IN BANGLADESH",
@@ -1275,6 +1276,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Product Offers Section */}
+      <ProductOffersSection />
 
       {/* Recently Viewed + Instagram */}
       <RecentlyViewed />

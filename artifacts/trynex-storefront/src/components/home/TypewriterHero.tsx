@@ -160,7 +160,7 @@ export function TypewriterHero() {
     <section
       className="relative overflow-hidden"
       style={{
-        paddingTop: "calc(var(--announcement-height, 0px) + 2rem)",
+        paddingTop: "calc(var(--announcement-height, 0px) + 4.25rem + 2.5rem)",
         paddingBottom: "3rem",
       }}
       aria-label="Hero"

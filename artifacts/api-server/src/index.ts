@@ -17,31 +17,17 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-/* ─── Production-only storage guard ────────────────────────────────────────
+/* ─── Storage backend detection ─────────────────────────────────────────────
+ * Backends (in priority order):
+ *   1. R2  — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+ *   2. S3  — set S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET
+ *   3. local — default; stores files under LOCAL_STORAGE_PATH (./uploads)
  *
- * The Replit sidecar (GCS at http://127.0.0.1:1106) is ONLY available inside
- * the Replit sandbox. A production deployment on Render has no sidecar, so
- * any upload/download call would time-out and fail. We refuse to start in
- * production unless a portable storage backend (R2 or S3) is configured.
- *
- * Set R2_ACCOUNT_ID + R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY + R2_BUCKET
- * (or the S3_* equivalents) on your Render service before deploying.
+ * For Render + Cloudflare R2: set R2_* env vars on the Render service.
+ * The local backend works out-of-the-box with no configuration needed.
  * ───────────────────────────────────────────────────────────────────────── */
 const storageService = new ObjectStorageService();
 const storageBackend = storageService.getBackendName();
-
-if (process.env.NODE_ENV === "production" && storageBackend === "replit") {
-  logger.error(
-    {
-      storageBackend,
-      hint: "Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET (or S3_* equivalents) to use a portable storage backend.",
-    },
-    "[storage] Production startup refused: storage backend resolved to 'replit' sidecar. " +
-    "The Replit sidecar is unavailable on Render and other external hosts. " +
-    "Configure R2_* or S3_* env vars before deploying.",
-  );
-  process.exit(1);
-}
 
 /* ─── Env-var health matrix ─────────────────────────────────────────────────
  *
@@ -85,6 +71,10 @@ const STORAGE_ENV_VAR_MATRIX: Record<string, EnvVarSpec[]> = {
     { name: "S3_REGION",            required: false, description: "S3 region (default: us-east-1)" },
     { name: "S3_ENDPOINT",          required: false, description: "S3-compatible endpoint URL (MinIO, etc.)" },
     { name: "S3_PUBLIC_BASE_URL",   required: false, description: "S3 public CDN base URL (optional)" },
+  ],
+  local: [
+    { name: "LOCAL_STORAGE_PATH",   required: false, description: "Local filesystem path for uploads (default: ./uploads)" },
+    { name: "API_BASE_URL",         required: false, description: "Public base URL of this API server, used for local upload URLs (e.g. https://trynex-api.onrender.com)" },
   ],
 };
 
@@ -133,8 +123,7 @@ app.listen(port, async (err) => {
 
   logger.info({ port }, "Server listening");
 
-  // Log the active object storage backend so it's immediately visible in
-  // Render dashboard logs. Confirms R2/S3 is active, not the Replit sidecar.
+  // Log the active object storage backend (r2 / s3 / local).
   logActiveStorageBackend(logger);
 
   await runMigrations();

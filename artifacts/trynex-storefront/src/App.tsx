@@ -86,6 +86,7 @@ const DesignStudio = lazy(() => import("./pages/DesignStudio"));
 const SalePage = lazy(() => import("./pages/SalePage"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
 const SizeGuide = lazy(() => import("./pages/SizeGuide"));
 
 const queryClient = new QueryClient({
@@ -123,6 +124,7 @@ function Router() {
       <Route path="/sale" component={SalePage} />
       <Route path="/faq" component={FAQ} />
       <Route path="/about" component={About} />
+      <Route path="/contact" component={Contact} />
       <Route path="/size-guide" component={SizeGuide} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />

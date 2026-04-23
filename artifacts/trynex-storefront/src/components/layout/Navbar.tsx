@@ -18,6 +18,17 @@ const SHOP_CATEGORIES = [
   { label: "Design Studio", href: "/design-studio", emoji: "🎨" },
 ];
 
+const MORE_LINKS = [
+  { label: "About Us", href: "/about", emoji: "💫" },
+  { label: "Contact Us", href: "/contact", emoji: "💬" },
+  { label: "FAQ", href: "/faq", emoji: "❓" },
+  { label: "Size Guide", href: "/size-guide", emoji: "📏" },
+  { label: "Referral Program", href: "/referral", emoji: "🎁" },
+  { label: "Terms of Service", href: "/terms-of-service", emoji: "📄" },
+  { label: "Privacy Policy", href: "/privacy-policy", emoji: "🔒" },
+  { label: "Return Policy", href: "/return-policy", emoji: "🔄" },
+];
+
 export function Navbar() {
   const [location, navigate] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,6 +36,7 @@ export function Navbar() {
   const { customer, isAuthenticated, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -52,6 +64,7 @@ export function Navbar() {
   useEffect(() => {
     setMobileOpen(false);
     setShopOpen(false);
+    setMoreOpen(false);
     setProfileOpen(false);
     setSearchOpen(false);
   }, [location]);
@@ -112,6 +125,7 @@ export function Navbar() {
     { href: "/hampers", label: "Gift Hampers" },
     { href: "/blog", label: "Blog" },
     { href: "/track", label: "Track Order" },
+    { href: "/about", label: "More", moreDropdown: true },
   ];
 
   return (
@@ -191,6 +205,47 @@ export function Navbar() {
                           >
                             <span className="text-base">{cat.emoji}</span>
                             {cat.label}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : link.moreDropdown ? (
+                <div
+                  key="more-dropdown"
+                  className="relative"
+                  onMouseEnter={() => setMoreOpen(true)}
+                  onMouseLeave={() => setMoreOpen(false)}
+                >
+                  <button
+                    className={cn(
+                      "flex items-center gap-1 px-4 py-2 rounded-full font-semibold text-[0.8125rem] transition-all",
+                      ["/about", "/contact", "/faq", "/size-guide", "/referral", "/terms-of-service", "/privacy-policy", "/return-policy"].includes(location)
+                        ? "text-orange-600 bg-orange-50"
+                        : "text-gray-600 hover:text-orange-600 hover:bg-orange-50/60"
+                    )}
+                  >
+                    {link.label}
+                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", moreOpen && "rotate-180")} />
+                  </button>
+                  <AnimatePresence>
+                    {moreOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                        className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden p-1.5 z-50"
+                      >
+                        {MORE_LINKS.map((item) => (
+                          <Link
+                            key={item.label}
+                            href={item.href}
+                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[0.8125rem] font-semibold text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          >
+                            <span className="text-base">{item.emoji}</span>
+                            {item.label}
                           </Link>
                         ))}
                       </motion.div>
@@ -385,7 +440,7 @@ export function Navbar() {
                 </button>
               </form>
 
-              {navLinks.map((link) => (
+              {navLinks.filter(l => !l.moreDropdown).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -408,6 +463,16 @@ export function Navbar() {
                   )}
                 </Link>
               ))}
+              {/* More section in mobile */}
+              <div className="pt-2 border-t border-gray-100 mt-1">
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-4 mb-1">More</div>
+                {MORE_LINKS.slice(0, 4).map((item) => (
+                  <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl font-semibold text-[0.875rem] text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all">
+                    <span>{item.emoji}</span>{item.label}
+                  </Link>
+                ))}
+              </div>
               <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
                 {isAuthenticated ? (
                   <>

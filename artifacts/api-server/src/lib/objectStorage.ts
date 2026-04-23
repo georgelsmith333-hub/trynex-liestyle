@@ -1,18 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   OBJECT STORAGE — portable adapter
+   OBJECT STORAGE — portable adapter (Replit-free)
    ----------------------------------------------------------------------------
-   This file is the single boundary between the app and the storage backend.
-   We auto-detect at runtime:
+   Backend detection priority (highest → lowest):
 
-     • If R2_* env vars are set                  → Cloudflare R2 (S3-compatible)
-     • Else if S3_* env vars are set             → AWS S3 (or any S3-compatible)
-     • Else (DEFAULT_OBJECT_STORAGE_BUCKET_ID)   → Replit Object Storage sidecar
+     1. R2    — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+                Optional: R2_PUBLIC_BASE_URL
+     2. S3    — set S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET
+                Optional: S3_REGION, S3_ENDPOINT, S3_FORCE_PATH_STYLE, S3_PUBLIC_BASE_URL
+     3. Local — default fallback; stores files under LOCAL_STORAGE_PATH (default: ./uploads)
+                Upload URL base is set by API_BASE_URL env var (default: http://localhost:PORT)
 
-   Production deployments (Render etc.) should set R2_* — making the project
-   completely Replit-independent.
+   Production deployments on Render with Cloudflare R2: set R2_* env vars.
+   The local backend works for dev and low-traffic production (ephemeral on Render free tier).
 ═══════════════════════════════════════════════════════════════════════════ */
 
-import { Storage, type File } from "@google-cloud/storage";
 import {
   S3Client,
   GetObjectCommand,
@@ -25,58 +26,65 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
-import {
-  ObjectAclPolicy,
-  ObjectPermission,
-  canAccessObject,
-  getObjectAclPolicy,
-  setObjectAclPolicy,
-} from "./objectAcl";
-
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+import fs from "fs";
+import path from "path";
+import { pipeline } from "stream/promises";
 
 /* ─── Backend selection ─────────────────────────────────────────────────── */
-/**
- * Backend detection priority (highest → lowest):
- *
- *  1. R2   — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
- *              Optional: R2_PUBLIC_BASE_URL (for public URL generation)
- *  2. S3   — set S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET
- *              Optional: S3_REGION (default "us-east-1"), S3_ENDPOINT,
- *                        S3_FORCE_PATH_STYLE, S3_PUBLIC_BASE_URL
- *  3. Replit — no extra env vars required; uses the Replit Object Storage
- *              sidecar. Requires DEFAULT_OBJECT_STORAGE_BUCKET_ID (set by
- *              the Replit platform) and PRIVATE_OBJECT_DIR env var.
- *
- * EXTENSION HOOKS (future backends — no code changes required to activate):
- *
- *  • Imgur  — if IMGUR_CLIENT_ID is set AND no R2/S3 vars are present, a
- *             thin Imgur adapter can be activated here. Files would be
- *             uploaded to Imgur and presigned URLs replaced by direct Imgur
- *             image URLs. Add detection: `if (process.env.IMGUR_CLIENT_ID)`
- *             before the Replit fallback.
- *
- *  • Google Drive — if GDRIVE_SERVICE_ACCOUNT_KEY_JSON and
- *             GDRIVE_PARENT_FOLDER_ID are set, a Drive adapter can be wired
- *             in. Detection: check both env vars before the Replit fallback.
- *
- * To swap backends in production: set/unset the relevant env vars and
- * redeploy — no source-code changes are needed.
- */
-type Backend = "r2" | "s3" | "replit";
+type Backend = "r2" | "s3" | "local";
 
 function selectedBackend(): Backend {
-  if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET) {
+  if (
+    process.env.R2_ACCOUNT_ID &&
+    process.env.R2_ACCESS_KEY_ID &&
+    process.env.R2_SECRET_ACCESS_KEY &&
+    process.env.R2_BUCKET
+  ) {
     return "r2";
   }
-  if (process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY && process.env.S3_BUCKET) {
+  if (
+    process.env.S3_ACCESS_KEY_ID &&
+    process.env.S3_SECRET_ACCESS_KEY &&
+    process.env.S3_BUCKET
+  ) {
     return "s3";
   }
-  return "replit";
+  return "local";
 }
 
 const BACKEND: Backend = selectedBackend();
 
+/* ─── Local filesystem config ───────────────────────────────────────────── */
+const LOCAL_STORAGE_ROOT = path.resolve(
+  process.env.LOCAL_STORAGE_PATH || "./uploads"
+);
+
+function ensureLocalDir(dir: string): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function localUploadsDir(): string {
+  const dir = path.join(LOCAL_STORAGE_ROOT, "private");
+  ensureLocalDir(dir);
+  return dir;
+}
+
+function localPublicDir(): string {
+  const dir = path.join(LOCAL_STORAGE_ROOT, "public");
+  ensureLocalDir(dir);
+  return dir;
+}
+
+function getApiBaseUrl(): string {
+  const configured = process.env.API_BASE_URL || "";
+  if (configured) return configured.replace(/\/$/, "");
+  const port = process.env.PORT || "8080";
+  return `http://localhost:${port}`;
+}
+
+/* ─── Error types ───────────────────────────────────────────────────────── */
 export class ObjectNotFoundError extends Error {
   constructor() {
     super("Object not found");
@@ -85,7 +93,7 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
-/* ─── S3-compatible client (R2 + AWS S3 + any other S3 API) ─────────────── */
+/* ─── S3-compatible client (R2 + AWS S3) ───────────────────────────────── */
 let s3Client: S3Client | null = null;
 let s3BucketName = "";
 let s3PublicBaseUrl = "";
@@ -123,40 +131,19 @@ function ensureS3Client(): { client: S3Client; bucket: string } {
   return { client: s3Client, bucket: s3BucketName };
 }
 
-/* ─── Replit sidecar Google Cloud Storage client (legacy / dev) ─────────── */
-let gcsClient: Storage | null = null;
-function ensureGcsClient(): Storage {
-  if (gcsClient) return gcsClient;
-  gcsClient = new Storage({
-    credentials: {
-      audience: "replit",
-      subject_token_type: "access_token",
-      token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-      type: "external_account",
-      credential_source: {
-        url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-        format: { type: "json", subject_token_field_name: "access_token" },
-      },
-      universe_domain: "googleapis.com",
-    },
-    projectId: "",
-  });
-  return gcsClient;
-}
-
-// Backwards-compat export (some legacy code may import this)
+/* ─── Stub export kept so old imports compile (no-op on non-local backends) */
 export const objectStorageClient = {
   get bucket() {
-    return ensureGcsClient().bucket.bind(ensureGcsClient());
+    throw new Error("objectStorageClient.bucket is not supported with R2/S3/local backends");
   },
 };
 
 /* ─── Path helpers ──────────────────────────────────────────────────────── */
-function parseObjectPath(path: string): { bucketName: string; objectName: string } {
-  if (!path.startsWith("/")) path = `/${path}`;
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) throw new Error("Invalid path: must contain at least a bucket name");
-  return { bucketName: pathParts[1], objectName: pathParts.slice(2).join("/") };
+function parseObjectPath(p: string): { bucketName: string; objectName: string } {
+  if (!p.startsWith("/")) p = `/${p}`;
+  const parts = p.split("/");
+  if (parts.length < 3) throw new Error("Invalid path: must contain at least a bucket name");
+  return { bucketName: parts[1], objectName: parts.slice(2).join("/") };
 }
 
 /* ─── Public API used by routes ─────────────────────────────────────────── */
@@ -169,30 +156,17 @@ export class ObjectStorageService {
 
   getPublicObjectSearchPaths(): Array<string> {
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || "";
-    const paths = Array.from(
-      new Set(pathsStr.split(",").map(p => p.trim()).filter(p => p.length > 0)),
+    return Array.from(
+      new Set(pathsStr.split(",").map((p) => p.trim()).filter((p) => p.length > 0))
     );
-    if (paths.length === 0 && BACKEND === "replit") {
-      throw new Error(
-        "PUBLIC_OBJECT_SEARCH_PATHS not set. Create a bucket in 'Object Storage' tool and set the env var.",
-      );
-    }
-    return paths;
   }
 
   getPrivateObjectDir(): string {
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
-    if (BACKEND !== "replit") {
-      // For S3/R2, "uploads" is the standard prefix; allow override via env.
-      return dir || "uploads";
-    }
-    if (!dir) {
-      throw new Error("PRIVATE_OBJECT_DIR not set.");
-    }
-    return dir;
+    return dir || "uploads";
   }
 
-  /* ── Generate a presigned PUT URL the client uploads to directly ── */
+  /* ── Generate an upload URL for the client to PUT a file to ── */
   async getObjectEntityUploadURL(): Promise<string> {
     const objectId = randomUUID();
 
@@ -203,18 +177,13 @@ export class ObjectStorageService {
       return getSignedUrl(client, cmd, { expiresIn: 900 });
     }
 
-    // Replit sidecar
-    const privateObjectDir = this.getPrivateObjectDir();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-    return signReplitSidecarURL({ bucketName, objectName, method: "PUT", ttlSec: 900 });
+    // Local backend — return a direct-upload URL pointing at this API server
+    return `${getApiBaseUrl()}/api/storage/upload-direct/${objectId}`;
   }
 
-  /* ── Convert any storage URL into the canonical /objects/<id> path ── */
+  /* ── Convert any storage URL / path into the canonical /objects/<id> path ── */
   normalizeObjectEntityPath(rawPath: string): string {
     if (BACKEND === "r2" || BACKEND === "s3") {
-      // R2 presigned URLs look like https://<acct>.r2.cloudflarestorage.com/<bucket>/uploads/<id>?X-Amz...
-      // We normalize anything ending in /uploads/<id> to /objects/<id>.
       try {
         const url = new URL(rawPath);
         const parts = url.pathname.split("/").filter(Boolean);
@@ -225,22 +194,16 @@ export class ObjectStorageService {
       } catch {
         /* not a URL — fall through */
       }
-      // If it's already /objects/<id>, return as-is.
       if (rawPath.startsWith("/objects/")) return rawPath;
       return rawPath;
     }
 
-    // Replit sidecar (Google Cloud Storage URLs)
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
-      return rawPath;
-    }
-    const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
-    let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) objectEntityDir = `${objectEntityDir}/`;
-    if (!rawObjectPath.startsWith(objectEntityDir)) return rawObjectPath;
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
-    return `/objects/${entityId}`;
+    // Local backend — extract uuid from the direct-upload URL
+    const localPattern = /\/api\/storage\/upload-direct\/([^?#]+)/;
+    const match = rawPath.match(localPattern);
+    if (match) return `/objects/${match[1]}`;
+    if (rawPath.startsWith("/objects/")) return rawPath;
+    return rawPath;
   }
 
   /* ── Stream a public object back to the client ── */
@@ -250,7 +213,7 @@ export class ObjectStorageService {
       const key = `public/${filePath}`;
       try {
         const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-        await streamS3ObjectToResponse(out, res, /* isPublic */ true);
+        await streamS3ObjectToResponse(out, res, true);
       } catch (err) {
         const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
         if (e?.name === "NoSuchKey" || e?.$metadata?.httpStatusCode === 404) {
@@ -262,26 +225,19 @@ export class ObjectStorageService {
       return;
     }
 
-    // Replit sidecar
-    for (const searchPath of this.getPublicObjectSearchPaths()) {
-      const fullPath = `${searchPath}/${filePath}`;
-      const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = ensureGcsClient().bucket(bucketName);
-      const f = bucket.file(objectName);
-      const [exists] = await f.exists();
-      if (exists) {
-        await streamGcsFileToResponse(f, res, /* isPublic */ true);
-        return;
-      }
+    // Local backend
+    const safeFilePath = filePath.replace(/\.\./g, "").replace(/^\/+/, "");
+    const fullPath = path.join(localPublicDir(), safeFilePath);
+    if (!fs.existsSync(fullPath)) {
+      res.status(404).json({ error: "File not found" });
+      return;
     }
-    res.status(404).json({ error: "File not found" });
+    await streamLocalFileToResponse(fullPath, res, true);
   }
 
-  /* ── Stream a private object back to the client ── */
+  /* ── Stream a private uploaded object back to the client ── */
   async streamPrivateObject(objectPath: string, res: import("express").Response): Promise<void> {
-    if (!objectPath.startsWith("/objects/")) {
-      throw new ObjectNotFoundError();
-    }
+    if (!objectPath.startsWith("/objects/")) throw new ObjectNotFoundError();
     const entityId = objectPath.slice("/objects/".length);
     if (!entityId) throw new ObjectNotFoundError();
 
@@ -290,7 +246,7 @@ export class ObjectStorageService {
       const key = `uploads/${entityId}`;
       try {
         const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-        await streamS3ObjectToResponse(out, res, /* isPublic */ false);
+        await streamS3ObjectToResponse(out, res, false);
       } catch (err) {
         const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
         if (e?.name === "NoSuchKey" || e?.$metadata?.httpStatusCode === 404) {
@@ -301,19 +257,14 @@ export class ObjectStorageService {
       return;
     }
 
-    // Replit sidecar
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
-    const objectEntityPath = `${entityDir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = ensureGcsClient().bucket(bucketName);
-    const f = bucket.file(objectName);
-    const [exists] = await f.exists();
-    if (!exists) throw new ObjectNotFoundError();
-    await streamGcsFileToResponse(f, res, /* isPublic */ false);
+    // Local backend
+    const safeId = entityId.replace(/\.\./g, "");
+    const fullPath = path.join(localUploadsDir(), safeId);
+    if (!fs.existsSync(fullPath)) throw new ObjectNotFoundError();
+    await streamLocalFileToResponse(fullPath, res, false);
   }
 
-  /* ── Issue a temporary download URL for the admin "Download original" button ── */
+  /* ── Issue a temporary download URL ── */
   async getObjectDownloadURL(objectPath: string, ttlSec = 900): Promise<string> {
     if (!objectPath.startsWith("/objects/")) throw new ObjectNotFoundError();
     const entityId = objectPath.slice("/objects/".length);
@@ -325,29 +276,21 @@ export class ObjectStorageService {
       return getSignedUrl(client, cmd, { expiresIn: ttlSec });
     }
 
-    // Replit sidecar
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
-    const objectEntityPath = `${entityDir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    return signReplitSidecarURL({ bucketName, objectName, method: "GET", ttlSec });
+    // Local backend — return a direct stream URL (no expiry needed, access-controlled by the route)
+    return `${getApiBaseUrl()}/api/storage/objects/${entityId}`;
   }
 
-  /* ── Move an uploaded object into the per-order bucket prefix ───────
-   *
-   *  For S3/R2: copies the object from `uploads/<uuid>` to
-   *  `uploads/orders/<orderNumber>/<itemIdx>/<filename>` then deletes the
-   *  original so storage isn't double-counted.
-   *
-   *  For the Replit sidecar: copy is not supported by the sidecar API,
-   *  so the object stays at its original path and the same `/objects/<id>`
-   *  path is returned unchanged. Files are still accessible and
-   *  downloadable; they just aren't reindexed under the per-order prefix.
-   *
-   *  The returned string is the canonical `/objects/<newKey>` path that
-   *  should be stored in the order item's originalAssets metadata.
-   *  On any error the original objectPath is returned so the caller can
-   *  fall back gracefully (non-fatal). ─────────────────────────────────── */
+  /* ── Save a local upload from a request body ── */
+  async saveLocalUpload(objectId: string, body: import("stream").Readable): Promise<void> {
+    if (BACKEND !== "local") throw new Error("saveLocalUpload only available on local backend");
+    const safeId = objectId.replace(/[^a-zA-Z0-9-]/g, "");
+    if (!safeId) throw new Error("Invalid objectId");
+    const destPath = path.join(localUploadsDir(), safeId);
+    const writeStream = fs.createWriteStream(destPath);
+    await pipeline(body, writeStream);
+  }
+
+  /* ── Move an uploaded object into the per-order bucket prefix ── */
   async moveObjectToOrderPrefix(
     objectPath: string,
     orderNumber: string,
@@ -361,100 +304,56 @@ export class ObjectStorageService {
     if (BACKEND === "r2" || BACKEND === "s3") {
       const { client, bucket } = ensureS3Client();
       const srcKey = `uploads/${entityId}`;
-      // Sanitize filename to be URL-safe and remove any path traversal
       const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "original";
       const dstKey = `uploads/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
       try {
-        await client.send(new CopyObjectCommand({
-          Bucket: bucket,
-          CopySource: `${bucket}/${srcKey}`,
-          Key: dstKey,
-        }));
-        // Best-effort delete of the staging object (ignore failure)
+        await client.send(
+          new CopyObjectCommand({
+            Bucket: bucket,
+            CopySource: `${bucket}/${srcKey}`,
+            Key: dstKey,
+          })
+        );
         try {
           await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: srcKey }));
         } catch { /* non-fatal */ }
         return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
       } catch {
-        // Copy failed — return original path so admin can still download
         return objectPath;
       }
     }
 
-    // Replit sidecar — return the original path unchanged
-    return objectPath;
+    // Local backend — rename file to include order info
+    const safeId = entityId.replace(/\.\./g, "");
+    const srcPath = path.join(localUploadsDir(), safeId);
+    if (!fs.existsSync(srcPath)) return objectPath;
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "original";
+    const orderDir = path.join(localUploadsDir(), "orders", orderNumber, String(itemIdx));
+    ensureLocalDir(orderDir);
+    const dstPath = path.join(orderDir, safeFilename);
+    try {
+      fs.renameSync(srcPath, dstPath);
+      return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
+    } catch {
+      return objectPath;
+    }
   }
 
-  /* ── Legacy methods (kept so existing imports don't break) ─────────── */
-  async searchPublicObject(filePath: string): Promise<File | null> {
-    if (BACKEND !== "replit") return null;
-    for (const searchPath of this.getPublicObjectSearchPaths()) {
-      const fullPath = `${searchPath}/${filePath}`;
-      const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = ensureGcsClient().bucket(bucketName);
-      const file = bucket.file(objectName);
-      const [exists] = await file.exists();
-      if (exists) return file;
-    }
+  /* ── Legacy no-op stubs (kept for import compatibility) ── */
+  async searchPublicObject(_filePath: string): Promise<null> {
     return null;
   }
 
-  async downloadObject(file: File, cacheTtlSec = 3600): Promise<Response> {
-    const [metadata] = await file.getMetadata();
-    const aclPolicy = await getObjectAclPolicy(file);
-    const isPublic = aclPolicy?.visibility === "public";
-    const nodeStream = file.createReadStream();
-    const webStream = Readable.toWeb(nodeStream) as ReadableStream;
-    const headers: Record<string, string> = {
-      "Content-Type": (metadata.contentType as string) || "application/octet-stream",
-      "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
-    };
-    if (metadata.size) headers["Content-Length"] = String(metadata.size);
-    return new Response(webStream, { headers });
+  async getObjectEntityFile(_objectPath: string): Promise<never> {
+    throw new Error("getObjectEntityFile is not available with R2/S3/local backends");
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<File> {
-    if (BACKEND !== "replit") {
-      throw new Error("getObjectEntityFile is only available with the Replit backend");
-    }
-    if (!objectPath.startsWith("/objects/")) throw new ObjectNotFoundError();
-    const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) throw new ObjectNotFoundError();
-    const entityId = parts.slice(1).join("/");
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
-    const objectEntityPath = `${entityDir}${entityId}`;
-    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = ensureGcsClient().bucket(bucketName);
-    const objectFile = bucket.file(objectName);
-    const [exists] = await objectFile.exists();
-    if (!exists) throw new ObjectNotFoundError();
-    return objectFile;
+  async trySetObjectEntityAclPolicy(rawPath: string, _aclPolicy: unknown): Promise<string> {
+    return this.normalizeObjectEntityPath(rawPath);
   }
 
-  async trySetObjectEntityAclPolicy(rawPath: string, aclPolicy: ObjectAclPolicy): Promise<string> {
-    const normalizedPath = this.normalizeObjectEntityPath(rawPath);
-    if (BACKEND !== "replit") return normalizedPath;
-    if (!normalizedPath.startsWith("/")) return normalizedPath;
-    const objectFile = await this.getObjectEntityFile(normalizedPath);
-    await setObjectAclPolicy(objectFile, aclPolicy);
-    return normalizedPath;
-  }
-
-  async canAccessObjectEntity({
-    userId,
-    objectFile,
-    requestedPermission,
-  }: {
-    userId?: string;
-    objectFile: File;
-    requestedPermission?: ObjectPermission;
-  }): Promise<boolean> {
-    return canAccessObject({
-      userId,
-      objectFile,
-      requestedPermission: requestedPermission ?? ObjectPermission.READ,
-    });
+  async canAccessObjectEntity(_opts: unknown): Promise<boolean> {
+    return true;
   }
 }
 
@@ -468,61 +367,34 @@ async function streamS3ObjectToResponse(
   res.setHeader("Cache-Control", `${isPublic ? "public" : "private"}, max-age=3600`);
   if (out.ContentLength) res.setHeader("Content-Length", String(out.ContentLength));
   const body = out.Body as Readable | undefined;
-  if (!body) {
-    res.end();
-    return;
-  }
+  if (!body) { res.end(); return; }
   body.pipe(res);
 }
 
-async function streamGcsFileToResponse(
-  file: File,
+async function streamLocalFileToResponse(
+  filePath: string,
   res: import("express").Response,
   isPublic: boolean,
 ): Promise<void> {
-  const [metadata] = await file.getMetadata();
-  res.setHeader("Content-Type", (metadata.contentType as string) || "application/octet-stream");
-  res.setHeader("Cache-Control", `${isPublic ? "public" : "private"}, max-age=3600`);
-  if (metadata.size) res.setHeader("Content-Length", String(metadata.size));
-  file.createReadStream().pipe(res);
-}
-
-async function signReplitSidecarURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+  const stat = fs.statSync(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+    ".pdf": "application/pdf", ".zip": "application/zip",
   };
-  const response = await fetch(`${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL via Replit sidecar (status ${response.status}). ` +
-        `Configure R2_* or S3_* env vars to use a portable backend instead.`,
-    );
-  }
-  const { signed_url: signedURL } = (await response.json()) as { signed_url: string };
-  return signedURL;
+  res.setHeader("Content-Type", mimeMap[ext] || "application/octet-stream");
+  res.setHeader("Cache-Control", `${isPublic ? "public" : "private"}, max-age=3600`);
+  res.setHeader("Content-Length", String(stat.size));
+  fs.createReadStream(filePath).pipe(res);
 }
 
-/* ─── Tiny check used at boot to log the active backend ─────────────────── */
+/* ─── Boot log ──────────────────────────────────────────────────────────── */
 export function logActiveStorageBackend(log: { info: (obj: object, msg: string) => void }): void {
-  log.info({ backend: BACKEND }, `[storage] active backend: ${BACKEND}`);
+  const extra = BACKEND === "local"
+    ? { storageRoot: LOCAL_STORAGE_ROOT, apiBase: getApiBaseUrl() }
+    : {};
+  log.info({ backend: BACKEND, ...extra }, `[storage] active backend: ${BACKEND}`);
 }
 
 void HeadObjectCommand;
