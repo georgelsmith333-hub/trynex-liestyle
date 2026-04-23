@@ -495,6 +495,25 @@ export default function AdminOrders() {
               </div>
 
               <div className="p-6 space-y-5">
+                {selectedOrder.studioAssetsMissing && (
+                  <div
+                    className="p-4 rounded-2xl flex items-start gap-3"
+                    style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+                  >
+                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-widest text-red-700 mb-1">
+                        Customer design files missing
+                      </p>
+                      <p className="text-sm text-red-700 leading-snug">
+                        One or more uploaded design files failed to copy into this order's permanent folder.
+                        The source artwork is unavailable — please contact the customer to re-send their files
+                        before fulfilling.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Customer */}
                 <div className="p-4 rounded-2xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                   <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Customer Info</p>

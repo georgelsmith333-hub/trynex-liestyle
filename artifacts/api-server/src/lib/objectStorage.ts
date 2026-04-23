@@ -297,46 +297,43 @@ export class ObjectStorageService {
     itemIdx: number,
     filename: string,
   ): Promise<string> {
+    // Caller treats a thrown error as "asset missing/failed to copy" and flags
+    // the order via studio_assets_missing. Do NOT silently return the original
+    // path on copy failure — that would hide the missing artwork from admins.
     if (!objectPath.startsWith("/objects/")) return objectPath;
     const entityId = objectPath.slice("/objects/".length);
-    if (!entityId) return objectPath;
+    if (!entityId) throw new Error(`moveObjectToOrderPrefix: empty entityId for ${objectPath}`);
 
     if (BACKEND === "r2" || BACKEND === "s3") {
       const { client, bucket } = ensureS3Client();
       const srcKey = `uploads/${entityId}`;
       const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "original";
       const dstKey = `uploads/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
+      await client.send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: `${bucket}/${srcKey}`,
+          Key: dstKey,
+        })
+      );
       try {
-        await client.send(
-          new CopyObjectCommand({
-            Bucket: bucket,
-            CopySource: `${bucket}/${srcKey}`,
-            Key: dstKey,
-          })
-        );
-        try {
-          await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: srcKey }));
-        } catch { /* non-fatal */ }
-        return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
-      } catch {
-        return objectPath;
-      }
+        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: srcKey }));
+      } catch { /* non-fatal — copy already succeeded */ }
+      return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
     }
 
     // Local backend — rename file to include order info
     const safeId = entityId.replace(/\.\./g, "");
     const srcPath = path.join(localUploadsDir(), safeId);
-    if (!fs.existsSync(srcPath)) return objectPath;
+    if (!fs.existsSync(srcPath)) {
+      throw new Error(`moveObjectToOrderPrefix: source file missing at ${srcPath}`);
+    }
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "original";
     const orderDir = path.join(localUploadsDir(), "orders", orderNumber, String(itemIdx));
     ensureLocalDir(orderDir);
     const dstPath = path.join(orderDir, safeFilename);
-    try {
-      fs.renameSync(srcPath, dstPath);
-      return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
-    } catch {
-      return objectPath;
-    }
+    fs.renameSync(srcPath, dstPath);
+    return `/objects/orders/${orderNumber}/${itemIdx}/${safeFilename}`;
   }
 
   /* ── Legacy no-op stubs (kept for import compatibility) ── */
