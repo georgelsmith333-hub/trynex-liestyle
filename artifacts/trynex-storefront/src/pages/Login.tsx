@@ -100,8 +100,10 @@ export default function Login() {
       if (response.authResponse?.accessToken) {
         setLoading(true);
         const result = await loginWithFacebook(response.authResponse.accessToken);
-        if (result.success) navigate(redirectTo);
-        else setError(result.error || "Facebook login failed");
+        if (result.success) {
+          toast({ title: "✓ Signed in", description: "Welcome back!" });
+          navigate(redirectTo);
+        } else setError(result.error || "Facebook login failed");
         setLoading(false);
       } else {
         setError("Facebook login was cancelled or failed. Please try again.");

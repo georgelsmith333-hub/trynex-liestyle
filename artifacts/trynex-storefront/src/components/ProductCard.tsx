@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-  import { ShoppingCart, Star, Heart, Check, Eye, ArrowRight, MessageCircle, Flame } from "lucide-react";
+  import { ShoppingCart, Star, Heart, Check, Eye, ArrowRight, MessageCircle, Flame, Loader2 } from "lucide-react";
   import { formatPrice } from "@/lib/utils";
   import type { Product } from "@workspace/api-client-react";
   import { motion, AnimatePresence } from "framer-motion";
@@ -85,30 +85,36 @@ import { Link, useLocation } from "wouter";
       setTilt({ x: 0, y: 0, glare: { x: 50, y: 50 } });
     }, []);
 
+    const [isPending, setIsPending] = useState(false);
     const handleQuickAdd = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (isAdding || product.stock === 0) return;
-      setIsAdding(true);
-      addToCart({
-        productId: product.id,
-        name: product.name,
-        price: discountPrice || price,
-        quantity: 1,
-        imageUrl: product.imageUrl ?? undefined,
-      });
-      toast({
-        title: "✓ Added to bag",
-        description: product.name,
-        action: (
-          <ToastAction altText="Checkout now" onClick={() => navigate("/checkout")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white whitespace-nowrap border-0"
-            style={{ background: '#E85D04' }}>
-            Checkout <ArrowRight className="w-3 h-3" />
-          </ToastAction>
-        ),
-      });
-      setTimeout(() => setIsAdding(false), 1400);
+      if (isAdding || isPending || product.stock === 0) return;
+      setIsPending(true);
+      // Brief pending state so the spinner is visible to acknowledge the click.
+      setTimeout(() => {
+        addToCart({
+          productId: product.id,
+          name: product.name,
+          price: discountPrice || price,
+          quantity: 1,
+          imageUrl: product.imageUrl ?? undefined,
+        });
+        toast({
+          title: "✓ Added to bag",
+          description: product.name,
+          action: (
+            <ToastAction altText="Checkout now" onClick={() => navigate("/checkout")}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white whitespace-nowrap border-0"
+              style={{ background: '#E85D04' }}>
+              Checkout <ArrowRight className="w-3 h-3" />
+            </ToastAction>
+          ),
+        });
+        setIsPending(false);
+        setIsAdding(true);
+        setTimeout(() => setIsAdding(false), 1400);
+      }, 250);
     };
 
     const handleWishlist = (e: React.MouseEvent) => {
@@ -349,10 +355,11 @@ import { Link, useLocation } from "wouter";
                 <motion.button
                   type="button"
                   onClick={handleQuickAdd}
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 || isPending}
+                  aria-busy={isPending}
                   whileTap={{ scale: 0.9 }}
                   aria-label="Add to cart"
-                  className="pointer-events-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  className="pointer-events-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                   style={{
                     background: isAdding ? 'rgba(22,163,74,0.1)' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                     border: isAdding ? '1px solid rgba(22,163,74,0.3)' : 'none',
@@ -360,7 +367,7 @@ import { Link, useLocation } from "wouter";
                     color: isAdding ? '#16a34a' : 'white',
                   }}
                 >
-                  {isAdding ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+                  {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : isAdding ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
                 </motion.button>
               )}
             </div>
@@ -371,9 +378,10 @@ import { Link, useLocation } from "wouter";
                 <motion.button
                   type="button"
                   onClick={handleQuickAdd}
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 || isPending}
+                  aria-busy={isPending}
                   whileTap={{ scale: 0.97 }}
-                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-1.5 active:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-1.5 active:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                   style={{
                     background: isAdding ? 'rgba(22,163,74,0.12)' : 'linear-gradient(135deg, #E85D04, #FB8500)',
                     border: isAdding ? '1px solid rgba(22,163,74,0.3)' : 'none',
@@ -382,7 +390,9 @@ import { Link, useLocation } from "wouter";
                     minHeight: '44px',
                   }}
                 >
-                  {isAdding ? (
+                  {isPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Adding…</>
+                  ) : isAdding ? (
                     <><Check className="w-4 h-4" /> Added!</>
                   ) : product.stock === 0 ? (
                     'Sold Out'
