@@ -5,6 +5,7 @@ import * as crypto from "crypto";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { createAdminSession, revokeAdminSession, ADMIN_SESSION_TTL_MS } from "../lib/adminSessions";
 import { logger } from "../lib/logger";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -458,6 +459,7 @@ router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res)
       res.status(404).json({ error: "not_found", message: "Customer not found" });
       return;
     }
+    logActivity({ action: "update", entity: "customer", entityId: id, entityName: updated.name ?? updated.email, before: existing as unknown as Record<string, unknown>, after: updated as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json({ success: true, customer: { id: updated.id, name: updated.name, email: updated.email, isGuest: updated.isGuest } });
   } catch (err) {
     req.log.error({ err }, "Failed to convert guest");
@@ -482,6 +484,7 @@ router.delete("/admin/guest-customers/:id", requireAdmin, async (req, res) => {
       return;
     }
     await db.delete(customersTable).where(eq(customersTable.id, id));
+    logActivity({ action: "delete", entity: "customer", entityId: id, entityName: existing.name ?? existing.email, before: existing as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete guest");

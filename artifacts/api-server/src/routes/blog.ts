@@ -169,7 +169,7 @@ router.post("/blog", requireAdmin, async (req, res) => {
       featured: featured ?? false,
       readingTimeOverride: readingTimeOverride ? Number(readingTimeOverride) : undefined,
     }).returning();
-    logActivity({ action: "create", entity: "blog", entityId: post.id, entityName: post.title, after: post as any, adminId: getAdminId(req) });
+    logActivity({ action: "create", entity: "blog", entityId: post.id, entityName: post.title, after: post as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(mapPost(post));
   } catch (err) {
     req.log.error({ err }, "Failed to create blog post");
@@ -203,7 +203,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Blog post not found" });
       return;
     }
-    logActivity({ action: "update", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? null) as any, after: post as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? null) as unknown as Record<string, unknown>, after: post as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapPost(post));
   } catch (err) {
     req.log.error({ err }, "Failed to update blog post");
@@ -220,7 +220,7 @@ router.delete("/blog/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Blog post not found" });
       return;
     }
-    logActivity({ action: "delete", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? post) as any, adminId: getAdminId(req) });
+    logActivity({ action: "delete", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? post) as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete blog post");

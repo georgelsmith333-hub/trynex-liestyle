@@ -861,7 +861,7 @@ const updateOrderStatusHandler = async (req: Request, res: Response) => {
       return;
     }
     const mapped = mapOrder(order);
-    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as any, after: order as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as unknown as Record<string, unknown>, after: order as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapped);
 
     sendStatusUpdateNotification(mapped, status).catch((err) => logger.warn({ err }, "sendStatusUpdateNotification failed (fire-and-forget)"));
@@ -887,7 +887,7 @@ const updatePaymentStatusHandler = async (req: Request, res: Response) => {
       res.status(404).json({ error: "not_found", message: "Order not found" });
       return;
     }
-    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as any, after: order as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as unknown as Record<string, unknown>, after: order as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapOrder(order));
   } catch (err) {
     req.log.error({ err }, "Failed to update payment status");

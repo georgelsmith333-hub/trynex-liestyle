@@ -21,6 +21,7 @@ import {
 interface ActivityLog {
   id: number;
   adminId: number | null;
+  adminName: string | null;
   action: string;
   entity: string;
   entityId: number | null;
@@ -47,6 +48,7 @@ const ENTITY_OPTIONS = [
   { value: "hamper", label: "Gift Hampers" },
   { value: "promo", label: "Promo Codes" },
   { value: "review", label: "Reviews" },
+  { value: "customer", label: "Customers" },
   { value: "setting", label: "Settings" },
 ];
 
@@ -55,6 +57,7 @@ const ACTION_OPTIONS = [
   { value: "create", label: "Create" },
   { value: "update", label: "Update" },
   { value: "delete", label: "Delete" },
+  { value: "rollback", label: "Rollback" },
 ];
 
 function ActionBadge({ action }: { action: string }) {
@@ -76,6 +79,12 @@ function ActionBadge({ action }: { action: string }) {
         <Trash2 className="w-3 h-3" /> Delete
       </span>
     );
+  if (action === "rollback")
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+        <RotateCcw className="w-3 h-3" /> Rollback
+      </span>
+    );
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
       {action}
@@ -92,6 +101,7 @@ function EntityBadge({ entity }: { entity: string }) {
     hamper: "bg-pink-100 text-pink-700",
     promo: "bg-teal-100 text-teal-700",
     review: "bg-sky-100 text-sky-700",
+    customer: "bg-violet-100 text-violet-700",
     setting: "bg-gray-100 text-gray-700",
   };
   return (
@@ -338,7 +348,12 @@ export default function AdminActivityLog() {
                           {log.entityName ?? `#${log.entityId}`}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400">{formatDate(log.createdAt)}</p>
+                      <p className="text-xs text-gray-400">
+                        {formatDate(log.createdAt)}
+                        {log.adminName && (
+                          <span className="ml-2 text-gray-500">— {log.adminName}</span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {(log.before !== null || log.after !== null) && (

@@ -1,10 +1,16 @@
+import type { Request } from "express";
 import { db, adminActivityLogsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 export type ActivityAction = "create" | "update" | "delete" | "rollback";
 export type ActivityEntity =
   | "product" | "order" | "blog" | "category"
-  | "setting" | "hamper" | "promo" | "review";
+  | "setting" | "hamper" | "promo" | "review" | "customer";
+
+/** Extend Express Request with the session property set by requireAdmin middleware */
+export interface AdminRequest extends Request {
+  adminSession?: { adminId?: number | null; role?: string };
+}
 
 /**
  * Log an admin mutation. Never throws — logging failures are caught and
@@ -26,8 +32,8 @@ export async function logActivity(opts: {
       entity: opts.entity,
       entityId: String(opts.entityId),
       entityName: opts.entityName,
-      before: (opts.before ?? null) as any,
-      after: (opts.after ?? null) as any,
+      before: opts.before ?? null,
+      after: opts.after ?? null,
     });
   } catch (err) {
     logger.error({ err, opts }, "[activity-log] Failed to insert activity log");
@@ -38,6 +44,6 @@ export async function logActivity(opts: {
  * Extract a numeric admin ID from the request object (set by requireAdmin middleware).
  * Returns null if not available.
  */
-export function getAdminId(req: any): number | null {
+export function getAdminId(req: AdminRequest): number | null {
   return req.adminSession?.adminId ?? null;
 }

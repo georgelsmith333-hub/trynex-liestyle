@@ -223,7 +223,7 @@ router.put("/settings", requireAdmin, async (req, res) => {
     if (changedKeys.length > 0) {
       const before: Record<string, string | null> = {};
       for (const k of Object.keys(afterMap)) before[k] = beforeMap[k] ?? null;
-      logActivity({ action: "update", entity: "setting", entityId: 0, entityName: "Site Settings", before: before as any, after: afterMap as any, adminId: getAdminId(req) });
+      logActivity({ action: "update", entity: "setting", entityId: 0, entityName: "Site Settings", before: before as unknown as Record<string, unknown>, after: afterMap as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     }
     res.json(await getPublicSettings());
   } catch (err) {

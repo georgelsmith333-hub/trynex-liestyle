@@ -43,7 +43,7 @@ router.post("/categories", requireAdmin, async (req, res) => {
       return;
     }
     const [category] = await db.insert(categoriesTable).values({ name, slug, description, imageUrl }).returning();
-    logActivity({ action: "create", entity: "category", entityId: category.id, entityName: category.name, after: category as any, adminId: getAdminId(req) });
+    logActivity({ action: "create", entity: "category", entityId: category.id, entityName: category.name, after: category as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(mapCategory(category));
   } catch (err) {
     req.log.error({ err }, "Failed to create category");
@@ -74,7 +74,7 @@ router.put("/categories/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Category not found" });
       return;
     }
-    logActivity({ action: "update", entity: "category", entityId: id, entityName: category.name, before: (beforeSnapshot ?? null) as any, after: category as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "category", entityId: id, entityName: category.name, before: (beforeSnapshot ?? null) as unknown as Record<string, unknown>, after: category as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapCategory(category));
   } catch (err) {
     req.log.error({ err }, "Failed to update category");
@@ -107,7 +107,7 @@ router.delete("/categories/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Category not found" });
       return;
     }
-    logActivity({ action: "delete", entity: "category", entityId: id, entityName: category.name, before: (beforeSnap ?? category) as any, adminId: getAdminId(req) });
+    logActivity({ action: "delete", entity: "category", entityId: id, entityName: category.name, before: (beforeSnap ?? category) as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete category");

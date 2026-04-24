@@ -127,7 +127,7 @@ router.post("/products", requireAdmin, async (req, res) => {
       await db.execute(sql`UPDATE categories SET product_count = product_count + 1 WHERE id = ${categoryId}`);
     }
 
-    logActivity({ action: "create", entity: "product", entityId: product.id, entityName: product.name, after: product as any, adminId: getAdminId(req) });
+    logActivity({ action: "create", entity: "product", entityId: product.id, entityName: product.name, after: product as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(mapProduct(product));
   } catch (err) {
     req.log.error({ err }, "Failed to create product");
@@ -175,7 +175,7 @@ router.put("/products/:id", requireAdmin, async (req, res) => {
       }
     }
 
-    logActivity({ action: "update", entity: "product", entityId: id, entityName: product.name, before: existing as any, after: product as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "product", entityId: id, entityName: product.name, before: existing as unknown as Record<string, unknown>, after: product as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapProduct(product));
   } catch (err) {
     req.log.error({ err }, "Failed to update product");
@@ -195,7 +195,7 @@ router.delete("/products/:id", requireAdmin, async (req, res) => {
     if (product.categoryId) {
       await db.execute(sql`UPDATE categories SET product_count = GREATEST(product_count - 1, 0) WHERE id = ${product.categoryId}`);
     }
-    logActivity({ action: "delete", entity: "product", entityId: id, entityName: product.name, before: (beforeSnapshot ?? product) as any, adminId: getAdminId(req) });
+    logActivity({ action: "delete", entity: "product", entityId: id, entityName: product.name, before: (beforeSnapshot ?? product) as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete product");

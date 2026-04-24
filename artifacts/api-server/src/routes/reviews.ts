@@ -116,7 +116,7 @@ router.put("/admin/reviews/:id/approve", requireAdmin, async (req, res) => {
       reviewCount: approvedReviews.length,
     }).where(eq(productsTable.id, review.productId));
 
-    logActivity({ action: "update", entity: "review", entityId: id, entityName: `Review by ${review.customerName}`, before: (beforeSnap ?? null) as any, after: review as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "review", entityId: id, entityName: `Review by ${review.customerName}`, before: (beforeSnap ?? null) as unknown as Record<string, unknown>, after: review as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(review);
   } catch (err) {
     req.log.error({ err }, "Failed to approve review");
@@ -129,7 +129,7 @@ router.delete("/admin/reviews/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string, 10);
     const [beforeSnap] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
     await db.delete(reviewsTable).where(eq(reviewsTable.id, id));
-    if (beforeSnap) logActivity({ action: "delete", entity: "review", entityId: id, entityName: `Review by ${beforeSnap.customerName}`, before: beforeSnap as any, adminId: getAdminId(req) });
+    if (beforeSnap) logActivity({ action: "delete", entity: "review", entityId: id, entityName: `Review by ${beforeSnap.customerName}`, before: beforeSnap as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete review");

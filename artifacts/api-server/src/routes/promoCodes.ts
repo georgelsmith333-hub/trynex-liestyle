@@ -47,7 +47,7 @@ router.post("/promo-codes", requireAdmin, async (req, res) => {
       maxUses: maxUses || 0,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
     }).returning();
-    logActivity({ action: "create", entity: "promo", entityId: promo.id, entityName: promo.code, after: promo as any, adminId: getAdminId(req) });
+    logActivity({ action: "create", entity: "promo", entityId: promo.id, entityName: promo.code, after: promo as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(promo);
   } catch (err: any) {
     if (err.code === "23505") {
@@ -181,7 +181,7 @@ router.delete("/promo-codes/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string, 10);
     const [beforeSnap] = await db.select().from(promoCodesTable).where(eq(promoCodesTable.id, id));
     await db.delete(promoCodesTable).where(eq(promoCodesTable.id, id));
-    if (beforeSnap) logActivity({ action: "delete", entity: "promo", entityId: id, entityName: beforeSnap.code, before: beforeSnap as any, adminId: getAdminId(req) });
+    if (beforeSnap) logActivity({ action: "delete", entity: "promo", entityId: id, entityName: beforeSnap.code, before: beforeSnap as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete promo code");

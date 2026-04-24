@@ -104,7 +104,7 @@ router.post("/admin/hampers", requireAdmin, async (req, res) => {
       stock: b.stock !== undefined ? Number(b.stock) : 100,
       tags: Array.isArray(b.tags) ? b.tags : [],
     }).returning();
-    logActivity({ action: "create", entity: "hamper", entityId: row.id, entityName: row.name, after: row as any, adminId: getAdminId(req) });
+    logActivity({ action: "create", entity: "hamper", entityId: row.id, entityName: row.name, after: row as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(mapHamper(row));
   } catch (err: any) {
     if (err.code === "23505") {
@@ -145,7 +145,7 @@ router.put("/admin/hampers/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    logActivity({ action: "update", entity: "hamper", entityId: id, entityName: row.name, before: (beforeSnap ?? null) as any, after: row as any, adminId: getAdminId(req) });
+    logActivity({ action: "update", entity: "hamper", entityId: id, entityName: row.name, before: (beforeSnap ?? null) as unknown as Record<string, unknown>, after: row as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json(mapHamper(row));
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to update hamper" });
@@ -158,7 +158,7 @@ router.delete("/admin/hampers/:id", requireAdmin, async (req, res) => {
     const id = parseInt(String(req.params.id), 10);
     const [beforeSnap] = await db.select().from(hamperPackagesTable).where(eq(hamperPackagesTable.id, id));
     await db.delete(hamperPackagesTable).where(eq(hamperPackagesTable.id, id));
-    if (beforeSnap) logActivity({ action: "delete", entity: "hamper", entityId: id, entityName: beforeSnap.name, before: beforeSnap as any, adminId: getAdminId(req) });
+    if (beforeSnap) logActivity({ action: "delete", entity: "hamper", entityId: id, entityName: beforeSnap.name, before: beforeSnap as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "internal_error", message: "Failed to delete hamper" });
