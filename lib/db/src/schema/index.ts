@@ -219,6 +219,19 @@ export type Testimonial = typeof testimonialsTable.$inferSelect;
 export type InsertTestimonial = typeof testimonialsTable.$inferInsert;
 export type PromoCode = typeof promoCodesTable.$inferSelect;
 export type Review = typeof reviewsTable.$inferSelect;
+export const adminActivityLogsTable = pgTable("admin_activity_logs", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id"),
+  action: text("action").notNull(), // create | update | delete | rollback
+  entity: text("entity").notNull(), // product | order | blog | category | setting | hamper | promo | review
+  entityId: text("entity_id"),
+  entityName: text("entity_name"),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Referral = typeof referralsTable.$inferSelect;
 export type HamperPackage = typeof hamperPackagesTable.$inferSelect;
 export type InsertHamperPackage = typeof hamperPackagesTable.$inferInsert;
+export type AdminActivityLog = typeof adminActivityLogsTable.$inferSelect;

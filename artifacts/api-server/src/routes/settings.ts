@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -201,6 +202,11 @@ router.get("/admin/studio-settings", requireAdmin, async (req, res) => {
 
 router.put("/settings", requireAdmin, async (req, res) => {
   try {
+    const changedKeys = SETTINGS_KEYS.filter(k => req.body[k] !== undefined);
+    const beforeRows = changedKeys.length > 0 ? await db.select().from(settingsTable) : [];
+    const beforeMap: Record<string, string | null> = {};
+    for (const row of beforeRows) beforeMap[row.key] = row.value;
+    const afterMap: Record<string, string | null> = {};
     for (const key of SETTINGS_KEYS) {
       if (req.body[key] !== undefined) {
         const value = req.body[key]?.toString() ?? null;
@@ -211,7 +217,13 @@ router.put("/settings", requireAdmin, async (req, res) => {
           target: settingsTable.key,
           set: { value, updatedAt: new Date() },
         });
+        afterMap[key] = value;
       }
+    }
+    if (changedKeys.length > 0) {
+      const before: Record<string, string | null> = {};
+      for (const k of Object.keys(afterMap)) before[k] = beforeMap[k] ?? null;
+      logActivity({ action: "update", entity: "setting", entityId: 0, entityName: "Site Settings", before: before as any, after: afterMap as any, adminId: getAdminId(req) });
     }
     res.json(await getPublicSettings());
   } catch (err) {

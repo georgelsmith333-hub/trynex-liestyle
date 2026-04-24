@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, reviewsTable, productsTable, ordersTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -97,6 +98,7 @@ router.get("/admin/reviews", requireAdmin, async (req, res) => {
 router.put("/admin/reviews/:id/approve", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
+    const [beforeSnap] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
     const [review] = await db.update(reviewsTable)
       .set({ approved: true })
       .where(eq(reviewsTable.id, id))
@@ -114,6 +116,7 @@ router.put("/admin/reviews/:id/approve", requireAdmin, async (req, res) => {
       reviewCount: approvedReviews.length,
     }).where(eq(productsTable.id, review.productId));
 
+    logActivity({ action: "update", entity: "review", entityId: id, entityName: `Review by ${review.customerName}`, before: (beforeSnap ?? null) as any, after: review as any, adminId: getAdminId(req) });
     res.json(review);
   } catch (err) {
     req.log.error({ err }, "Failed to approve review");
@@ -124,7 +127,9 @@ router.put("/admin/reviews/:id/approve", requireAdmin, async (req, res) => {
 router.delete("/admin/reviews/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
+    const [beforeSnap] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
     await db.delete(reviewsTable).where(eq(reviewsTable.id, id));
+    if (beforeSnap) logActivity({ action: "delete", entity: "review", entityId: id, entityName: `Review by ${beforeSnap.customerName}`, before: beforeSnap as any, adminId: getAdminId(req) });
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "Failed to delete review");

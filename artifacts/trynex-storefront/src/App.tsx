@@ -79,6 +79,7 @@ const AdminDesigner = lazy(() => import("./pages/admin/AdminDesigner"));
 const AdminFacebookGuide = lazy(() => import("./pages/admin/AdminFacebookGuide"));
 const AdminDeployment = lazy(() => import("./pages/admin/AdminDeployment"));
 const AdminHampers = lazy(() => import("./pages/admin/AdminHampers"));
+const AdminActivityLog = lazy(() => import("./pages/admin/AdminActivityLog"));
 const Hampers = lazy(() => import("./pages/Hampers"));
 const HamperDetail = lazy(() => import("./pages/HamperDetail"));
 const HamperBuilder = lazy(() => import("./pages/HamperBuilder"));
@@ -152,6 +153,7 @@ function Router() {
       <Route path="/admin/designer" component={AdminDesigner} />
       <Route path="/admin/deployment" component={AdminDeployment} />
       <Route path="/admin/hampers" component={AdminHampers} />
+      <Route path="/admin/logs" component={AdminActivityLog} />
 
       <Route component={NotFound} />
     </Switch>

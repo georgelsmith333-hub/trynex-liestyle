@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, ordersTable, productsTable, settingsTable, promoCodesTable, referralsTable, hamperPackagesTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray, lte } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
 import { logger } from "../lib/logger";
 import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
@@ -853,12 +854,14 @@ const updateOrderStatusHandler = async (req: Request, res: Response) => {
       res.status(400).json({ error: "validation_error", message: "status is required" });
       return;
     }
+    const [beforeSnap] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
     const [order] = await db.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
     if (!order) {
       res.status(404).json({ error: "not_found", message: "Order not found" });
       return;
     }
     const mapped = mapOrder(order);
+    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as any, after: order as any, adminId: getAdminId(req) });
     res.json(mapped);
 
     sendStatusUpdateNotification(mapped, status).catch((err) => logger.warn({ err }, "sendStatusUpdateNotification failed (fire-and-forget)"));
@@ -878,11 +881,13 @@ const updatePaymentStatusHandler = async (req: Request, res: Response) => {
       res.status(400).json({ error: "validation_error", message: "paymentStatus is required" });
       return;
     }
+    const [beforeSnap] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
     const [order] = await db.update(ordersTable).set({ paymentStatus, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
     if (!order) {
       res.status(404).json({ error: "not_found", message: "Order not found" });
       return;
     }
+    logActivity({ action: "update", entity: "order", entityId: id, entityName: order.orderNumber, before: (beforeSnap ?? null) as any, after: order as any, adminId: getAdminId(req) });
     res.json(mapOrder(order));
   } catch (err) {
     req.log.error({ err }, "Failed to update payment status");

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, blogPostsTable } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin, validateToken } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -168,6 +169,7 @@ router.post("/blog", requireAdmin, async (req, res) => {
       featured: featured ?? false,
       readingTimeOverride: readingTimeOverride ? Number(readingTimeOverride) : undefined,
     }).returning();
+    logActivity({ action: "create", entity: "blog", entityId: post.id, entityName: post.title, after: post as any, adminId: getAdminId(req) });
     res.status(201).json(mapPost(post));
   } catch (err) {
     req.log.error({ err }, "Failed to create blog post");
@@ -179,6 +181,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
     const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = req.body;
+    const [beforeSnapshot] = await db.select().from(blogPostsTable).where(eq(blogPostsTable.id, id));
 
     const updateData: any = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
@@ -200,6 +203,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Blog post not found" });
       return;
     }
+    logActivity({ action: "update", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? null) as any, after: post as any, adminId: getAdminId(req) });
     res.json(mapPost(post));
   } catch (err) {
     req.log.error({ err }, "Failed to update blog post");
@@ -210,11 +214,13 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
 router.delete("/blog/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
+    const [beforeSnapshot] = await db.select().from(blogPostsTable).where(eq(blogPostsTable.id, id));
     const [post] = await db.delete(blogPostsTable).where(eq(blogPostsTable.id, id)).returning();
     if (!post) {
       res.status(404).json({ error: "not_found", message: "Blog post not found" });
       return;
     }
+    logActivity({ action: "delete", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? post) as any, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete blog post");

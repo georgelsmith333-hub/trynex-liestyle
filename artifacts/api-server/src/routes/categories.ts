@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, categoriesTable, productsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -42,6 +43,7 @@ router.post("/categories", requireAdmin, async (req, res) => {
       return;
     }
     const [category] = await db.insert(categoriesTable).values({ name, slug, description, imageUrl }).returning();
+    logActivity({ action: "create", entity: "category", entityId: category.id, entityName: category.name, after: category as any, adminId: getAdminId(req) });
     res.status(201).json(mapCategory(category));
   } catch (err) {
     req.log.error({ err }, "Failed to create category");
@@ -57,6 +59,7 @@ router.put("/categories/:id", requireAdmin, async (req, res) => {
       return;
     }
     const { name, slug, description, imageUrl } = req.body;
+    const [beforeSnapshot] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, id));
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (slug !== undefined) updateData.slug = slug;
@@ -71,6 +74,7 @@ router.put("/categories/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Category not found" });
       return;
     }
+    logActivity({ action: "update", entity: "category", entityId: id, entityName: category.name, before: (beforeSnapshot ?? null) as any, after: category as any, adminId: getAdminId(req) });
     res.json(mapCategory(category));
   } catch (err) {
     req.log.error({ err }, "Failed to update category");
@@ -97,11 +101,13 @@ router.delete("/categories/:id", requireAdmin, async (req, res) => {
       });
       return;
     }
+    const [beforeSnap] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, id));
     const [category] = await db.delete(categoriesTable).where(eq(categoriesTable.id, id)).returning();
     if (!category) {
       res.status(404).json({ error: "not_found", message: "Category not found" });
       return;
     }
+    logActivity({ action: "delete", entity: "category", entityId: id, entityName: category.name, before: (beforeSnap ?? category) as any, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete category");

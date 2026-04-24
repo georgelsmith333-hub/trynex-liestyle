@@ -20,6 +20,7 @@ import testimonialsRouter from "./testimonials";
 import deploymentRouter from "./deployment";
 import hampersRouter from "./hampers";
 import abandonedCartRouter from "./abandonedCart";
+import activityLogRouter from "./activityLog";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(testimonialsRouter);
 router.use(deploymentRouter);
 router.use(hampersRouter);
 router.use(abandonedCartRouter);
+router.use(activityLogRouter);
 
 export default router;

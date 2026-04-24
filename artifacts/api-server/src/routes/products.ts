@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, productsTable, categoriesTable } from "@workspace/db";
 import { eq, ilike, or, and, sql, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
@@ -126,6 +127,7 @@ router.post("/products", requireAdmin, async (req, res) => {
       await db.execute(sql`UPDATE categories SET product_count = product_count + 1 WHERE id = ${categoryId}`);
     }
 
+    logActivity({ action: "create", entity: "product", entityId: product.id, entityName: product.name, after: product as any, adminId: getAdminId(req) });
     res.status(201).json(mapProduct(product));
   } catch (err) {
     req.log.error({ err }, "Failed to create product");
@@ -138,7 +140,7 @@ router.put("/products/:id", requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string, 10);
     const { name, slug, description, price, discountPrice, categoryId, imageUrl, images, sizes, colors, stock, featured, customizable, tags } = req.body;
 
-    const [existing] = await db.select({ categoryId: productsTable.categoryId }).from(productsTable).where(eq(productsTable.id, id));
+    const [existing] = await db.select().from(productsTable).where(eq(productsTable.id, id));
     if (!existing) {
       res.status(404).json({ error: "not_found", message: "Product not found" });
       return;
@@ -173,6 +175,7 @@ router.put("/products/:id", requireAdmin, async (req, res) => {
       }
     }
 
+    logActivity({ action: "update", entity: "product", entityId: id, entityName: product.name, before: existing as any, after: product as any, adminId: getAdminId(req) });
     res.json(mapProduct(product));
   } catch (err) {
     req.log.error({ err }, "Failed to update product");
@@ -183,6 +186,7 @@ router.put("/products/:id", requireAdmin, async (req, res) => {
 router.delete("/products/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
+    const [beforeSnapshot] = await db.select().from(productsTable).where(eq(productsTable.id, id));
     const [product] = await db.delete(productsTable).where(eq(productsTable.id, id)).returning();
     if (!product) {
       res.status(404).json({ error: "not_found", message: "Product not found" });
@@ -191,6 +195,7 @@ router.delete("/products/:id", requireAdmin, async (req, res) => {
     if (product.categoryId) {
       await db.execute(sql`UPDATE categories SET product_count = GREATEST(product_count - 1, 0) WHERE id = ${product.categoryId}`);
     }
+    logActivity({ action: "delete", entity: "product", entityId: id, entityName: product.name, before: (beforeSnapshot ?? product) as any, adminId: getAdminId(req) });
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete product");
