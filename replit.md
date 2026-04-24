@@ -107,6 +107,27 @@ Production topology:
 
 No component depends on `*.replit.dev`, `*.repl.co`, or the Replit Object Storage sidecar in production.
 
+## Session Updates (April 2026)
+
+### Products Added (IDs 10–16)
+Seven new mug/drinkware products with AI-generated images (`/products/*.png`):
+- Classic Custom Mug (৳600), Love Heart Mug (৳690), Custom Water Bottle (৳650)
+- Twin Mug Combo (৳899), Classic+Love Mug Set (৳1170), Double Bottle Bundle (৳1100)
+- MEGA COMBO Mug+Love+Bottle (৳1390, featured=true)
+
+### Blog Posts (50 Published)
+50 SEO-optimized blog posts covering: custom t-shirts, mugs, drinkware, gift ideas (Eid, Valentine's, Boishakh, Mother's/Father's Day, weddings, corporate), design tips, business guides, sustainability, campus merch, sports kits.
+
+### Admin Password
+Changed to `Administration@Trynexshop` (hash updated directly in `admins` table; fallback in `admin.ts` also updated).
+
+### Premium Animations Added
+- Global scroll progress bar (`ScrollProgressBar.tsx`) — orange gradient line at viewport top, spring-animated
+- Blog categories updated to match: Gift Ideas, Custom Apparel, Business, Design Tips, Lifestyle
+
+### GitHub Push
+Configure via `/admin/deployment` — enter PAT for repo `georgelsmith333-hub/trynex-liestyle`, branch `main`.
+
 ## External Dependencies
 
 -   **Hosting**: Cloudflare Pages (storefront), Render (API server).

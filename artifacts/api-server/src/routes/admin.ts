@@ -9,7 +9,7 @@ import { logActivity, getAdminId } from "../lib/activityLog";
 
 const router: IRouter = Router();
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admins@Trynex";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Administration@Trynexshop";
 const SALT = process.env.ADMIN_SALT || "trynex_salt_2024";
 
 function hashPassword(password: string): string {

@@ -25,7 +25,7 @@ interface BlogPost {
   createdAt: string;
 }
 
-const CATEGORIES = ["All", "Fashion", "Tips", "News", "Lifestyle", "General"];
+const CATEGORIES = ["All", "Gift Ideas", "Custom Apparel", "Business", "Design Tips", "Lifestyle"];
 
 function useBlogPosts(category: string) {
   return useQuery<{ posts: BlogPost[] }>({

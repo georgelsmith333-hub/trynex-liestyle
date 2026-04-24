@@ -84,6 +84,48 @@ uri = "file://artifacts/trynex-storefront/public/mockups/black-mug-front.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "E0pwlnBu2WC7VNaEc95gi"
+uri = "file://artifacts/trynex-storefront/public/products/mug-general.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1m92rN9S9u03kiP_tceqT"
+uri = "file://artifacts/trynex-storefront/public/products/mug-love.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XFN7VTsW3BleSi8q-dvBF"
+uri = "file://artifacts/trynex-storefront/public/products/water-bottle.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hjPadXrKCo0E6PAJVQw-0"
+uri = "file://artifacts/trynex-storefront/public/products/mug-duo.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "q92VuD_uLD40t2qtp9Hw_"
+uri = "file://artifacts/trynex-storefront/public/products/mug-couple-set.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sy1tLZet-Jj6GOv1Y8Zxt"
+uri = "file://artifacts/trynex-storefront/public/products/bottle-duo.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3TNvNdJxxws2WonbQusKq"
+uri = "file://artifacts/trynex-storefront/public/products/main-combo.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "tCytvaUKpj7oEILkFIdkO"
 uri = "file://attached_assets/FULL_AUDIT_REPORT.txt"

@@ -18,6 +18,7 @@ import { BrandingUpdater } from "@/components/BrandingUpdater";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { BackToTop } from "@/components/BackToTop";
 import { AbandonedCartPopup } from "@/components/AbandonedCartPopup";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { SocialProofToast } from "@/components/SocialProofToast";
 import { SocialAuthLoader } from "@/components/SocialAuthLoader";
 import { FlashSaleBar } from "@/components/FlashSaleBar";
@@ -223,6 +224,7 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <ScrollProvider>
                 <AppInner />
+                <ScrollProgressBar />
                 <CaptureReferralCode />
                 <TrackingPixels />
                 <SocialAuthLoader />
