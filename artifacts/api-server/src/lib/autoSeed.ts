@@ -11,6 +11,30 @@ function hashPassword(password: string): string {
 // (artifacts/api-server/src/index.ts) keep working unchanged.
 export { runMigrations } from "./migrationRunner";
 
+// Ensures core brand settings (siteName, tagline) always have non-empty values in DB.
+// Runs every startup so a wiped/blank value gets re-seeded automatically.
+async function seedCoreBrandSettings(): Promise<void> {
+  const defaults: Record<string, string> = {
+    siteName: "TryNex Lifestyle",
+    tagline: "You imagine, we craft",
+  };
+  try {
+    for (const [key, def] of Object.entries(defaults)) {
+      const existing = await db.select().from(settingsTable).where(eq(settingsTable.key, key));
+      const current = existing[0]?.value?.trim();
+      if (!current) {
+        await db.insert(settingsTable).values({ key, value: def }).onConflictDoUpdate({
+          target: settingsTable.key,
+          set: { value: def, updatedAt: new Date() },
+        });
+        logger.info({ key, value: def }, "Seeded missing brand setting");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Brand-setting seed failed — continuing startup anyway");
+  }
+}
+
 async function seedHampersIfEmpty(): Promise<void> {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::int AS c FROM hamper_packages`);
@@ -50,6 +74,7 @@ async function seedHampersIfEmpty(): Promise<void> {
 
 export async function autoSeedIfEmpty(): Promise<void> {
   try {
+    await seedCoreBrandSettings();
     await seedHampersIfEmpty();
 
     const existingProducts = await db.select().from(productsTable).limit(1);
