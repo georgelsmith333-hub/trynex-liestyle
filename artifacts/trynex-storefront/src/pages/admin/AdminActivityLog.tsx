@@ -242,6 +242,19 @@ export default function AdminActivityLog() {
       minute: "2-digit",
     });
 
+  const timeAgo = (iso: string): string => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const secs = Math.floor(diff / 1000);
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    return formatDate(iso);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -349,7 +362,7 @@ export default function AdminActivityLog() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-400">
-                        {formatDate(log.createdAt)}
+                        <span title={formatDate(log.createdAt)}>{timeAgo(log.createdAt)}</span>
                         {log.adminName && (
                           <span className="ml-2 text-gray-500">— {log.adminName}</span>
                         )}

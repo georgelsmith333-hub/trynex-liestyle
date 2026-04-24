@@ -195,13 +195,14 @@ router.post("/admin/activity-logs/:id/rollback", requireAdmin, async (req, res) 
       }
 
     } else if (entity === "setting") {
-      const updates: Array<{ key: string; value: string }> = [];
+      const updates: Array<{ key: string; value: string | null }> = [];
       for (const [key, value] of Object.entries(before)) {
-        await db.insert(settingsTable).values({ key, value: String(value) }).onConflictDoUpdate({
+        const dbValue = (value === null || value === undefined) ? null : String(value);
+        await db.insert(settingsTable).values({ key, value: dbValue }).onConflictDoUpdate({
           target: settingsTable.key,
-          set: { value: String(value), updatedAt: new Date() },
+          set: { value: dbValue, updatedAt: new Date() },
         });
-        updates.push({ key, value: String(value) });
+        updates.push({ key, value: dbValue });
       }
       rollbackResult = updates;
 
