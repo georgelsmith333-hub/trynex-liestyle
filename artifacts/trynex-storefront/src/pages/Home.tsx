@@ -19,7 +19,6 @@ import {
 import { motion, useInView } from "framer-motion";
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { TypewriterHero } from "@/components/home/TypewriterHero";
-import { ProductOffersSection } from "@/components/home/ProductOffersSection";
 
 const MARQUEE_ITEMS = [
   "PREMIUM QUALITY", "CUSTOM DESIGNS", "FAST DELIVERY", "MADE IN BANGLADESH",
@@ -605,62 +604,11 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════
-          PAYMENT TRUST RIBBON
-      ═══════════════════════════════════════ */}
-      <section className="py-6 px-4 bg-white border-b border-gray-100">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center gap-3"
-          >
-            <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 text-center">
-              Accepted Payments
-            </p>
-            <div className="w-full overflow-x-auto no-scrollbar">
-              <div className="flex items-center justify-center gap-2 sm:gap-3 min-w-max mx-auto px-2">
-                {PAYMENT_METHODS.map((pm, i) => (
-                  <motion.div
-                    key={pm.name}
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                    whileHover={{ y: -2, scale: 1.05 }}
-                    className="cursor-default shrink-0"
-                    title={pm.name}
-                  >
-                    <div
-                      className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs text-white flex items-center shadow-sm"
-                      style={{
-                        background: pm.bg,
-                        boxShadow: `0 2px 8px ${pm.color}30`,
-                      }}
-                    >
-                      <span style={{ ...pm.labelStyle, color: pm.textColor, fontSize: '11px' }}>
-                        {pm.shortName}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-                <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shrink-0"
-                  style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
-                  <ShieldCheck className="w-3.5 h-3.5" /> 100% Secure
-                </span>
-              </div>
-            </div>
-            <LiveSocialProof stats={publicStats} primaryColor="var(--color-primary)" />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
           SPECIAL OFFERS + FEATURED PRODUCTS
-          (moved above the Categories grid so the
+          (placed RIGHT AFTER the marquee ticker so the
            "Special Offers" hero card + offer products
-           appear right under the marquee ticker)
+           appear immediately under the marquee, before
+           the Payment Trust Ribbon and Categories grid.)
       ═══════════════════════════════════════ */}
       {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white" data-testid="section-special-offers">
         <div className="max-w-7xl mx-auto">
@@ -722,6 +670,58 @@ export default function Home() {
           )}
         </div>
       </section>}
+
+      {/* ═══════════════════════════════════════
+          PAYMENT TRUST RIBBON
+      ═══════════════════════════════════════ */}
+      <section className="py-6 px-4 bg-white border-b border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center gap-3"
+          >
+            <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 text-center">
+              Accepted Payments
+            </p>
+            <div className="w-full overflow-x-auto no-scrollbar">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 min-w-max mx-auto px-2">
+                {PAYMENT_METHODS.map((pm, i) => (
+                  <motion.div
+                    key={pm.name}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    whileHover={{ y: -2, scale: 1.05 }}
+                    className="cursor-default shrink-0"
+                    title={pm.name}
+                  >
+                    <div
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs text-white flex items-center shadow-sm"
+                      style={{
+                        background: pm.bg,
+                        boxShadow: `0 2px 8px ${pm.color}30`,
+                      }}
+                    >
+                      <span style={{ ...pm.labelStyle, color: pm.textColor, fontSize: '11px' }}>
+                        {pm.shortName}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+                <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shrink-0"
+                  style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                  <ShieldCheck className="w-3.5 h-3.5" /> 100% Secure
+                </span>
+              </div>
+            </div>
+            <LiveSocialProof stats={publicStats} primaryColor="var(--color-primary)" />
+          </motion.div>
+        </div>
+      </section>
 
       {/* ═══════════════════════════════════════
           CATEGORIES GRID
@@ -1289,9 +1289,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Product Offers Section */}
-      <ProductOffersSection />
 
       {/* Recently Viewed + Instagram */}
       <RecentlyViewed />

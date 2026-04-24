@@ -202,11 +202,23 @@ export default function DesignStudio() {
     [selectedProduct.category]
   );
 
-  // Sync mugMode → activeFace so the existing face-aware layer system works
+  // Sync mugMode → activeFace so the existing face-aware layer system works.
+  // Mapping:
+  //   side1 → "front"  (front print panel)
+  //   side2 → "back"   (back print panel)
+  //   wrap  → "back"   (uses the back face slot too, but the renderer treats
+  //                     wrap differently: when mugMode === "wrap" the design
+  //                     spans the full 360° body via UV-repeat in MugBody).
+  // Distinguishing Side 2 vs Wrap is handled below via `isWrapMode` so the
+  // 3D preview can switch between a localized panel and a continuous body wrap.
   useEffect(() => {
     if (!isMugProduct) return;
-    setActiveFace(mugMode === "side2" ? "back" : "front");
+    setActiveFace(mugMode === "side1" ? "front" : "back");
   }, [mugMode, isMugProduct]);
+
+  // Exposed flag the 3D mug preview reads to decide between "panel" decal
+  // (Side 2) and "full body wrap" (Wrap full body) when rendering.
+  const isWrapMode = isMugProduct && mugMode === "wrap";
   // Reset face to "front" when switching to a single-face product
   useEffect(() => { if (!supportsBack) setActiveFace("front"); }, [supportsBack]);
 
