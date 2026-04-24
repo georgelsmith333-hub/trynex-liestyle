@@ -10,6 +10,8 @@ import { Link, useLocation } from "wouter";
   import { ToastAction } from "@/components/ui/toast";
   import { useState, useRef, useCallback, useEffect } from "react";
   import { cn } from "@/lib/utils";
+  import { useQueryClient } from "@tanstack/react-query";
+  import { getApiUrl } from "@/lib/utils";
 
   interface ProductCardProps {
     product: Product;
@@ -131,6 +133,47 @@ import { Link, useLocation } from "wouter";
 
     const goToDetail = () => navigate(`/product/${product.id}`);
 
+    /* ──────────────────────────────────────────────────────────────────────
+       Hover/focus prefetch — eliminates the "blank page for a moment" flash
+       on the product detail page.
+
+       When the user hovers (or keyboard-focuses) a product card we:
+         1. Prefetch the product detail JSON into the React Query cache so
+            ProductDetail.tsx's `useGetProduct` resolves instantly with
+            `initialData` already populated.
+         2. Eagerly preload the main product image via `new Image()` so the
+            browser cache has the bytes ready before the gallery mounts.
+         3. Preload the first 1-2 extra images from `product.images` (when
+            present) so swiping/clicking thumbnails is also instant.
+
+       All work is fire-and-forget; no UI dependency, no React rerender.
+       Guard with `useRef` so we only do it once per card per page view.
+       ────────────────────────────────────────────────────────────────────── */
+    const queryClient = useQueryClient();
+    const prefetchedRef = useRef(false);
+    const prefetchDetail = useCallback(() => {
+      if (prefetchedRef.current) return;
+      prefetchedRef.current = true;
+
+      // Prefetch product JSON — same query key shape as useGetProduct.
+      void queryClient.prefetchQuery({
+        queryKey: ["/api/products", product.id],
+        queryFn: async () => {
+          const res = await fetch(getApiUrl(`/api/products/${product.id}`));
+          if (!res.ok) throw new Error("prefetch_failed");
+          return res.json();
+        },
+        staleTime: 60 * 1000,
+      });
+
+      // Preload images so the gallery doesn't show a blank gray box.
+      const urls: string[] = [];
+      if (product.imageUrl) urls.push(product.imageUrl);
+      const extra = (product as unknown as { images?: string[] | null }).images;
+      if (Array.isArray(extra)) urls.push(...extra.slice(0, 2));
+      urls.forEach(u => { try { const img = new Image(); img.src = u; } catch {} });
+    }, [queryClient, product.id, product.imageUrl, (product as any).images]);
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -142,9 +185,11 @@ import { Link, useLocation } from "wouter";
       >
         <div
           ref={cardRef}
-          onMouseEnter={() => setHovered(true)}
+          onMouseEnter={() => { setHovered(true); prefetchDetail(); }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onFocus={prefetchDetail}
+          onTouchStart={prefetchDetail}
           className="rounded-2xl overflow-hidden group cursor-pointer select-none bg-white relative h-full flex flex-col focus-within:ring-2 focus-within:ring-orange-400 focus-within:ring-offset-2"
           style={{
             border: hovered ? '1.5px solid #fbd5b4' : '1.5px solid #f0e8e0',
