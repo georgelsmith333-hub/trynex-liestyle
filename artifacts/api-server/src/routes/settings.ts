@@ -49,10 +49,17 @@ const SETTINGS_KEYS = [
   "heroTypewriterPhrases",
 ];
 
+// Trim-aware fallback: treats null, undefined, or empty/whitespace-only strings as "missing"
+// so blank DB values fall through to the default instead of leaking through.
+function fallback(value: string | null | undefined, def: string): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : def;
+}
+
 async function buildSettings(map: Record<string, string | null>) {
   return {
-    siteName: map["siteName"] ?? "TryNex Lifestyle",
-    tagline: map["tagline"] ?? "You imagine, we craft.",
+    siteName: fallback(map["siteName"], "TryNex Lifestyle"),
+    tagline: fallback(map["tagline"], "You imagine, we craft."),
     phone: map["phone"] ?? "+880 1700-000000",
     email: map["email"] ?? "hello@trynex.com",
     address: map["address"] ?? "Banani, Dhaka-1213, Bangladesh",
