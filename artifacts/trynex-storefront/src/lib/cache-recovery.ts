@@ -24,7 +24,7 @@
 // Bumped on every meaningful change to client caching behaviour. Compared
 // against localStorage["trynex_build"]. When it differs from the stored
 // value the user is auto-recovered.
-const CURRENT_BUILD = "2026.04.21-blank-homepage-fix-offline-html";
+const CURRENT_BUILD = "2026.04.24-premium-logo-luxury-redesign";
 const STORAGE_KEY = "trynex_build";
 const RECENT_NUKE_KEY = "trynex_last_nuke";
 const RECENT_NUKE_WINDOW_MS = 60_000;

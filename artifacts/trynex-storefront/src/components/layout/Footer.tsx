@@ -137,11 +137,16 @@ export function Footer() {
 
           <div className="lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-5 group">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M3 5h14M10 5v13" stroke="white" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M19 3 L19.7 5.3 L22 6 L19.7 6.7 L19 9 L18.3 6.7 L16 6 L18.3 5.3 Z" fill="#FFE9A8"/>
+              <div className="w-10 h-10 rounded-[13px] flex items-center justify-center shrink-0"
+                style={{
+                  background: 'linear-gradient(150deg, #1E1508 0%, #2C1E0E 55%, #1A1207 100%)',
+                  boxShadow: '0 0 0 1.5px rgba(212,160,23,0.6), 0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,215,100,0.1)',
+                }}>
+                <svg width="24" height="24" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 9h14" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                  <path d="M13 9v11" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                  <path d="M21 4 L21.8 6.2 L24 7 L21.8 7.8 L21 10 L20.2 7.8 L18 7 L20.2 6.2 Z" fill="#FFD966"/>
+                  <circle cx="5" cy="5.5" r="1.1" fill="#D4A017" opacity="0.65"/>
                 </svg>
               </div>
               <span className="text-2xl font-black font-display tracking-tight text-white">

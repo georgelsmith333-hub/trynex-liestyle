@@ -227,20 +227,26 @@ export function Navbar() {
         <div className="flex items-center justify-between h-[4.25rem]">
 
           <Link href="/" className="flex items-center gap-3 group select-none">
+            {/* Premium dark-gold luxury icon */}
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 shrink-0"
-              style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}
+              className="w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+              style={{
+                background: 'linear-gradient(150deg, #1E1508 0%, #2C1E0E 55%, #1A1207 100%)',
+                boxShadow: '0 0 0 1.5px rgba(212,160,23,0.55), 0 6px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,215,100,0.1)',
+              }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M3 5h14M10 5v13" stroke="white" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M19 3 L19.7 5.3 L22 6 L19.7 6.7 L19 9 L18.3 6.7 L16 6 L18.3 5.3 Z" fill="#FFE9A8"/>
+              <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 9h14" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                <path d="M13 9v11" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                <path d="M21 4 L21.8 6.2 L24 7 L21.8 7.8 L21 10 L20.2 7.8 L18 7 L20.2 6.2 Z" fill="#FFD966"/>
+                <circle cx="5" cy="5.5" r="1.1" fill="#D4A017" opacity="0.65"/>
               </svg>
             </div>
             <div className="flex flex-col leading-none gap-[3px]">
-              <span className="text-[1.35rem] font-black font-display tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
+              <span className="text-[1.3rem] font-black font-display tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
                 <span style={{ color: '#E85D04' }}>{(settings.siteName?.trim() || "TryNex").split(' ')[0]}</span>
               </span>
-              <span className="text-[9px] font-bold text-gray-400 tracking-[0.25em] uppercase">
+              <span className="text-[8px] font-bold tracking-[0.32em] uppercase" style={{ color: '#B8860B' }}>
                 {(() => {
                   const name = settings.siteName?.trim() || "TryNex Lifestyle";
                   const rest = name.split(' ').slice(1).join(' ');

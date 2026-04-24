@@ -73,8 +73,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Brand */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black font-display text-white text-sm"
-              style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>T</div>
+            <div className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0"
+              style={{
+                background: 'linear-gradient(150deg, #1E1508 0%, #2C1E0E 100%)',
+                boxShadow: '0 0 0 1px rgba(212,160,23,0.5), 0 3px 10px rgba(0,0,0,0.2)',
+              }}>
+              <svg width="18" height="18" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+                <path d="M6 9h14" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                <path d="M13 9v11" stroke="#D4A017" strokeWidth="2.6" strokeLinecap="round"/>
+                <path d="M21 4 L21.8 6.2 L24 7 L21.8 7.8 L21 10 L20.2 7.8 L18 7 L20.2 6.2 Z" fill="#FFD966"/>
+              </svg>
+            </div>
             <div className="leading-none">
               <span className="font-black font-display text-lg text-gray-900">TRY<span style={{ color: '#E85D04' }}>NEX</span></span>
               <span className="block text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">Admin Panel</span>

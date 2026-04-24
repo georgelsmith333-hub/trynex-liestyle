@@ -1,39 +1,40 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FB8500"/>
-      <stop offset="55%" stop-color="#E85D04"/>
-      <stop offset="100%" stop-color="#C9450A"/>
+    <linearGradient id="bg-lux" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E1508"/>
+      <stop offset="55%" stop-color="#2C1E0E"/>
+      <stop offset="100%" stop-color="#1A1207"/>
     </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    <linearGradient id="ring-lux" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD966"/>
+      <stop offset="100%" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="shine-lux" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFD966" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFD966" stop-opacity="0"/>
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
-  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
-  <!-- Subtle top shine -->
-  <rect width="512" height="220" rx="118" fill="url(#shine)"/>
+  <!-- Dark luxury background -->
+  <rect width="512" height="512" rx="118" fill="url(#bg-lux)"/>
+  <!-- Subtle gold ring border -->
+  <rect x="10" y="10" width="492" height="492" rx="112" fill="none" stroke="url(#ring-lux)" stroke-width="14" opacity="0.55"/>
+  <!-- Inner shine -->
+  <rect width="512" height="200" rx="118" fill="url(#shine-lux)"/>
 
-  <!-- Bold T crossbar -->
-  <rect x="76"  y="138" width="360" height="84" rx="42" fill="white"/>
+  <!-- Gold T crossbar -->
+  <rect x="94" y="152" width="324" height="76" rx="38" fill="#D4A017"/>
   <!-- T stem -->
-  <rect x="214" y="138" width="84"  height="276" rx="42" fill="white"/>
+  <rect x="218" y="152" width="76" height="258" rx="38" fill="#D4A017"/>
 
-  <!-- Sparkle / 4-point star — top-right accent (gift/custom mark) -->
-  <g transform="translate(420 92)">
-    <!-- soft glow halo -->
-    <circle r="46" fill="#FFD580" fill-opacity="0.35"/>
-    <!-- 4-point sparkle -->
-    <path d="M0 -38 L9 -9 L38 0 L9 9 L0 38 L-9 9 L-38 0 L-9 -9 Z"
-          fill="#FFE9A8" stroke="#FFB347" stroke-width="3" stroke-linejoin="round"/>
-    <circle r="6" fill="white"/>
+  <!-- Gold sparkle / 4-point star — top-right -->
+  <g transform="translate(416 90)">
+    <circle r="42" fill="#FFD966" fill-opacity="0.2"/>
+    <path d="M0 -36 L8 -8 L36 0 L8 8 L0 36 L-8 8 L-36 0 L-8 -8 Z"
+          fill="#FFD966" stroke="#D4A017" stroke-width="2" stroke-linejoin="round"/>
+    <circle r="5" fill="#FFF8DC"/>
   </g>
 
-  <!-- Tiny diagonal sparkle bottom-left for balance -->
-  <g transform="translate(98 410)" opacity="0.85">
-    <path d="M0 -14 L4 -4 L14 0 L4 4 L0 14 L-4 4 L-14 0 L-4 -4 Z"
-          fill="#FFE9A8"/>
-  </g>
+  <!-- Tiny accent dot bottom-left -->
+  <circle cx="94" cy="416" r="14" fill="#D4A017" opacity="0.6"/>
 </svg>

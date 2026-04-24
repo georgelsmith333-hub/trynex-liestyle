@@ -34,14 +34,13 @@ function useWarmUpApi() {
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const ping = () =>
-      fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" });
-    timers.push(setTimeout(() => {
-      ping().catch(() => {
-        // First attempt failed (likely cold dyno still booting); retry once
-        // after 2s so the eventual checkout call lands on a warm server.
-        timers.push(setTimeout(() => { ping().catch(() => {}); }, 2000));
-      });
-    }, 300));
+      fetch(getApiUrl("/api/healthz"), { method: "GET", cache: "no-store" }).catch(() => {});
+    // Immediate first ping on mount
+    ping();
+    // Retry at 3s — catches dynos still booting
+    timers.push(setTimeout(ping, 3000));
+    // Retry at 8s — catches very slow cold starts / Render free-tier spin-up
+    timers.push(setTimeout(ping, 8000));
     return () => { timers.forEach(clearTimeout); };
   }, []);
 }

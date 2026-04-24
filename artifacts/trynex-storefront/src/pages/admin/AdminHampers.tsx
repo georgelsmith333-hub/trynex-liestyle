@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useToast } from "@/hooks/use-toast";
-import { getApiUrl, formatPrice } from "@/lib/utils";
+import { getApiUrl, formatPrice, getAuthHeaders } from "@/lib/utils";
 import { Gift, Plus, Trash2, Edit3, X, Save, Star } from "lucide-react";
 
 interface HamperItem {
@@ -55,9 +55,8 @@ export default function AdminHampers() {
   const load = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem("trynex_admin_token");
       const res = await fetch(getApiUrl("/api/admin/hampers"), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       setHampers(data.hampers || []);
@@ -77,12 +76,11 @@ export default function AdminHampers() {
       return;
     }
     try {
-      const token = sessionStorage.getItem("trynex_admin_token");
       const isUpdate = !!editing.id;
       const url = isUpdate ? getApiUrl(`/api/admin/hampers/${editing.id}`) : getApiUrl("/api/admin/hampers");
       const res = await fetch(url, {
         method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(editing),
       });
       if (!res.ok) {
@@ -100,10 +98,9 @@ export default function AdminHampers() {
 
   const remove = async (id: number) => {
     if (!confirm("Delete this hamper?")) return;
-    const token = sessionStorage.getItem("trynex_admin_token");
     await fetch(getApiUrl(`/api/admin/hampers/${id}`), {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: getAuthHeaders(),
     });
     load();
   };
