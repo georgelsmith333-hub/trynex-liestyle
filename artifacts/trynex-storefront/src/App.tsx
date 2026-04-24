@@ -108,14 +108,12 @@ const queryClient = new QueryClient({
 
 function Router() {
   const [location] = useLocation();
-  // Key on top-level path segment so transitions fire between top-level routes
-  // (e.g. / → /products → /cart), not on every product page navigation.
-  const routeKey = location.split("/")[1] || "home";
+  // Key on full location path so transitions fire on all route changes.
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
-        key={routeKey}
+        key={location}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}

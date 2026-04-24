@@ -40,8 +40,8 @@ const FEATURES = [
     icon: Zap,
     title: "48-Hour Express",
     desc: "Lightning-fast production with nationwide delivery across all 64 districts. Speed meets premium quality.",
-    color: "#0891b2",
-    bg: "#ecfeff",
+    color: "#d97706",
+    bg: "#fffbeb",
     badge: "Super Fast"
   },
   {
@@ -86,7 +86,7 @@ const TESTIMONIALS = [
 const STATS = [
   { value: "5000", suffix: "+", label: "Happy Customers", icon: Users, color: "var(--color-primary)" },
   { value: "98", suffix: "%", label: "Satisfaction Rate", icon: Star, color: "#eab308" },
-  { value: "48", suffix: "h", label: "Production Time", icon: Zap, color: "#0891b2" },
+  { value: "48", suffix: "h", label: "Production Time", icon: Zap, color: "#d97706" },
   { value: "64", suffix: "", label: "Districts Served", icon: Truck, color: "#16a34a" },
 ];
 

@@ -124,6 +124,8 @@ export function WhatsAppButton() {
       <div className="flex items-center gap-1.5">
         <motion.button
           onClick={() => { setExpanded(!expanded); setShowTooltip(false); }}
+          onMouseEnter={() => { if (!expanded) setShowTooltip(true); }}
+          onMouseLeave={() => setShowTooltip(false)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg relative"
