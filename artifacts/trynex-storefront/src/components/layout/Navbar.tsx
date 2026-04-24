@@ -231,9 +231,9 @@ export function Navbar() {
               className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 shrink-0"
               style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}
             >
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M3 4h16M11 4v14" stroke="white" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="17.5" cy="4" r="2" fill="#FFD580"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M3 5h14M10 5v13" stroke="white" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M19 3 L19.7 5.3 L22 6 L19.7 6.7 L19 9 L18.3 6.7 L16 6 L18.3 5.3 Z" fill="#FFE9A8"/>
               </svg>
             </div>
             <div className="flex flex-col leading-none gap-[3px]">

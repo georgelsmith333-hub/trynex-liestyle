@@ -137,20 +137,22 @@ export function Footer() {
 
           <div className="lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-2.5 mb-5 group">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black font-display text-white text-base"
-                style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)' }}>
-                {(settings.siteName?.trim() || "·")[0]}
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 14px rgba(232,93,4,0.35)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M3 5h14M10 5v13" stroke="white" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 3 L19.7 5.3 L22 6 L19.7 6.7 L19 9 L18.3 6.7 L16 6 L18.3 5.3 Z" fill="#FFE9A8"/>
+                </svg>
               </div>
               <span className="text-2xl font-black font-display tracking-tight text-white">
                 {(() => {
-                  const name = settings.siteName?.trim() || "";
-                  if (!name) return null;
+                  const name = settings.siteName?.trim() || "TryNex Lifestyle";
                   const parts = name.split(' ');
                   const head = parts[0];
                   const tail = parts.slice(1).join(' ');
                   return (
                     <>{head}{tail && <span style={{ color: '#FB8500' }}>{` ${tail}`}</span>}
-                      <span className="block text-[9px] font-semibold text-gray-500 tracking-[0.2em] uppercase">{settings.tagline || ""}</span>
+                      <span className="block text-[9px] font-semibold text-gray-500 tracking-[0.2em] uppercase">{settings.tagline || "You imagine, we craft"}</span>
                     </>
                   );
                 })()}
