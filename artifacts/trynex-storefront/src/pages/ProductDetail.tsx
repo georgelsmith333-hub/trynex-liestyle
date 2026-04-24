@@ -4,10 +4,11 @@ import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Loader } from "@/components/ui/Loader";
 import { ProductDetailSkeleton } from "@/components/ui/skeleton";
-import { useGetProduct, useListProducts } from "@workspace/api-client-react";
+import { useGetProduct, useListProducts, getListProductsQueryKey } from "@workspace/api-client-react";
 import { ProductCard } from "@/components/ProductCard";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCartActions } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -260,24 +261,41 @@ export default function ProductDetail() {
   const isNumeric = !isNaN(numericId) && numericId > 0;
   const isSlug = !isNumeric && !!id && id.length > 0;
 
+  const queryClient = useQueryClient();
+  const cachedProduct = useMemo(() => {
+    if (!isNumeric && !isSlug) return undefined;
+    const listKeyPrefix = [getListProductsQueryKey()[0]];
+    const entries = queryClient.getQueriesData<{ products: any[] } | undefined>({ queryKey: listKeyPrefix });
+    for (const [, data] of entries) {
+      const list = data?.products;
+      if (!Array.isArray(list)) continue;
+      const found = list.find((p: any) =>
+        isNumeric ? p?.id === numericId : (p?.slug === id || String(p?.id) === id)
+      );
+      if (found) return found;
+    }
+    return undefined;
+  }, [queryClient, isNumeric, isSlug, numericId, id]);
+
   const { data: productFromHook, isLoading: hookLoading, error: hookError } = useGetProduct(isNumeric ? numericId : 0, {
-    query: { enabled: isNumeric, retry: 2, staleTime: 30000 }
+    query: { enabled: isNumeric, retry: 2, staleTime: 30000, initialData: isNumeric ? cachedProduct : undefined }
   } as any);
 
-  const [slugProduct, setSlugProduct] = useState<any>(null);
-  const [slugLoading, setSlugLoading] = useState(isSlug);
+  const [slugProduct, setSlugProduct] = useState<any>(isSlug ? cachedProduct : null);
+  const [slugLoading, setSlugLoading] = useState(isSlug && !cachedProduct);
   const [slugError, setSlugError] = useState(false);
 
   useEffect(() => {
     if (!isSlug) return;
-    setSlugLoading(true);
+    const hasInitial = !!cachedProduct;
+    if (!hasInitial) setSlugLoading(true);
     setSlugError(false);
     fetch(getApiUrl(`/api/products/${encodeURIComponent(id!)}`))
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => setSlugProduct(data))
-      .catch(() => setSlugError(true))
+      .catch(() => { if (!hasInitial) setSlugError(true); })
       .finally(() => setSlugLoading(false));
-  }, [id, isSlug]);
+  }, [id, isSlug, cachedProduct]);
 
   const product = isNumeric ? productFromHook : slugProduct;
   const isLoading = isNumeric ? hookLoading : slugLoading;

@@ -383,13 +383,18 @@ export const useListProducts = (
   });
 };
 
-export const useGetProduct = (slugOrId: string | number, _opts?: Record<string, unknown>) => {
+export const useGetProduct = (
+  slugOrId: string | number,
+  opts?: { query?: Partial<UseQueryOptions> } | Record<string, unknown>,
+) => {
+  const queryOpts = (opts as { query?: Partial<UseQueryOptions> } | undefined)?.query ?? {};
   return useQuery({
     queryKey: ["/api/products", slugOrId],
     queryFn: () => customFetch<{ product: Product }>(`/api/products/${slugOrId}`),
     enabled: !!slugOrId,
     staleTime: 60 * 1000,
-  });
+    ...queryOpts,
+  } as UseQueryOptions);
 };
 
 export const useCreateProduct = (opts?: ReqOpts) => {

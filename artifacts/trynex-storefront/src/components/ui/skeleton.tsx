@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils"
+import { Navbar } from "@/components/layout/Navbar"
+import { Footer } from "@/components/layout/Footer"
 
 function Skeleton({
   className,
@@ -65,8 +67,7 @@ function OrderSkeleton() {
 function ProductDetailSkeleton() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Navbar placeholder */}
-      <div className="h-16 border-b border-gray-100 bg-white" />
+      <Navbar />
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
           {/* Image gallery */}
@@ -111,6 +112,7 @@ function ProductDetailSkeleton() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
