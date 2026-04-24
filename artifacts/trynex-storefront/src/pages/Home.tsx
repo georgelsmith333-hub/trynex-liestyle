@@ -275,30 +275,37 @@ function CountdownTimer() {
 }
 
 function AnimatedCounter({ target, suffix = "", duration = 2200 }: { target: string; suffix?: string; duration?: number }) {
-  const [display, setDisplay] = useState(0);
+  const numTarget = parseFloat(target);
   const ref = useRef<HTMLSpanElement>(null);
-  const [started, setStarted] = useState(false);
+  const [display, setDisplay] = useState(0);
+  const startedRef = useRef(false);
 
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting && !started) setStarted(true); }, { threshold: 0.5 });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [started]);
-
-  useEffect(() => {
-    if (!started) return;
-    const numTarget = parseFloat(target);
-    const start = Date.now();
+  const startCount = useCallback(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    const t0 = Date.now();
     const tick = () => {
-      const elapsed = Date.now() - start;
+      const elapsed = Date.now() - t0;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 4);
-      const current = Math.round(eased * numTarget);
-      setDisplay(current);
+      setDisplay(Math.round(eased * numTarget));
       if (progress < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }, [started, target, duration]);
+  }, [numTarget, duration]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      startCount();
+      return;
+    }
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) startCount(); }, { threshold: 0.1 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [startCount]);
 
   return <span ref={ref}>{display.toLocaleString()}{suffix}</span>;
 }

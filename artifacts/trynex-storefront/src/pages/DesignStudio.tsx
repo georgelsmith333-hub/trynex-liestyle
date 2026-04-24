@@ -260,6 +260,7 @@ export default function DesignStudio() {
   const [hasDraft, setHasDraft] = useState(false);
   const [legacyDraftFound, setLegacyDraftFound] = useState<{ version: number } | null>(null);
   const draftRestoredRef = useRef(false);
+  const urlInitRef = useRef(false);
 
   // Restore draft on mount (runs once)
   useEffect(() => {
@@ -312,24 +313,37 @@ export default function DesignStudio() {
     } catch {
       // Corrupt JSON or storage access failure — ignore and start fresh.
     }
+    // URL params override draft settings (URL is the source of truth when shared)
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const urlProduct = sp.get("product");
+      if (urlProduct) {
+        const found = PRODUCTS.find(p => p.id === urlProduct || p.category === urlProduct);
+        if (found) {
+          setSelectedProduct(found);
+          setSelectedColor({ name: found.name, hex: found.garmentColor });
+        }
+      }
+      const urlTab = sp.get("tab");
+      if (urlTab && ["upload", "text", "layers", "templates"].includes(urlTab)) {
+        setActiveTab(urlTab as typeof activeTab);
+      }
+      if (sp.get("view") === "back") setActiveFace("back");
+      const urlSize = sp.get("size");
+      if (urlSize && ["XS", "S", "M", "L", "XL", "XXL", "XXXL"].includes(urlSize)) {
+        setSelectedSize(urlSize);
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
     draftRestoredRef.current = true;
+    urlInitRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-save draft when layers / product / color / size change (debounced)
   useEffect(() => {
     if (!draftRestoredRef.current) return;
-
-    // Check URL for edit mode on mount (only if not already handled)
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("edit") === "1" && !window.location.hash.includes("notified")) {
-      toast({ 
-        title: "✨ Edit mode active", 
-        description: "Your design has been restored for editing.",
-      });
-      // Prevent multiple toasts on re-renders
-      window.location.hash = "notified";
-    }
 
     if (layers.length === 0) {
       // Nothing meaningful to save. We DO NOT touch the persisted draft key
@@ -366,6 +380,21 @@ export default function DesignStudio() {
     }, 500);
     return () => window.clearTimeout(handle);
   }, [layers, selectedProduct, selectedColor, selectedSize, legacyDraftFound]);
+
+  // Sync shareable URL params whenever key state changes (after init)
+  useEffect(() => {
+    if (!urlInitRef.current) return;
+    const params = new URLSearchParams();
+    if (selectedProduct.id !== PRODUCTS[0].id) params.set("product", selectedProduct.id);
+    if (activeTab !== "upload") params.set("tab", activeTab);
+    if (activeFace !== "front") params.set("view", activeFace);
+    if (selectedSize !== "M") params.set("size", selectedSize);
+    const q = params.toString();
+    const newUrl = window.location.pathname + (q ? "?" + q : "");
+    if (newUrl !== window.location.pathname + window.location.search) {
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [selectedProduct.id, activeTab, activeFace, selectedSize]);
 
   const clearDraft = useCallback(() => {
     try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
@@ -1137,7 +1166,11 @@ export default function DesignStudio() {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
           <div className="min-w-0 flex-shrink">
             <h1 className="font-display font-black text-base sm:text-xl text-gray-900 truncate">Design Studio</h1>
-            <p className="hidden sm:block text-xs text-gray-500 mt-0.5">You imagine — we craft it.</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              <span className="hidden sm:inline">Designing: </span>
+              <strong className="text-gray-700">{selectedProduct.name}</strong>
+              <span className="text-gray-400"> · {activeFace === "front" ? "Front" : "Back"}</span>
+            </p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Saved indicator */}
@@ -1206,9 +1239,9 @@ export default function DesignStudio() {
             {/* Add to Cart — compact on mobile (icon only + short label) */}
             <motion.button
               onClick={handleAddToCart}
-              disabled={layers.length === 0 || isAddingToCart}
+              disabled={isAddingToCart}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.35)" }}
             >
               {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
@@ -1537,17 +1570,15 @@ export default function DesignStudio() {
                 </motion.svg>
                 </AnimatePresence>
 
-                {/* Empty state */}
+                {/* Empty state — drop zone (drag) or tap to upload */}
                 {layers.length === 0 && (
                   <div
-                    className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute inset-0 flex items-center justify-center"
                     onDrop={handleDrop}
                     onDragOver={(e) => e.preventDefault()}
                   >
                     <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      className="text-center px-8 py-8 rounded-2xl"
+                      className="text-center px-8 py-8 rounded-2xl pointer-events-none"
                       style={{ background: "rgba(255,255,255,0.85)", border: "2px dashed rgba(232,93,4,0.35)", backdropFilter: "blur(6px)" }}
                     >
                       <div
@@ -1556,8 +1587,8 @@ export default function DesignStudio() {
                       >
                         <Upload className="w-7 h-7 text-orange-500" />
                       </div>
-                      <p className="font-black text-gray-800 text-base mb-1">Upload or add text</p>
-                      <p className="text-xs text-gray-500">JPG, PNG · or pick a Template</p>
+                      <p className="font-black text-gray-800 text-base mb-1">Drop image here</p>
+                      <p className="text-xs text-gray-500">or use the Upload tab in the panel →</p>
                     </motion.div>
                   </div>
                 )}
@@ -2044,11 +2075,11 @@ export default function DesignStudio() {
               style={{ background: "white", border: "1px solid #e9e5e0" }}
             >
               <div className="min-w-0">
-                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">Quantity</div>
-                <div className="text-sm font-black text-gray-800">
-                  {quantity} × ৳{studioPrice.toLocaleString()}
-                  {" "}
-                  <span className="text-orange-500">= ৳{(quantity * studioPrice).toLocaleString()}</span>
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">
+                  {quantity > 1 ? `${quantity} × ৳${studioPrice.toLocaleString()}` : `৳${studioPrice.toLocaleString()} each`}
+                </div>
+                <div className="text-sm font-black text-gray-900">
+                  Subtotal: <span className="text-orange-500">৳{(quantity * studioPrice).toLocaleString()}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -2073,9 +2104,9 @@ export default function DesignStudio() {
             {/* Add to cart */}
             <motion.button
               onClick={handleAddToCart}
-              disabled={layers.length === 0 || isAddingToCart}
+              disabled={isAddingToCart}
               whileTap={{ scale: 0.97 }}
-              className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2.5 disabled:opacity-40"
+              className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2.5 disabled:opacity-60"
               style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 8px 24px rgba(232,93,4,0.35)" }}
             >
               {isAddingToCart
@@ -2083,11 +2114,24 @@ export default function DesignStudio() {
                 : <><ShoppingCart className="w-5 h-5" /> Add Custom {selectedProduct.name} to Cart</>}
             </motion.button>
 
-            {!isMug && !isCap && !isWaterBottle && (
-              <p className="text-center text-xs text-gray-400">
-                Size: <strong className="text-gray-600">{selectedSize}</strong> · Free shipping above ৳1,500
-              </p>
-            )}
+            {(() => {
+              const subtotal = quantity * studioPrice;
+              const freeShip = subtotal >= 1500;
+              return (
+                <div className="text-center text-xs space-y-0.5">
+                  {!isMug && !isCap && !isWaterBottle && (
+                    <div className="text-gray-500">
+                      Size: <strong className="text-gray-700">{selectedSize}</strong>
+                    </div>
+                  )}
+                  <div className={freeShip ? "text-green-600 font-bold" : "text-gray-400"}>
+                    {freeShip
+                      ? "✓ Free shipping included!"
+                      : `Add ৳${(1500 - subtotal).toLocaleString()} more for free shipping`}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
         </div>

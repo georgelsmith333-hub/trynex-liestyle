@@ -168,12 +168,25 @@ function Router() {
           <Route path="/admin/hampers" component={AdminHampers} />
           <Route path="/admin/logs" component={AdminActivityLog} />
 
+          {/* Short-URL redirects for common aliases */}
+          <Route path="/privacy"><Redirect to="/privacy-policy" /></Route>
+          <Route path="/terms"><Redirect to="/terms-of-service" /></Route>
+          <Route path="/shipping"><Redirect to="/shipping-policy" /></Route>
+          <Route path="/returns"><Redirect to="/return-policy" /></Route>
+          <Route path="/refund"><Redirect to="/return-policy" /></Route>
+
           <Route component={NotFound} />
         </Switch>
         </Suspense>
       </motion.div>
     </AnimatePresence>
   );
+}
+
+function Redirect({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to, { replace: true } as any); }, [to, navigate]);
+  return null;
 }
 
 function CaptureReferralCode() {
