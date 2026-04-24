@@ -128,14 +128,12 @@ const PAYMENT_METHODS = [
 ];
 
 /**
- * 24/7 rolling flash-sale window. The day is split into four 6-hour
- * blocks (BST): Midnight-6am, 6am-Noon, Noon-6pm, 6pm-Midnight. The
+ * 24/7 rolling flash-sale window. The day is split into TWO 12-hour
+ * blocks (BST): 6am-6pm (Day Sale) and 6pm-6am (Night Sale). The
  * countdown always points to the END of the current block, so a visitor
- * at any hour sees a live "grab it before it ends" timer. The label
- * cycles to keep the hero feeling fresh for return visitors.
- *
- * (Previously the timer went dormant 12am–6am BST, so 30%+ of late-night
- *  shoppers saw an inactive 00:00:00 banner — killing urgency.)
+ * at any hour sees a live "grab it before it ends" timer that loops
+ * forever — never goes inactive. The label cycles every 12 hours to
+ * keep the hero feeling fresh for return visitors.
  */
 function getBSTSaleTarget(): { end: Date; label: string; active: boolean } {
   const now = new Date();
@@ -146,12 +144,15 @@ function getBSTSaleTarget(): { end: Date; label: string; active: boolean } {
   const todayUTCMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const bstMidnightUTC = new Date(todayUTCMidnight.getTime() - bstOffset * 60000);
 
-  // 6-hour boundaries in BST minutes-of-day
+  // 12-hour boundaries in BST minutes-of-day:
+  //   00:00–06:00 BST  → still in the previous "Night Flash Sale" block
+  //                      (which started at 18:00 the day before and ends at 06:00 today)
+  //   06:00–18:00 BST  → "Day Flash Sale"  (ends at 18:00 today)
+  //   18:00–24:00 BST  → "Night Flash Sale" (ends at 06:00 the next day)
   const blocks: Array<{ end: number; label: string }> = [
-    { end:  6 * 60, label: "Midnight Flash Sale" },   //  0–6am
-    { end: 12 * 60, label: "Morning Mega Sale" },     //  6am–12pm
-    { end: 18 * 60, label: "Afternoon Hot Deals" },   // 12pm–6pm
-    { end: 24 * 60, label: "Evening Grand Sale" },    //  6pm–12am
+    { end:  6 * 60, label: "Night Flash Sale ⚡" },   //  0–6am  (rolls over from previous evening)
+    { end: 18 * 60, label: "Day Flash Sale ☀️" },    //  6am–6pm
+    { end: 30 * 60, label: "Night Flash Sale ⚡" },   //  6pm–6am next day (end = 30:00 = 6am next day)
   ];
 
   for (const block of blocks) {
@@ -656,6 +657,73 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════
+          SPECIAL OFFERS + FEATURED PRODUCTS
+          (moved above the Categories grid so the
+           "Special Offers" hero card + offer products
+           appear right under the marquee ticker)
+      ═══════════════════════════════════════ */}
+      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white" data-testid="section-special-offers">
+        <div className="max-w-7xl mx-auto">
+          {/* Promo banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative overflow-hidden rounded-3xl mb-10 px-6 py-8 sm:px-10 sm:py-10"
+            style={{
+              background: 'linear-gradient(135deg, #1a0a02 0%, #4a1a04 50%, #E85D04 100%)',
+              boxShadow: '0 20px 60px -20px rgba(232,93,4,0.45)',
+            }}
+          >
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20" style={{ background: '#FB8500' }} />
+            <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full opacity-10" style={{ background: '#FFB703' }} />
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="text-white">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/15 backdrop-blur-sm">
+                  <Sparkles className="w-3 h-3" /> Limited Time
+                </span>
+                <h2 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl mt-3 leading-tight">
+                  Special Offers — Save Big Today
+                </h2>
+                <p className="text-white/80 text-sm sm:text-base mt-2 max-w-xl">
+                  Hand-picked best sellers at exclusive prices. Free design preview &amp; fast nationwide delivery.
+                </p>
+              </div>
+              <Link href="/products?tab=offers"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-white text-orange-600 hover:bg-orange-50 transition-colors shadow-lg shrink-0 group">
+                Shop All Offers
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </motion.div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5" aria-label="Loading products" aria-busy="true">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : featuredProducts.length === 0 ? null : (
+            <ErrorBoundary section="featured products">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5">
+                {featuredProducts.slice(0, 9).map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+              <div className="flex justify-center mt-10">
+                <Link href="/products"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white transition-transform hover:-translate-y-0.5 group"
+                  style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 10px 30px -10px rgba(232,93,4,0.5)' }}>
+                  Browse Full Catalogue
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </ErrorBoundary>
+          )}
+        </div>
+      </section>}
+
+      {/* ═══════════════════════════════════════
           CATEGORIES GRID
       ═══════════════════════════════════════ */}
       {settings.sectionCategoriesEnabled !== false && <section className="py-20 px-4" style={{ background: '#FAFAFA' }}>
@@ -735,71 +803,10 @@ export default function Home() {
       </section>}
 
       {/* ═══════════════════════════════════════
-          FEATURED PRODUCTS
-      ═══════════════════════════════════════ */}
-      {settings.sectionFeaturedEnabled !== false && <section className="py-20 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          {/* Promo banner */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative overflow-hidden rounded-3xl mb-10 px-6 py-8 sm:px-10 sm:py-10"
-            style={{
-              background: 'linear-gradient(135deg, #1a0a02 0%, #4a1a04 50%, #E85D04 100%)',
-              boxShadow: '0 20px 60px -20px rgba(232,93,4,0.45)',
-            }}
-          >
-            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20" style={{ background: '#FB8500' }} />
-            <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full opacity-10" style={{ background: '#FFB703' }} />
-            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div className="text-white">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/15 backdrop-blur-sm">
-                  <Sparkles className="w-3 h-3" /> Limited Time
-                </span>
-                <h2 className="font-display font-black text-2xl sm:text-3xl lg:text-4xl mt-3 leading-tight">
-                  Special Offers — Save Big Today
-                </h2>
-                <p className="text-white/80 text-sm sm:text-base mt-2 max-w-xl">
-                  Hand-picked best sellers at exclusive prices. Free design preview &amp; fast nationwide delivery.
-                </p>
-              </div>
-              <Link href="/products?tab=offers"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-white text-orange-600 hover:bg-orange-50 transition-colors shadow-lg shrink-0 group">
-                Shop All Offers
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          </motion.div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5" aria-label="Loading products" aria-busy="true">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : featuredProducts.length === 0 ? null : (
-            <ErrorBoundary section="featured products">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-5">
-                {featuredProducts.slice(0, 9).map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))}
-              </div>
-              <div className="flex justify-center mt-10">
-                <Link href="/products"
-                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white transition-transform hover:-translate-y-0.5 group"
-                  style={{ background: 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 10px 30px -10px rgba(232,93,4,0.5)' }}>
-                  Browse Full Catalogue
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-            </ErrorBoundary>
-          )}
-        </div>
-      </section>}
-
-      {/* ═══════════════════════════════════════
-          FLASH SALE BANNER (now after products)
+          FLASH SALE BANNER
+          (12-hour rolling countdown — never stops:
+           06:00↔18:00 BST = Day Sale,
+           18:00↔06:00 BST = Night Sale)
       ═══════════════════════════════════════ */}
       {settings.sectionFlashSaleEnabled !== false && <section className="py-8 sm:py-12 px-4" style={{ background: 'white' }}>
         <div className="max-w-4xl mx-auto">

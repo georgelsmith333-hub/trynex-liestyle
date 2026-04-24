@@ -342,12 +342,16 @@ function GarmentGLB({
 
   if (meshes.length === 0) return null;
 
-  // Match RealisticShirt's render-scale so longsleeve & hoodie occupy the
-  // same screen-space as the t-shirt (their source GLBs are authored at
-  // the same model-unit size). Without this, garments looked tiny and
-  // the camera framed only the neckline.
+  // The script-generated longsleeve/hoodie GLBs are authored at ~3 model
+  // units tall (see scripts/generate-models.cjs: width 2.55-2.60,
+  // height 3.05-3.10). The real tshirt.glb asset is ~1 unit tall and
+  // uses scale={2.6}. To land at the same on-screen size as RealisticShirt
+  // (~2.6 units final), we scale the generated geo by 2.6/3.05 ≈ 0.85.
+  // Without this the garments rendered at ~7 units tall and one inner
+  // panel completely filled the viewport, which is what the user saw as
+  // "flat blank shapes".
   return (
-    <group scale={2.6}>
+    <group scale={0.85}>
       {/* Base colour for every part — apply procedural fabric maps */}
       {meshes.map((m, i) => (
         <mesh key={i} geometry={m.geometry} castShadow receiveShadow>
@@ -439,9 +443,14 @@ export function CapBody({
 
   if (meshes.length === 0) return null;
 
-  // crown = meshes[0], brim = meshes[1] (matches generator order)
+  // crown = meshes[0], brim = meshes[1] (matches generator order).
+  // Generator authors the cap at radius 1.1 (~1.4 units wide) — without an
+  // explicit scale wrapper the cap rendered at a different size than the
+  // other garments and the camera framed only its inner crown panel,
+  // which the user described as a "flat blank shape". Wrap in scale 1.6
+  // so the cap visually matches the tee/hoodie scene size.
   return (
-    <group>
+    <group scale={1.6}>
       {meshes.map((m, i) => (
         <mesh key={i} geometry={m.geometry} castShadow receiveShadow>
           <meshStandardMaterial color={garmentColor} roughness={i === 1 ? 0.7 : 0.75} metalness={0.02} />

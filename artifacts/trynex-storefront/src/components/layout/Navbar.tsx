@@ -511,6 +511,28 @@ export function Navbar() {
               </AnimatePresence>
             </div>
 
+            {/* Wishlist (always visible — placed BEFORE the search button so the
+                heart icon sits between the logo cluster and the search affordance,
+                matching the user's requested header order on mobile + desktop) */}
+            <Link
+              href="/wishlist"
+              className="btn-press relative flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
+              title="Wishlist"
+              aria-label={`Wishlist with ${wishlistCount} items`}
+              data-testid="link-wishlist"
+            >
+              <Heart className="w-[1.1rem] h-[1.1rem]" />
+              {wishlistCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] px-1 text-[9px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-white"
+                  style={{ background: '#E85D04' }}
+                  data-testid="badge-wishlist-count"
+                >
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </Link>
+
             {/* Search button (mobile + tablet) */}
             <button
               onClick={() => setSearchOpen(prev => !prev)}
@@ -596,21 +618,6 @@ export function Navbar() {
                 <LogIn className="w-[1.15rem] h-[1.15rem]" />
               </Link>
             )}
-
-            <Link
-              href="/wishlist"
-              className="btn-press relative hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all"
-            >
-              <Heart className="w-[1.15rem] h-[1.15rem]" />
-              {wishlistCount > 0 && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 w-[1.15rem] h-[1.15rem] text-[9px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-white"
-                  style={{ background: '#E85D04' }}
-                >
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
 
             <button
               onClick={() => setCartDrawerOpen(true)}

@@ -179,11 +179,34 @@ export default function DesignStudio() {
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [activeFace, setActiveFace] = useState<Face>("front");
   const supports3D = useMemo(() => hasWebGL2(), []);
-  // Tee/longsleeve/hoodie support a back face. Mug/cap → front only.
+
+  // Mug-only: 2D editor exposes a 3-way print-mode selector
+  // (Side 1 / Side 2 / Wrap) instead of the apparel "Front / Back" tabs.
+  // Side 1 → existing front face data, Side 2 → existing back face data,
+  // Wrap   → a virtual "back" face used as a continuous 360° body design.
+  type MugMode = "side1" | "side2" | "wrap";
+  const [mugMode, setMugMode] = useState<MugMode>("side1");
+
+  const isMugProduct = selectedProduct.category === "mug";
+
+  // Tee/longsleeve/hoodie support a back face. Mug also gets back face data
+  // for Side 2 / Wrap, but the *apparel* Front/Back UI must stay hidden for it.
   const supportsBack = useMemo(
+    () => ["tshirt", "longsleeve", "hoodie", "mug"].includes(selectedProduct.category),
+    [selectedProduct.category]
+  );
+
+  // Apparel Front/Back tab UI: only for tee/longsleeve/hoodie (not mug)
+  const showFaceTabs = useMemo(
     () => ["tshirt", "longsleeve", "hoodie"].includes(selectedProduct.category),
     [selectedProduct.category]
   );
+
+  // Sync mugMode → activeFace so the existing face-aware layer system works
+  useEffect(() => {
+    if (!isMugProduct) return;
+    setActiveFace(mugMode === "side2" ? "back" : "front");
+  }, [mugMode, isMugProduct]);
   // Reset face to "front" when switching to a single-face product
   useEffect(() => { if (!supportsBack) setActiveFace("front"); }, [supportsBack]);
 
@@ -1249,8 +1272,11 @@ export default function DesignStudio() {
               ))}
             </div>
 
-            {/* Face switcher (only for tee/longsleeve/hoodie) */}
-            {supportsBack && (
+            {/* Face switcher — hidden in 3D mode (the orbit camera lets the
+                user see every angle, so a Front/Back tab is redundant + confusing).
+                Apparel: shows "Front / Back" tabs.
+                Mug:     shows "Side 1 / Side 2 / Wrap (full body)" — never Front/Back. */}
+            {showFaceTabs && viewMode === "2d" && (
               <div className="flex gap-1.5 mb-3" data-testid="face-switcher">
                 {(["front", "back"] as const).map(f => (
                   <button key={f}
@@ -1302,6 +1328,34 @@ export default function DesignStudio() {
                     </button>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* Mug-only print mode selector — replaces apparel Front/Back tabs.
+                Side 1 / Side 2 → independent print panels (front + back faces);
+                Wrap            → continuous artwork around the entire mug body.
+                Hidden in 3D mode (use orbit camera instead). */}
+            {isMugProduct && viewMode === "2d" && (
+              <div className="flex gap-1.5 mb-3" data-testid="mug-mode-switcher">
+                {([
+                  { v: "side1", label: "Side 1" },
+                  { v: "side2", label: "Side 2" },
+                  { v: "wrap",  label: "Wrap (full body)" },
+                ] as const).map(({ v, label }) => (
+                  <button key={v}
+                    onClick={() => setMugMode(v)}
+                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                    style={{
+                      background: mugMode === v ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
+                      color: mugMode === v ? "white" : "#374151",
+                      border: mugMode === v ? "none" : "1.5px solid #e5e7eb",
+                      boxShadow: mugMode === v ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+                    }}
+                    data-testid={`mug-mode-${v}`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
 
