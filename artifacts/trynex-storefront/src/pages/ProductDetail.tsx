@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Loader } from "@/components/ui/Loader";
+import { ProductDetailSkeleton } from "@/components/ui/skeleton";
 import { useGetProduct, useListProducts } from "@workspace/api-client-react";
 import { ProductCard } from "@/components/ProductCard";
 import { formatPrice, cn, getApiUrl } from "@/lib/utils";
@@ -378,7 +379,7 @@ export default function ProductDetail() {
     }
   }, [product?.id]);
 
-  if (isLoading) return <Loader fullScreen />;
+  if (isLoading) return <ProductDetailSkeleton />;
 
   const NotFound = (
     <div className="min-h-screen flex flex-col bg-gray-50">

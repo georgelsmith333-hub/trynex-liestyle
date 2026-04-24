@@ -40,8 +40,8 @@ const FEATURES = [
     icon: Zap,
     title: "48-Hour Express",
     desc: "Lightning-fast production with nationwide delivery across all 64 districts. Speed meets premium quality.",
-    color: "#2563eb",
-    bg: "#eff6ff",
+    color: "#0891b2",
+    bg: "#ecfeff",
     badge: "Super Fast"
   },
   {
@@ -86,13 +86,13 @@ const TESTIMONIALS = [
 const STATS = [
   { value: "5000", suffix: "+", label: "Happy Customers", icon: Users, color: "var(--color-primary)" },
   { value: "98", suffix: "%", label: "Satisfaction Rate", icon: Star, color: "#eab308" },
-  { value: "48", suffix: "h", label: "Production Time", icon: Zap, color: "#2563eb" },
+  { value: "48", suffix: "h", label: "Production Time", icon: Zap, color: "#0891b2" },
   { value: "64", suffix: "", label: "Districts Served", icon: Truck, color: "#16a34a" },
 ];
 
 const CATEGORIES = [
   { name: "T-Shirts", icon: "tshirt", desc: "Premium custom tees", count: "Starting ৳599", color: "#fff4ee", accent: "var(--color-primary)" },
-  { name: "Hoodies", icon: "hoodie", desc: "320GSM premium fleece", count: "Starting ৳1,299", color: "#eff6ff", accent: "#2563eb" },
+  { name: "Hoodies", icon: "hoodie", desc: "320GSM premium fleece", count: "Starting ৳1,299", color: "#ecfeff", accent: "#0891b2" },
   { name: "Caps", icon: "cap", desc: "Embroidered & printed", count: "Starting ৳499", color: "#f0fdf4", accent: "#16a34a" },
   { name: "Mugs", icon: "mug", desc: "Ceramic & sublimation", count: "Starting ৳399", color: "#fdf4ff", accent: "#9333ea" },
   { name: "Custom", icon: "custom", desc: "Anything you imagine", count: "Get a quote", color: "#fffbeb", accent: "#d97706" },

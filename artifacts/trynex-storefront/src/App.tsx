@@ -1,5 +1,6 @@
 import { useEffect, lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
@@ -106,58 +107,74 @@ const queryClient = new QueryClient({
 });
 
 function Router() {
+  const [location] = useLocation();
+  // Key on top-level path segment so transitions fire between top-level routes
+  // (e.g. / → /products → /cart), not on every product page navigation.
+  const routeKey = location.split("/")[1] || "home";
+
   return (
-    <Suspense fallback={<Loader fullScreen />}>
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/products" component={Products} />
-      <Route path="/shop" component={Products} />
-      <Route path="/product/:id" component={ProductDetail} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/track" component={TrackOrder} />
-      <Route path="/blog" component={Blog} />
-      <Route path="/blog/:slug" component={BlogPost} />
-      <Route path="/wishlist" component={Wishlist} />
-      <Route path="/shipping-policy" component={ShippingPolicy} />
-      <Route path="/return-policy" component={ReturnPolicy} />
-      <Route path="/privacy-policy" component={PrivacyPolicy} />
-      <Route path="/terms-of-service" component={TermsOfService} />
-      <Route path="/referral" component={Referral} />
-      <Route path="/design-studio" component={DesignStudio} />
-      <Route path="/hampers" component={Hampers} />
-      <Route path="/hampers/build" component={HamperBuilder} />
-      <Route path="/hampers/:slug" component={HamperDetail} />
-      <Route path="/sale" component={SalePage} />
-      <Route path="/faq" component={FAQ} />
-      <Route path="/about" component={About} />
-      <Route path="/contact" component={Contact} />
-      <Route path="/size-guide" component={SizeGuide} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/account" component={Account} />
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={routeKey}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.18, ease: "easeInOut" }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        <Suspense fallback={<Loader fullScreen />}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/products" component={Products} />
+          <Route path="/shop" component={Products} />
+          <Route path="/product/:id" component={ProductDetail} />
+          <Route path="/cart" component={Cart} />
+          <Route path="/checkout" component={Checkout} />
+          <Route path="/track" component={TrackOrder} />
+          <Route path="/blog" component={Blog} />
+          <Route path="/blog/:slug" component={BlogPost} />
+          <Route path="/wishlist" component={Wishlist} />
+          <Route path="/shipping-policy" component={ShippingPolicy} />
+          <Route path="/return-policy" component={ReturnPolicy} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/terms-of-service" component={TermsOfService} />
+          <Route path="/referral" component={Referral} />
+          <Route path="/design-studio" component={DesignStudio} />
+          <Route path="/hampers" component={Hampers} />
+          <Route path="/hampers/build" component={HamperBuilder} />
+          <Route path="/hampers/:slug" component={HamperDetail} />
+          <Route path="/sale" component={SalePage} />
+          <Route path="/faq" component={FAQ} />
+          <Route path="/about" component={About} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/size-guide" component={SizeGuide} />
+          <Route path="/login" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route path="/account" component={Account} />
 
-      <Route path="/admin/login" component={AdminLogin} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/products" component={AdminProducts} />
-      <Route path="/admin/categories" component={AdminCategories} />
-      <Route path="/admin/orders" component={AdminOrders} />
-      <Route path="/admin/blog" component={AdminBlog} />
-      <Route path="/admin/customers" component={AdminCustomers} />
-      <Route path="/admin/backup" component={AdminBackup} />
-      <Route path="/admin/settings" component={AdminSettings} />
-      <Route path="/admin/facebook-import" component={AdminFacebookImport} />
-      <Route path="/admin/reviews" component={AdminReviews} />
-      <Route path="/admin/tech-stack" component={AdminTechStack} />
-      <Route path="/admin/facebook-guide" component={AdminFacebookGuide} />
-      <Route path="/admin/designer" component={AdminDesigner} />
-      <Route path="/admin/deployment" component={AdminDeployment} />
-      <Route path="/admin/hampers" component={AdminHampers} />
-      <Route path="/admin/logs" component={AdminActivityLog} />
+          <Route path="/admin/login" component={AdminLogin} />
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/products" component={AdminProducts} />
+          <Route path="/admin/categories" component={AdminCategories} />
+          <Route path="/admin/orders" component={AdminOrders} />
+          <Route path="/admin/blog" component={AdminBlog} />
+          <Route path="/admin/customers" component={AdminCustomers} />
+          <Route path="/admin/backup" component={AdminBackup} />
+          <Route path="/admin/settings" component={AdminSettings} />
+          <Route path="/admin/facebook-import" component={AdminFacebookImport} />
+          <Route path="/admin/reviews" component={AdminReviews} />
+          <Route path="/admin/tech-stack" component={AdminTechStack} />
+          <Route path="/admin/facebook-guide" component={AdminFacebookGuide} />
+          <Route path="/admin/designer" component={AdminDesigner} />
+          <Route path="/admin/deployment" component={AdminDeployment} />
+          <Route path="/admin/hampers" component={AdminHampers} />
+          <Route path="/admin/logs" component={AdminActivityLog} />
 
-      <Route component={NotFound} />
-    </Switch>
-    </Suspense>
+          <Route component={NotFound} />
+        </Switch>
+        </Suspense>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

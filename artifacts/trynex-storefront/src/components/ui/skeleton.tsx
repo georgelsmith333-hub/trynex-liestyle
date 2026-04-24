@@ -62,4 +62,57 @@ function OrderSkeleton() {
   );
 }
 
-export { Skeleton, ProductCardSkeleton, BlogCardSkeleton, OrderSkeleton }
+function ProductDetailSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* Navbar placeholder */}
+      <div className="h-16 border-b border-gray-100 bg-white" />
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+          {/* Image gallery */}
+          <div className="space-y-3">
+            <Skeleton className="aspect-square w-full rounded-3xl" />
+            <div className="flex gap-2">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="w-16 h-16 rounded-xl flex-shrink-0" />
+              ))}
+            </div>
+          </div>
+          {/* Product info */}
+          <div className="space-y-5">
+            <Skeleton className="h-4 w-28 rounded-full" />
+            <Skeleton className="h-9 w-4/5" />
+            <Skeleton className="h-7 w-32" />
+            <div className="space-y-2 pt-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+            <div className="pt-2 space-y-3">
+              <Skeleton className="h-5 w-20" />
+              <div className="flex gap-2">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-14 rounded-xl" />
+                ))}
+              </div>
+            </div>
+            <div className="pt-2 space-y-3">
+              <Skeleton className="h-5 w-16" />
+              <div className="flex gap-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-20 rounded-full" />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Skeleton className="h-13 flex-1 rounded-2xl" />
+              <Skeleton className="h-13 w-14 rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { Skeleton, ProductCardSkeleton, BlogCardSkeleton, OrderSkeleton, ProductDetailSkeleton }

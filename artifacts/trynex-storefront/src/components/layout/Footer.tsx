@@ -176,10 +176,18 @@ export function Footer() {
             <div className="flex gap-3">
               {socialLinks.map(({ icon: Icon, href, color }) => (
                 <a key={href} href={href} target="_blank" rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:-translate-y-1"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:-translate-y-1 hover:scale-110"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = `${color}18`)}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `${color}22`;
+                    e.currentTarget.style.border = `1px solid ${color}55`;
+                    e.currentTarget.style.boxShadow = `0 4px 16px ${color}30`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   <Icon className="w-4.5 h-4.5" style={{ width: '1.1rem', height: '1.1rem', color }} />
                 </a>

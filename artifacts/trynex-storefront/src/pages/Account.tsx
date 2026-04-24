@@ -13,6 +13,7 @@ import {
   ShoppingBag, Calendar, MapPin, Tag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { OrderSkeleton } from "@/components/ui/skeleton";
 import { PreviewLightbox, type PreviewItem } from "@/components/ZoomableImage";
 
 interface ReferralData {
@@ -461,8 +462,10 @@ export default function Account() {
                 {activeTab === "orders" && (
                   <div>
                     {ordersLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-7 h-7 animate-spin text-orange-500" />
+                      <div className="space-y-3">
+                        {[...Array(3)].map((_, i) => (
+                          <OrderSkeleton key={i} />
+                        ))}
                       </div>
                     ) : ordersError ? (
                       <div className="text-center py-8">
