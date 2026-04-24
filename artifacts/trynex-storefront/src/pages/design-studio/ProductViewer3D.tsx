@@ -123,12 +123,12 @@ function CameraRig({
   category,
 }: {
   activeFace: "front" | "back";
-  category: "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug";
+  category: "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug" | "waterbottle";
 }) {
   const f = VIEWER_FRAMING[category];
   const b = VIEWER_FRAMING_BACK[category] || {};
   
-  // Mug & cap have no separate "back" face — keep them facing front.
+  // Mug, cap & waterbottle have no separate "back" face — keep them facing front.
   const hasBackFace = category === "tshirt" || category === "longsleeve" || category === "hoodie";
   const isBack = hasBackFace && activeFace === "back";
   

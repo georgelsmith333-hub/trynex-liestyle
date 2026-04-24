@@ -14,7 +14,8 @@ export type ProductType =
   | "black-hoodie"
   | "white-cap"
   | "black-cap"
-  | "white-longsleeve";
+  | "white-longsleeve"
+  | "white-waterbottle";
 
 export type Face = "front" | "back";
 
@@ -23,7 +24,7 @@ export interface PrintZone { x: number; y: number; w: number; h: number }
 export interface DesignProduct {
   id: ProductType;
   name: string;
-  category: "tshirt" | "mug" | "hoodie" | "cap" | "longsleeve";
+  category: "tshirt" | "mug" | "hoodie" | "cap" | "longsleeve" | "waterbottle";
   garmentColor: string;
   description: string;
   /** viewBox string — unified 1000×1000 coordinate space */
@@ -58,12 +59,19 @@ export const LONGSLEEVE_PZ: PrintZone    = { x: 330, y: 285, w: 340, h: 410 };
 export const HOODIE_PZ: PrintZone        = { x: 335, y: 305, w: 330, h: 380 };
 export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
 export const MUG_PZ: PrintZone           = { x: 150, y: 180, w: 700, h: 640 };
+export const WATERBOTTLE_PZ: PrintZone   = { x: 358, y: 345, w: 284, h: 420 };
+
+/* ── Water Bottle / Tumbler — inline SVG mockup (no PNG asset exists).
+   White/light-grey shapes on transparent background so the multiply-tint
+   filter in GarmentSVG colours the bottle correctly.               ── */
+const _WB_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000"><path d="M385 225 L615 225 L636 295 Q652 325 655 360 L672 755 Q676 835 618 858 L382 858 Q324 835 328 755 L345 360 Q348 325 364 295 Z" fill="#F4F3F1" stroke="#DDDCDA" stroke-width="6"/><path d="M390 172 L610 172 L615 225 L385 225 Z" fill="#ECEBE9" stroke="#D5D4D2" stroke-width="5"/><rect x="425" y="128" width="150" height="48" rx="18" fill="#E0DFDD" stroke="#C8C7C5" stroke-width="5"/><rect x="447" y="110" width="106" height="24" rx="10" fill="#D5D4D2" stroke="#BFBEBC" stroke-width="4"/><path d="M363 325 C360 455 361 600 364 750" stroke="white" stroke-width="24" stroke-linecap="round" fill="none" opacity="0.65"/><path d="M637 325 C640 455 639 600 636 750" stroke="white" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.28"/><ellipse cx="500" cy="858" rx="138" ry="14" fill="#C8C6C4" opacity="0.35"/></svg>`;
+export const WATERBOTTLE_MOCKUP_URL = `data:image/svg+xml,${encodeURIComponent(_WB_SVG)}`;
 
 const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
 const BASE = 1000;
 
-// Tab order (per spec): t-shirt → mug → long sleeve → cap → hoodie
+// Tab order (per spec): t-shirt → mug → long sleeve → cap → hoodie → water bottle
 export const PRODUCTS: DesignProduct[] = [
   { id: "white-tshirt",     name: "Unisex T-Shirt",    category: "tshirt",     garmentColor: "#F5F5F3",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
@@ -85,6 +93,10 @@ export const PRODUCTS: DesignProduct[] = [
     description: "320GSM Fleece · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: HOODIE_PZ,
     frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
+  { id: "white-waterbottle", name: "Water Bottle",     category: "waterbottle", garmentColor: "#F4F3F1",
+    description: "600ml Stainless · Pick a color", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: WATERBOTTLE_PZ,
+    frontSrc: WATERBOTTLE_MOCKUP_URL },
 ];
 
 /* ═══════════════════════════════════════════════════════
@@ -105,11 +117,13 @@ export const PRODUCTS: DesignProduct[] = [
 // need to regenerate the cutouts, run remove_image_background_tool against
 // the originals (white-*.png) and save as *-cutout.png.
 export const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
-  tshirt:     { front: "/mockups/white-tshirt-front-cutout.png",     back: "/mockups/white-tshirt-back-cutout.png" },
-  longsleeve: { front: "/mockups/white-longsleeve-front-cutout.png", back: "/mockups/white-longsleeve-back-cutout.png" },
-  hoodie:     { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },
-  mug:        { front: "/mockups/white-mug-front-cutout.png" },
-  cap:        undefined,
+  tshirt:      { front: "/mockups/white-tshirt-front-cutout.png",     back: "/mockups/white-tshirt-back-cutout.png" },
+  longsleeve:  { front: "/mockups/white-longsleeve-front-cutout.png", back: "/mockups/white-longsleeve-back-cutout.png" },
+  hoodie:      { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },
+  mug:         { front: "/mockups/white-mug-front-cutout.png" },
+  cap:         undefined,
+  // Water bottle uses its inline SVG as the tintable base (transparent bg, white shapes).
+  waterbottle: { front: WATERBOTTLE_MOCKUP_URL },
 };
 
 // Generate a stable, unique filter id per render so multiple

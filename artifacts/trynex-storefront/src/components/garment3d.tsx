@@ -571,7 +571,7 @@ export const VIEWER_DEFAULTS = {
  *  long sleeve has wide sleeves). These constants frame each one so the FRONT
  *  PRINT AREA fills the centre of the viewport — the user sees their design
  *  exactly where they placed it in 2D. */
-export type ViewerCategory = "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug";
+export type ViewerCategory = "tshirt" | "longsleeve" | "hoodie" | "cap" | "mug" | "waterbottle";
 export const VIEWER_FRAMING: Record<ViewerCategory, {
   /** Camera distance from origin */
   radius: number;
@@ -583,11 +583,12 @@ export const VIEWER_FRAMING: Record<ViewerCategory, {
   /** Y position of the contact-shadow plane */
   shadowY: number;
 }> = {
-  tshirt:     { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
-  longsleeve: { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
-  hoodie:     { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
-  cap:        { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
-  mug:        { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
+  tshirt:      { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
+  longsleeve:  { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
+  hoodie:      { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
+  cap:         { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
+  mug:         { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
+  waterbottle: { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
 };
 
 /**

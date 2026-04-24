@@ -162,6 +162,7 @@ export default function DesignStudio() {
   );
   const [activeTab, setActiveTab] = useState<RightTab>("upload");
   const [selectedSize, setSelectedSize] = useState("M");
+  const [quantity, setQuantity] = useState(1);
   const [showPrintZone, setShowPrintZone] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -357,6 +358,35 @@ export default function DesignStudio() {
   );
   const isMug = selectedProduct.category === "mug";
   const isCap = selectedProduct.category === "cap";
+  const isWaterBottle = selectedProduct.category === "waterbottle";
+  // Water bottle has no 3D GLB model — fall back to 2D flat preview only.
+  const effectiveSupports3D = supports3D && !isWaterBottle;
+
+  /* ── Cap dark-color mockup override ─────────────────
+     The cap has no transparent-bg cutout PNG, so the
+     multiply-tint approach can't be used. Instead, we
+     swap the product's frontSrc to the black-cap PNG
+     when a dark color is selected. */
+  const displayProduct = useMemo(() => {
+    if (selectedProduct.category === "cap") {
+      const h = selectedColor.hex.replace("#", "");
+      const r = parseInt(h.slice(0, 2), 16) || 0;
+      const g = parseInt(h.slice(2, 4), 16) || 0;
+      const b = parseInt(h.slice(4, 6), 16) || 0;
+      if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55) {
+        return { ...selectedProduct, frontSrc: "/mockups/black-cap-front.png" };
+      }
+    }
+    return selectedProduct;
+  }, [selectedProduct, selectedColor.hex]);
+
+  /* ── Per-product price (used in UI + cart serialisation) ── */
+  const studioPrice = useMemo(
+    () => isMug || isWaterBottle
+      ? (settings.studioMugPrice || 799)
+      : (settings.studioTshirtPrice || 1099),
+    [isMug, isWaterBottle, settings.studioMugPrice, settings.studioTshirtPrice]
+  );
 
   const selectedLayer = useMemo(
     () => layers.find(l => l.id === selectedLayerId) ?? null,
@@ -838,9 +868,10 @@ export default function DesignStudio() {
       }
 
       // 1. Full garment + design composite → cart thumbnail (imageUrl)
-      //    Uses the white-cutout PNG so tinting matches the 2D editor exactly.
+      //    Uses the white-cutout PNG (or cap dark PNG override) so tinting
+      //    matches the 2D editor exactly.
       const garmentBase = BASE_BY_CATEGORY[selectedProduct.category];
-      const garmentSrc  = garmentBase?.front ?? selectedProduct.frontSrc;
+      const garmentSrc  = garmentBase?.front ?? displayProduct.frontSrc;
       const mockupCanvas = document.createElement("canvas");
       await composeGarmentMockup({
         canvas: mockupCanvas,
@@ -895,9 +926,7 @@ export default function DesignStudio() {
         backTexUrl = backTexCanvas.toDataURL("image/webp", 0.85);
       }
 
-      const displayPrice = isMug
-        ? (settings.studioMugPrice || 799)
-        : (settings.studioTshirtPrice || 1099);
+      const displayPrice = studioPrice;
 
       // Save full session for cart re-edit — MUST match the studio's
       // DraftPayload format exactly (version, color (not selectedColor),
@@ -918,8 +947,8 @@ export default function DesignStudio() {
         productId: 0,
         name: `Custom ${selectedProduct.name}`,
         price: displayPrice,
-        quantity: 1,
-        size: isMug || isCap ? undefined : selectedSize,
+        quantity,
+        size: isMug || isCap || isWaterBottle ? undefined : selectedSize,
         color: selectedColor.name,
         imageUrl: mockupUrl,
         customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
@@ -957,9 +986,9 @@ export default function DesignStudio() {
     } finally {
       setIsAddingToCart(false);
     }
-  }, [layers, selectedProduct, selectedColor, selectedSize, isMug, isCap, pz, addToCart, toast, navigate, settings]);
+  }, [layers, selectedProduct, displayProduct, selectedColor, selectedSize, quantity, isMug, isCap, isWaterBottle, studioPrice, pz, addToCart, toast, navigate, settings]);
 
-  /* ── Studio color palette — per product type ───────── */
+  /* ── Studio color palette — per product category ───── */
   const parseColors = (raw: string) => {
     try { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr as { name: string; hex: string }[]; } catch {}
     return null;
@@ -977,8 +1006,21 @@ export default function DesignStudio() {
     { name: "Navy", hex: "#1e3a5f" }, { name: "Red", hex: "#dc2626" },
     { name: "Pink", hex: "#f472b6" }, { name: "Sky Blue", hex: "#0ea5e9" },
   ];
+  const DEFAULT_CAP_COLORS: { name: string; hex: string }[] = [
+    { name: "White", hex: "#F5F2EC" }, { name: "Black", hex: "#1a1a1a" },
+    { name: "Navy", hex: "#1e3a5f" }, { name: "Maroon", hex: "#7f1d1d" },
+    { name: "Olive", hex: "#4a5240" }, { name: "Grey", hex: "#6b7280" },
+  ];
+  const DEFAULT_WATERBOTTLE_COLORS: { name: string; hex: string }[] = [
+    { name: "White", hex: "#F4F3F1" }, { name: "Black", hex: "#1C1917" },
+    { name: "Navy", hex: "#1e3a5f" }, { name: "Forest", hex: "#166534" },
+    { name: "Sky Blue", hex: "#0ea5e9" }, { name: "Red", hex: "#dc2626" },
+    { name: "Pink", hex: "#f472b6" }, { name: "Teal", hex: "#0f766e" },
+  ];
   const studioColors = isMug
     ? (parseColors(settings.studioMugColors) ?? DEFAULT_MUG_COLORS)
+    : isCap ? DEFAULT_CAP_COLORS
+    : isWaterBottle ? DEFAULT_WATERBOTTLE_COLORS
     : (parseColors(settings.studioTshirtColors) ?? DEFAULT_TSHIRT_COLORS);
 
   /* ── Selected layer: corner handles for resize ─────── */
@@ -1077,15 +1119,15 @@ export default function DesignStudio() {
                   : <><Check className="w-3 h-3" /> Saved</>}
               </div>
             )}
-            {hasDraft && (
+            {layers.length > 0 && (
               <button
                 onClick={clearDraft}
                 className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-gray-500 hover:text-red-600 transition-colors"
                 style={{ background: "#f3f4f6" }}
-                title="Clear saved draft"
+                title="Clear all layers and draft"
                 data-testid="clear-draft"
               >
-                <Trash2 className="w-3 h-3" /> Clear draft
+                <Trash2 className="w-3 h-3" /> Clear All
               </button>
             )}
             {/* Undo / Redo — hidden on mobile to save space */}
@@ -1100,7 +1142,7 @@ export default function DesignStudio() {
               <Redo2 className="w-4 h-4" />
             </button>
             {/* 2D / 3D toggle — hidden on mobile (shown below product tabs instead) */}
-            {supports3D && (
+            {effectiveSupports3D && (
               <div className="hidden sm:flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
                 <button
                   onClick={() => setViewMode("2d")}
@@ -1152,7 +1194,7 @@ export default function DesignStudio() {
           {/* ═══════ LEFT: MOCKUP CANVAS ═══════ */}
           <div className="flex-1 min-w-0">
             {/* Mobile 2D/3D toggle — shown only on small screens above mockup */}
-            {supports3D && (
+            {effectiveSupports3D && (
               <div className="flex sm:hidden items-center justify-between mb-3">
                 <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }}>
                   <button
@@ -1193,6 +1235,9 @@ export default function DesignStudio() {
                   onClick={() => {
                     setSelectedProduct(prod);
                     setSelectedColor({ name: prod.name, hex: prod.garmentColor });
+                    setQuantity(1);
+                    // Water bottle has no 3D model — snap back to 2D editor.
+                    if (prod.category === "waterbottle") setViewMode("2d");
                   }}
                   className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
                   style={{
@@ -1298,7 +1343,7 @@ export default function DesignStudio() {
                 className="relative w-full"
                 style={{ aspectRatio: `${selectedProduct.aspect}`, touchAction: "none" }}
               >
-                {viewMode === "3d" && supports3D ? (
+                {viewMode === "3d" && effectiveSupports3D ? (
                   <div className="absolute inset-0" data-testid="viewer-3d">
                     <Suspense fallback={
                       <div className="w-full h-full flex items-center justify-center text-gray-500">
@@ -1306,7 +1351,7 @@ export default function DesignStudio() {
                       </div>
                     }>
                       <ProductViewer3D
-                        product={selectedProduct}
+                        product={displayProduct}
                         garmentColor={selectedColor.hex}
                         front={{
                           layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
@@ -1359,7 +1404,7 @@ export default function DesignStudio() {
                   transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                   {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
-                  <GarmentSVG product={selectedProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
+                  <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
 
                   {/* Layers (clipped to print zone) */}
                   <defs>
@@ -1555,7 +1600,7 @@ export default function DesignStudio() {
                     )}
 
                     {/* Garment size picker (apparel only) */}
-                    {!isMug && !isCap && (
+                    {!isMug && !isCap && !isWaterBottle && (
                       <div className="pt-3 border-t border-gray-100">
                         <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Garment Size</label>
                         <div className="flex flex-wrap gap-1.5">
@@ -1934,6 +1979,38 @@ export default function DesignStudio() {
               </AnimatePresence>
             </div>
 
+            {/* Quantity + price summary */}
+            <div
+              className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
+              style={{ background: "white", border: "1px solid #e9e5e0" }}
+            >
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">Quantity</div>
+                <div className="text-sm font-black text-gray-800">
+                  {quantity} × ৳{studioPrice.toLocaleString()}
+                  {" "}
+                  <span className="text-orange-500">= ৳{(quantity * studioPrice).toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                  style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
+                  aria-label="Decrease quantity"
+                >−</button>
+                <span className="text-sm font-black text-gray-800 w-6 text-center">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(q => Math.min(50, q + 1))}
+                  disabled={quantity >= 50}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                  style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
+                  aria-label="Increase quantity"
+                >+</button>
+              </div>
+            </div>
+
             {/* Add to cart */}
             <motion.button
               onClick={handleAddToCart}
@@ -1947,7 +2024,7 @@ export default function DesignStudio() {
                 : <><ShoppingCart className="w-5 h-5" /> Add Custom {selectedProduct.name} to Cart</>}
             </motion.button>
 
-            {!isMug && !isCap && (
+            {!isMug && !isCap && !isWaterBottle && (
               <p className="text-center text-xs text-gray-400">
                 Size: <strong className="text-gray-600">{selectedSize}</strong> · Free shipping above ৳1,500
               </p>
