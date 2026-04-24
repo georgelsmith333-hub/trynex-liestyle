@@ -1003,13 +1003,9 @@ export default function DesignStudio() {
   ];
   const DEFAULT_MUG_COLORS: { name: string; hex: string }[] = [
     { name: "White", hex: "#F5F5F5" }, { name: "Black", hex: "#1C1917" },
-    { name: "Navy", hex: "#1e3a5f" }, { name: "Red", hex: "#dc2626" },
-    { name: "Pink", hex: "#f472b6" }, { name: "Sky Blue", hex: "#0ea5e9" },
   ];
   const DEFAULT_CAP_COLORS: { name: string; hex: string }[] = [
     { name: "White", hex: "#F5F2EC" }, { name: "Black", hex: "#1a1a1a" },
-    { name: "Navy", hex: "#1e3a5f" }, { name: "Maroon", hex: "#7f1d1d" },
-    { name: "Olive", hex: "#4a5240" }, { name: "Grey", hex: "#6b7280" },
   ];
   const DEFAULT_WATERBOTTLE_COLORS: { name: string; hex: string }[] = [
     { name: "White", hex: "#F4F3F1" }, { name: "Black", hex: "#1C1917" },
@@ -1247,10 +1243,7 @@ export default function DesignStudio() {
                     boxShadow: selectedProduct.id === prod.id ? "0 4px 12px rgba(232,93,4,0.3)" : "0 1px 4px rgba(0,0,0,0.05)",
                   }}
                 >
-                  <span
-                    className="w-3.5 h-3.5 rounded-full border shrink-0"
-                    style={{ background: prod.garmentColor, borderColor: prod.garmentColor === "#F8F7F4" || prod.garmentColor === "#F5F5F5" || prod.garmentColor === "#F2EFE9" || prod.garmentColor === "#F5F2EC" ? "#d1d5db" : prod.garmentColor }}
-                  />
+                  <span className="text-base leading-none shrink-0" role="img" aria-hidden="true">{prod.icon}</span>
                   {prod.name}
                 </button>
               ))}
