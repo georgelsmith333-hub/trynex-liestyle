@@ -25,7 +25,7 @@ import {
   RotateCcw, ArrowLeft, ArrowRight, Check, Heart, Share2, Ruler, MessageCircle, Sparkles,
   Upload, Image as ImageIcon, X as XIcon, ZoomIn
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useRef, useCallback } from "react";
 
 const COLOR_MAP: Record<string, string> = {
@@ -327,7 +327,9 @@ export default function ProductDetail() {
   const { addProduct: trackRecentlyViewed } = useRecentlyViewed();
   const whatsappNum = (settings.whatsappNumber?.replace(/[^0-9]/g, '') || '8801903426915');
 
+  const prefersReducedMotion = useReducedMotion();
   const [quantity, setQuantity] = useState(1);
+  const [qtyPulse, setQtyPulse] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [customNote, setCustomNote] = useState("");
@@ -481,7 +483,7 @@ export default function ProductDetail() {
         </ToastAction>
       ),
     });
-    setTimeout(() => setAddedToBag(false), 2000);
+    setTimeout(() => setAddedToBag(false), 1200);
   };
 
   const discount = product.discountPrice
@@ -1044,39 +1046,92 @@ export default function ProductDetail() {
               {/* Quantity + Add to Cart */}
               <div className="flex gap-3 mb-6">
                 <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="btn-press px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors font-bold"
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.max(1, quantity - 1);
+                      if (next !== quantity) { setQuantity(next); setQtyPulse(p => p + 1); }
+                    }}
+                    aria-label="Decrease quantity"
+                    whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 600, damping: 15 }}
+                    className="px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors font-bold"
                   >
                     <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="px-5 font-black text-gray-900 text-lg min-w-[3rem] text-center">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(quantity + 1, product.stock))}
-                    className="btn-press px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
+                  </motion.button>
+                  <span className="px-5 font-black text-gray-900 text-lg min-w-[3rem] text-center overflow-hidden">
+                    <motion.span
+                      key={qtyPulse}
+                      initial={prefersReducedMotion ? false : { scale: 0.7, opacity: 0.4 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 18 }}
+                      className="inline-block"
+                    >
+                      {quantity}
+                    </motion.span>
+                  </span>
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.min(quantity + 1, product.stock);
+                      if (next !== quantity) { setQuantity(next); setQtyPulse(p => p + 1); }
+                    }}
+                    aria-label="Increase quantity"
+                    whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 600, damping: 15 }}
+                    className="px-4 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 </div>
-                <button
+                <motion.button
                   ref={mainAddToCartRef}
                   onClick={handleAddToCart}
                   disabled={product.stock < 1}
-                  className="flex-1 h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2.5 text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
+                  aria-live="polite"
+                  animate={
+                    prefersReducedMotion || !addedToBag
+                      ? { scale: 1 }
+                      : { scale: [1, 1.06, 0.97, 1.02, 1] }
+                  }
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], times: [0, 0.25, 0.5, 0.75, 1] }}
+                  whileTap={prefersReducedMotion || addedToBag ? undefined : { scale: 0.97 }}
+                  className="flex-1 h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2.5 text-base disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     background: product.stock > 0
                       ? (addedToBag ? '#16a34a' : 'linear-gradient(135deg, #E85D04, #FB8500)')
                       : '#e5e7eb',
                     boxShadow: product.stock > 0 ? '0 6px 24px rgba(232,93,4,0.35)' : 'none',
                     color: product.stock === 0 ? '#9ca3af' : 'white',
+                    transition: 'background 0.25s ease, box-shadow 0.25s ease',
                   }}
                 >
-                  {addedToBag ? (
-                    <><Check className="w-5 h-5" /> Added to Bag!</>
-                  ) : (
-                    <><ShoppingBag className="w-5 h-5" />{product.stock > 0 ? "Add to Bag" : "Sold Out"}</>
-                  )}
-                </button>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {addedToBag ? (
+                      <motion.span
+                        key="added"
+                        initial={prefersReducedMotion ? false : { scale: 0.4, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0.6, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <Check className="w-5 h-5" /> Added to Bag!
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="add"
+                        initial={prefersReducedMotion ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <ShoppingBag className="w-5 h-5" />{product.stock > 0 ? "Add to Bag" : "Sold Out"}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
               </div>
 
               {/* WhatsApp Order */}
