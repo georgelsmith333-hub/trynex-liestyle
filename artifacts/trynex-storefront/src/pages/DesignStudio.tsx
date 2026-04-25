@@ -1459,9 +1459,20 @@ export default function DesignStudio() {
                       />
                     </Suspense>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[11px] font-bold text-white pointer-events-none"
-                      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
+                      style={{ background: "rgba(0,0,0,0.6)" }}>
                       Drag to rotate · Scroll to zoom
                     </div>
+                    {layers.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center px-6 py-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.88)", border: "2px dashed rgba(232,93,4,0.35)" }}>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ background: "linear-gradient(135deg,#fff4ee,#ffe8d4)" }}>
+                            <Upload className="w-5 h-5 text-orange-500" />
+                          </div>
+                          <p className="font-black text-gray-800 text-sm mb-0.5">No design yet</p>
+                          <p className="text-xs text-gray-500">Switch to 2D to add layers →</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                 <>
@@ -1477,7 +1488,7 @@ export default function DesignStudio() {
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.18 }}
                       className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest pointer-events-none z-10"
-                      style={{ background: "rgba(17,24,39,0.85)", color: "white", letterSpacing: "0.12em", backdropFilter: "blur(4px)" }}
+                      style={{ background: "rgba(17,24,39,0.88)", color: "white", letterSpacing: "0.12em" }}
                     >
                       {activeFace}
                     </motion.div>
@@ -1490,10 +1501,10 @@ export default function DesignStudio() {
                   viewBox={selectedProduct.viewBox}
                   className="absolute inset-0 w-full h-full"
                   style={{ touchAction: "none", userSelect: "none" }}
-                  initial={{ opacity: 0, rotateY: activeFace === "back" ? -12 : 12 }}
-                  animate={{ opacity: 1, rotateY: 0 }}
-                  exit={{ opacity: 0, rotateY: activeFace === "back" ? 12 : -12 }}
-                  transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeInOut" }}
                   {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
                   <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
@@ -1579,7 +1590,7 @@ export default function DesignStudio() {
                   >
                     <motion.div
                       className="text-center px-8 py-8 rounded-2xl pointer-events-none"
-                      style={{ background: "rgba(255,255,255,0.85)", border: "2px dashed rgba(232,93,4,0.35)", backdropFilter: "blur(6px)" }}
+                      style={{ background: "rgba(255,255,255,0.92)", border: "2px dashed rgba(232,93,4,0.35)" }}
                     >
                       <div
                         className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
@@ -1596,7 +1607,7 @@ export default function DesignStudio() {
                 {/* Fabric label */}
                 <div className="absolute top-4 left-4">
                   <span className="px-3 py-1.5 rounded-xl text-xs font-black"
-                    style={{ background: "rgba(255,255,255,0.9)", color: "#374151", backdropFilter: "blur(4px)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+                    style={{ background: "rgba(255,255,255,0.96)", color: "#374151", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
                     {selectedProduct.description}
                   </span>
                 </div>

@@ -240,4 +240,25 @@ app.use("/api", router);
 import sitemapRouter from "./routes/sitemap";
 app.use("/", sitemapRouter);
 
+// Catch-all 404 for unmatched API routes
+app.use("/api/{*path}", (_req, res) => {
+  res.status(404).json({ error: "not_found", message: "Route not found" });
+});
+
+// Global Express error handler — catches any error thrown/passed via next(err)
+// in route handlers. Without this, unhandled errors produce a 500 with an
+// Express HTML page instead of a clean JSON body.
+app.use((err: unknown, req: any, res: any, _next: any) => {
+  const message = err instanceof Error ? err.message : "An unexpected error occurred";
+  const isCors = message.startsWith("CORS:");
+  if (!isCors) {
+    logger.error({ err, url: req.url, method: req.method }, "Unhandled error");
+  }
+  if (res.headersSent) return;
+  res.status(isCors ? 403 : 500).json({
+    error: isCors ? "cors_error" : "internal_error",
+    message,
+  });
+});
+
 export default app;
