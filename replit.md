@@ -128,6 +128,17 @@ Changed to `Administration@Trynexshop` (hash updated directly in `admins` table;
 ### GitHub Push
 Configure via `/admin/deployment` — enter PAT for repo `georgelsmith333-hub/trynex-liestyle`, branch `main`.
 
+## Replit Development Environment
+
+The project runs on Replit with both services started by the "Start application" workflow:
+- **Frontend** — Vite dev server on port 5000 (proxies `/api` to port 8080)
+- **API Server** — Express 5 on port 8080 (dev build via esbuild, then node)
+- **Database** — Replit's built-in PostgreSQL (`DATABASE_URL` auto-provided)
+- **Storage** — Local filesystem (`./uploads`) in dev mode (no R2/S3 env vars needed)
+- **JWT / Admin secrets** — Fall back to safe dev-only defaults in `NODE_ENV=development`
+
+To deploy to production (Cloudflare Pages + Render), set all required env vars listed in the `CORE_ENV_VAR_MATRIX` in `artifacts/api-server/src/index.ts`.
+
 ## External Dependencies
 
 -   **Hosting**: Cloudflare Pages (storefront), Render (API server).
