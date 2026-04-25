@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useListOrders } from "@workspace/api-client-react";
 import { ItemPreviewThumb, PreviewLightbox, type PreviewItem } from "@/components/ZoomableImage";
@@ -461,14 +462,15 @@ export default function AdminOrders() {
       )}
 
       {/* Order Detail Modal */}
-      <AnimatePresence>
-        {selectedOrder && (
+      {selectedOrder && createPortal(
+        <AnimatePresence>
+          {selectedOrder && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
+            style={{ background: 'rgba(0,0,0,0.82)' }}
             onClick={e => e.target === e.currentTarget && setSelectedOrder(null)}
           >
             <motion.div
@@ -871,8 +873,10 @@ export default function AdminOrders() {
               </div>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <PreviewLightbox
         items={lightbox?.items ?? []}

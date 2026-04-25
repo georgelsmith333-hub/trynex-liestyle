@@ -1,0 +1,211 @@
+
+🎉 Free delivery on orders above ৳1500!
+◆
+COD available
+◆
+WhatsApp: 01903426915
+◆
+🎉 Free delivery on orders above ৳1500!
+◆
+COD available
+◆
+WhatsApp: 01903426915
+◆
+
+TRYNEX
+Admin Panel
+
+Dashboard
+Products
+Categories
+Orders
+Page Designer
+Gift Hampers
+Social Import
+Reviews
+Blog Posts
+Customers
+Backup
+FB Import Guide
+Tech Stack
+Deployment
+Activity Log
+Settings
+Logout
+
+← View Store
+A
+Site Tech Stack & Configuration
+Complete technical overview of the TryNex Lifestyle platform
+
+Frontend
+React 18
+UI library with hooks, context, and suspense
+Vite 6
+Lightning-fast build tool with HMR
+TypeScript 5
+Type-safe JavaScript
+Tailwind CSS 4
+Utility-first CSS framework
+Framer Motion
+Production-ready animations
+Wouter
+Lightweight client-side routing
+TanStack Query
+Data fetching, caching & synchronization
+React Helmet Async
+SEO meta tag management
+Lucide React
+Beautiful icon library
+Radix UI
+Accessible headless UI primitives
+Backend
+Node.js
+JavaScript runtime
+Express 5
+Minimal web framework
+TypeScript
+Type-safe server code
+Pino
+High-performance JSON logger
+JWT (jsonwebtoken)
+Authentication tokens
+Cookie Parser
+HTTP cookie handling
+CORS
+Cross-origin resource sharing
+Database
+PostgreSQL
+Relational database (Neon, hosted via Render)
+Drizzle ORM
+Type-safe SQL ORM with zero overhead
+Drizzle Zod
+Schema validation from DB types
+Design System
+Primary Color
+#E85D04 (Orange)
+Accent Color
+#FB8500 (Light Orange)
+Display Font
+Outfit (700-900 weight)
+Body Font
+Plus Jakarta Sans (300-800)
+Currency
+BDT (৳)
+Theme
+Light/Warm — no dark mode
+SEO & Marketing
+Open Graph Tags
+WhatsApp/Facebook/Twitter link previews
+Schema.org JSON-LD
+Structured data for Google
+Dynamic Sitemap
+/api/sitemap.xml — auto-generated
+robots.txt
+Search engine crawl directives
+Meta Tags
+Per-page title, description, keywords
+Canonical URLs
+Duplicate content prevention
+Auth & Security
+Admin Auth
+JWT + httpOnly cookies, SHA-256 hashed passwords
+Customer Auth
+Email/password, Google OAuth, Facebook Login
+CORS Protection
+Credential-based origin whitelisting
+Input Validation
+Zod schemas on API inputs
+Infrastructure
+pnpm Monorepo
+Workspace with shared packages
+Cloudflare Pages + Render
+Production hosting (frontend + backend)
+Render
+API server hosting (free tier)
+Cloudflare Pages
+Frontend static hosting (free tier)
+GitHub
+Source code repository
+API Architecture
+RESTful API
+All endpoints under /api/*
+OpenAPI Spec
+Auto-generated API documentation
+Auto-migration
+Tables created on startup
+Auto-seed
+Sample data seeded if DB is empty
+Database Tables
+products
+Product catalog with variants, images, pricing
+categories
+Product categories with slugs
+orders
+Customer orders with items, payment, shipping
+customers
+Registered customer accounts
+admins
+Admin user credentials
+blog_posts
+Blog content with SEO fields
+reviews
+Product reviews with ratings
+promo_codes
+Discount and promotional codes
+referrals
+Referral program tracking
+settings
+Key-value site configuration
+API Endpoints
+GET
+/api/products
+List products
+GET
+/api/products/:id
+Get product (ID or slug)
+GET
+/api/categories
+List categories
+POST
+/api/orders
+Create order
+GET
+/api/orders/track/:orderNumber
+Track order
+GET
+/api/blog
+List blog posts
+POST
+/api/auth/register
+Customer signup
+POST
+/api/auth/login
+Customer login
+POST
+/api/auth/google
+Google OAuth
+POST
+/api/auth/facebook
+Facebook login
+GET
+/api/auth/me
+Current customer
+POST
+/api/admin/login
+Admin login
+GET
+/api/sitemap.xml
+Dynamic sitemap
+
+
+
+Someone from Tangail
+
+purchased Oversized Tee
+
+5 minutes ago
+
+
+×
+6

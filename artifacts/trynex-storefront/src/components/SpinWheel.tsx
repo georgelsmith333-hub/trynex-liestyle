@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift, Sparkles, X, Copy, Check } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -85,6 +86,15 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}
   }, [open]);
 
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   const close = () => {
     setOpen(false);
     setResult(null);
@@ -143,6 +153,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   }, []);
 
   if (!enabled && !forceOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const WHEEL_SIZE = 320;
   const RADIUS = WHEEL_SIZE / 2;
@@ -151,7 +162,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   // text never overlaps because each slice gets its own fixed wedge.
   const LABEL_RADIUS = RADIUS - 58; // distance from wheel center
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -159,7 +170,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.72)" }}
           onClick={() => !spinning && close()}
         >
           <motion.div
@@ -329,6 +340,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

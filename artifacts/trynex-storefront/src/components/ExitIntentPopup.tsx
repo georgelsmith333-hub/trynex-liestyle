@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Tag, Copy, Check, ArrowRight, Loader2 } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -104,15 +105,17 @@ export function ExitIntentPopup() {
   };
 
   if (!exitIntentPromoEnabled) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {show && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.55)" }}
           onClick={e => { if (e.target === e.currentTarget) handleDismiss(); }}
         >
           <motion.div
@@ -214,6 +217,7 @@ export function ExitIntentPopup() {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
