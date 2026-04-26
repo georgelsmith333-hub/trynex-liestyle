@@ -176,11 +176,14 @@ export function GarmentSVG({
           <filter id={filterId} x="0" y="0" width="1" height="1" colorInterpolationFilters="sRGB">
             {/* Desaturate first so photo white-balance artefacts don't bleed
                 into the tint colour — then multiply the flat tint with the
-                neutral-luminosity garment to preserve fabric shading cleanly. */}
+                neutral-luminosity garment to preserve fabric shading cleanly.
+                Final feComposite clips back to SourceGraphic so the card
+                background is never replaced, regardless of browser compositing. */}
             <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="gray" />
             <feFlood floodColor={tintHex} result="flood" />
             <feComposite in="flood" in2="SourceAlpha" operator="in" result="tinted" />
-            <feBlend in="tinted" in2="gray" mode="multiply" />
+            <feBlend in="tinted" in2="gray" mode="multiply" result="blended" />
+            <feComposite in="blended" in2="SourceGraphic" operator="in" />
           </filter>
         </defs>
       )}

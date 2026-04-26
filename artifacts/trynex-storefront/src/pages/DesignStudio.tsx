@@ -1475,7 +1475,11 @@ export default function DesignStudio() {
                 background: "radial-gradient(ellipse at 50% 40%, #F2F0ED 0%, #E8E5E1 50%, #DDDAD5 100%)",
                 border: "1px solid #d8d5d0",
                 boxShadow: "inset 0 2px 20px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.08)",
+                isolation: "isolate",
               }}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={(e) => e.preventDefault()}
             >
               <div
                 className="relative w-full"
@@ -1679,7 +1683,7 @@ export default function DesignStudio() {
           </div>
 
           {/* ═══════ RIGHT: TABBED PANEL ═══════ */}
-          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4">
+          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
 
             {/* Tab strip */}
             <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #e9e5e0" }}>

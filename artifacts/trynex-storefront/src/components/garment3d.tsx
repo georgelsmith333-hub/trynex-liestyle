@@ -285,7 +285,7 @@ export function RealisticShirt({
       <mesh geometry={baseGeo} castShadow receiveShadow>
         <meshPhysicalMaterial
           color={garmentColor}
-          roughness={0.82}
+          roughness={0.88}
           metalness={0.02}
           normalMap={FABRIC_MAPS?.normal ?? null}
           normalScale={new THREE.Vector2(0.18, 0.18)}
@@ -322,7 +322,7 @@ function GarmentGLB({
   frontTex,
   backTex,
   garmentColor,
-  roughness = 0.82,
+  roughness = 0.88,
 }: {
   modelPath: string;
   frontTex?: THREE.Texture | null;
@@ -405,7 +405,7 @@ export function LongSleeveBody({
       frontTex={frontTex}
       backTex={backTex}
       garmentColor={garmentColor}
-      roughness={0.82}
+      roughness={0.88}
     />
   );
 }
@@ -425,7 +425,7 @@ export function HoodieBody({
       frontTex={frontTex}
       backTex={backTex}
       garmentColor={garmentColor}
-      roughness={0.84}
+      roughness={0.88}
     />
   );
 }

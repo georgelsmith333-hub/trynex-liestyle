@@ -163,6 +163,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const [showConfetti, setShowConfetti] = useState(false);
   const spunTodayRef = useRef(false);
 
+  const resetAt = settings.spinWheelResetAt ?? 0;
   const RESET_HOURS = 24;
   useEffect(() => {
     if (!enabled) return;
@@ -172,8 +173,13 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
       const stored = localStorage.getItem(STORAGE_SHOWN);
       if (stored) {
         const ts = parseInt(stored, 10);
-        const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
-        if (!isNaN(ts) && ageHours < RESET_HOURS) return;
+        // Clear the stored key if admin triggered a reset after the user last saw it
+        if (!isNaN(ts) && resetAt > 0 && resetAt > ts) {
+          localStorage.removeItem(STORAGE_SHOWN);
+        } else {
+          const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
+          if (!isNaN(ts) && ageHours < RESET_HOURS) return;
+        }
       }
     } catch { return; }
     const t = setTimeout(() => {
@@ -181,7 +187,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
       try { localStorage.setItem(STORAGE_SHOWN, String(Date.now())); } catch {}
     }, delaySeconds * 1000);
     return () => clearTimeout(t);
-  }, [autoOpen, forceOpen, enabled, delaySeconds]);
+  }, [autoOpen, forceOpen, enabled, delaySeconds, resetAt]);
 
   useEffect(() => {
     try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}

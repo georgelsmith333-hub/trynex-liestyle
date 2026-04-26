@@ -513,6 +513,29 @@ export default function AdminSettings() {
           <Field label="Subtitle" full>
             <input {...register("spinWheelSubtitle")} className={inputClass} style={inputStyle} placeholder="One free spin — no purchase needed." />
           </Field>
+          <div className="md:col-span-2 pt-1">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Reset Wheel for All Visitors</label>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await updateSettings({ data: { spinWheelResetAt: String(Date.now()) } });
+                  queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+                  toast({ title: "✓ Spin wheel reset — all visitors will see it again." });
+                } catch {
+                  toast({ title: "Failed to reset spin wheel", variant: "destructive" });
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm border transition-all hover:border-orange-400 hover:text-orange-600"
+              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset wheel — show it to everyone again
+            </button>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Clears the &ldquo;already shown&rdquo; flag for every browser that has previously dismissed the popup. Useful after a new promotion.
+            </p>
+          </div>
         </SectionCard>
 
         <SectionCard icon={Search} title="SEO Defaults & Auto-SEO" iconColor="#16a34a">
