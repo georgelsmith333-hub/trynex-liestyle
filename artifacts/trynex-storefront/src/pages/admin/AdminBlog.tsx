@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -75,6 +75,8 @@ export default function AdminBlog() {
   const [isCatManagerOpen, setIsCatManagerOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [catDeleteConfirm, setCatDeleteConfirm] = useState<string | null>(null);
+  const [localCatOrder, setLocalCatOrder] = useState<string[]>([]);
+  const dragIdxRef = useRef<number | null>(null);
 
   const addCategoryMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -115,6 +117,60 @@ export default function AdminBlog() {
     },
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
+
+  const reorderCategoriesMutation = useMutation({
+    mutationFn: async (newOrder: string[]) => {
+      const res = await fetch(getApiUrl("/api/blog/categories"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ categories: newOrder }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? "Failed to reorder categories");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/categories"] });
+      toast({ title: "Category order saved" });
+    },
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+  });
+
+  useEffect(() => {
+    if (isCatManagerOpen) setLocalCatOrder(categories);
+  }, [isCatManagerOpen, categories]);
+
+  const handleCatDragStart = (idx: number) => {
+    dragIdxRef.current = idx;
+  };
+
+  const handleCatDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdxRef.current === null || dragIdxRef.current === idx) return;
+    setLocalCatOrder(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIdxRef.current!, 1);
+      next.splice(idx, 0, moved);
+      dragIdxRef.current = idx;
+      return next;
+    });
+  };
+
+  const handleCatDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const unchanged = localCatOrder.length === categories.length &&
+      localCatOrder.every((c, i) => c === categories[i]);
+    if (!unchanged) {
+      reorderCategoriesMutation.mutate(localCatOrder);
+    }
+    dragIdxRef.current = null;
+  };
+
+  const handleCatDragEnd = () => {
+    dragIdxRef.current = null;
+  };
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -676,7 +732,7 @@ export default function AdminBlog() {
                   </div>
                   <div>
                     <h2 className="text-lg font-black font-display text-gray-900">Blog Categories</h2>
-                    <p className="text-xs text-gray-400">Manage the category list</p>
+                    <p className="text-xs text-gray-400">Drag to reorder · add or remove categories</p>
                   </div>
                 </div>
                 <button onClick={() => setIsCatManagerOpen(false)} className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
@@ -686,12 +742,25 @@ export default function AdminBlog() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {categories.map(cat => (
+                  {localCatOrder.map((cat, idx) => (
                     <div
                       key={cat}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 border border-gray-100"
+                      draggable
+                      onDragStart={() => handleCatDragStart(idx)}
+                      onDragOver={e => handleCatDragOver(e, idx)}
+                      onDrop={handleCatDrop}
+                      onDragEnd={handleCatDragEnd}
+                      className="flex items-center justify-between px-3 py-3 rounded-xl bg-gray-50 border border-gray-100 cursor-default select-none"
                     >
-                      <span className="text-sm font-semibold text-gray-800">{cat}</span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors touch-none"
+                          title="Drag to reorder"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </span>
+                        <span className="text-sm font-semibold text-gray-800">{cat}</span>
+                      </div>
                       <button
                         onClick={() => setCatDeleteConfirm(cat)}
                         disabled={deleteCategoryMutation.isPending}
