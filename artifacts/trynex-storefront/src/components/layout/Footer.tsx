@@ -52,17 +52,26 @@ export function Footer() {
     setTapTimer(t);
   }, [tapTimer, setLocation]);
 
-  const handleNewsletter = (e: React.FormEvent) => {
+  const handleNewsletter = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || subscribing) return;
     setSubscribing(true);
-    // Simulate brief async confirmation so users see a pending state.
-    setTimeout(() => {
-      setSubscribing(false);
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), source: "footer" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as Record<string, string>).message || "Subscribe failed");
       setSubscribed(true);
-      toast({ title: "✓ Subscribed!", description: "Watch your inbox for exclusive deals." });
-    }, 400);
-  };
+      toast({ title: "✓ Subscribed!", description: (data as Record<string, string>).message || "Watch your inbox for exclusive deals." });
+    } catch (err) {
+      toast({ title: "Couldn't subscribe", description: "Please check your email and try again.", variant: "destructive" });
+    } finally {
+      setSubscribing(false);
+    }
+  }, [email, subscribing, toast]);
 
   return (
     <footer className="bg-gray-950 text-gray-300 overflow-hidden relative">

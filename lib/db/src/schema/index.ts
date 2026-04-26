@@ -248,3 +248,11 @@ export type HamperPackage = typeof hamperPackagesTable.$inferSelect;
 export type InsertHamperPackage = typeof hamperPackagesTable.$inferInsert;
 export type AdminActivityLog = typeof adminActivityLogsTable.$inferSelect;
 export type CustomerPasswordResetToken = typeof customerPasswordResetTokensTable.$inferSelect;
+
+export const newsletterSubscribersTable = pgTable("newsletter_subscribers", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  source: text("source").notNull().default("footer"),
+  ip: text("ip"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

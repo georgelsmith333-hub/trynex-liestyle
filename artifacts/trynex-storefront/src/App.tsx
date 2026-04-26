@@ -63,6 +63,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const Account = lazy(() => import("./pages/Account"));
 const NotFound = lazy(() => import("./pages/not-found"));
+const SeoGuide = lazy(() => import("./pages/SeoGuide").then(m => ({ default: m.SeoGuide })));
 
 const AdminLogin = lazy(() => import("./pages/admin/Login"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -147,6 +148,7 @@ function Router() {
           <Route path="/about" component={About} />
           <Route path="/contact" component={Contact} />
           <Route path="/size-guide" component={SizeGuide} />
+          <Route path="/seo-guide" component={SeoGuide} />
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
           <Route path="/account" component={Account} />

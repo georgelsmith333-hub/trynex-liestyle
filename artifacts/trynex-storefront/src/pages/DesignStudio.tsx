@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
+import { flushSync } from "react-dom";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -420,6 +421,16 @@ export default function DesignStudio() {
     () => (activeFace === "back" && selectedProduct.printZoneBack) ? selectedProduct.printZoneBack : selectedProduct.printZone,
     [activeFace, selectedProduct]
   );
+  const pzRef = useRef(pz);
+  useEffect(() => { pzRef.current = pz; }, [pz]);
+
+  const activeFaceRef = useRef(activeFace);
+  useEffect(() => { activeFaceRef.current = activeFace; }, [activeFace]);
+
+  /* Per-product design isolation — layers/history are stored separately for
+     each product so switching between T-Shirt and Hoodie doesn't mix them up. */
+  const perProductLayersRef = useRef<Record<string, { layers: Layer[]; stack: Layer[][]; index: number }>>({});
+
   const isMug = selectedProduct.category === "mug";
   const isCap = selectedProduct.category === "cap";
   const isWaterBottle = selectedProduct.category === "waterbottle";
@@ -535,20 +546,38 @@ export default function DesignStudio() {
         img.onerror = () => resolve(false);
         img.src = src;
       });
-      // Use img.decode() as a second guarantee that pixel data is ready
       try { await img.decode?.(); } catch {}
       if (!ok || !img.naturalWidth || !img.naturalHeight) {
         toast({ title: "Image unreadable", description: "Try a different file (JPG/PNG/WebP).", variant: "destructive" });
         return;
       }
+
+      // Smart auto-placement: scale the image to fit within the print zone
+      // respecting both width and height, with a comfortable 85% fill.
+      const currentPz = pzRef.current;
+      const aspect = img.naturalWidth / Math.max(img.naturalHeight, 1);
+      // At scale=1 the image fills the print zone WIDTH. Clamp so it also
+      // fits within the print zone HEIGHT (tall images get scaled down).
+      const maxScaleForHeight = (currentPz.h * aspect) / currentPz.w;
+      const initialScale = Math.min(0.85, maxScaleForHeight);
+
       const layer: ImageLayer = {
         id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
         type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
-        visible: true, locked: false, transform: { ...ZERO_TRANSFORM },
+        visible: true, locked: false,
+        transform: { x: 0, y: 0, scale: initialScale, rotation: 0, opacity: 1 },
+        face: activeFaceRef.current,
       };
-      addLayer(layer);
-      setActiveTab("layers");
-      toast({ title: "Image added", description: "Drag to position, pinch to scale." });
+
+      // flushSync forces React to flush state updates synchronously so the
+      // image appears immediately — critical on mobile where async callbacks
+      // may otherwise defer rendering until the next user interaction.
+      flushSync(() => {
+        commitLayers([...layersRef.current, layer]);
+        setSelectedLayerId(layer.id);
+        setActiveTab("layers");
+      });
+      toast({ title: "✓ Image added", description: "Drag to reposition · Pinch or scroll to resize." });
     };
     reader.readAsDataURL(file);
   };
@@ -1297,12 +1326,27 @@ export default function DesignStudio() {
                 <button
                   key={prod.id}
                   onClick={() => {
-                    setSelectedProduct(prod);
-                    setSelectedColor({ name: prod.name, hex: prod.garmentColor });
-                    setQuantity(1);
-                    // Always reset to front face so uploaded designs are visible on the new product.
-                    setActiveFace("front");
-                    // Water bottle has no 3D model — snap back to 2D editor.
+                    // Save current product's layers + history before switching.
+                    perProductLayersRef.current[selectedProduct.id] = {
+                      layers: layersRef.current,
+                      stack: historyRef.current.stack,
+                      index: historyRef.current.index,
+                    };
+                    // Restore (or start fresh) for the new product.
+                    const saved = perProductLayersRef.current[prod.id];
+                    const newLayers  = saved?.layers ?? [];
+                    const newStack   = saved?.stack   ?? [[]];
+                    const newHistIdx = saved?.index   ?? 0;
+                    historyRef.current = { stack: newStack, index: newHistIdx };
+                    flushSync(() => {
+                      setLayers(newLayers);
+                      setSelectedLayerId(null);
+                      setSelectedProduct(prod);
+                      setSelectedColor({ name: prod.name, hex: prod.garmentColor });
+                      setQuantity(1);
+                      setActiveFace("front");
+                    });
+                    forceHistoryTick(t => t + 1);
                     if (prod.category === "waterbottle") setViewMode("2d");
                   }}
                   className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
