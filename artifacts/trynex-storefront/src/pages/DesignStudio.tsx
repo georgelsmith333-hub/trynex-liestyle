@@ -1685,6 +1685,14 @@ export default function DesignStudio() {
           {/* ═══════ RIGHT: TABBED PANEL ═══════ */}
           <div className="lg:w-[340px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
 
+            {/* Persistent hidden file inputs — always mounted so empty-state tap works
+                regardless of which tab is active. fileInputRef is shared by:
+                  • the "Tap to upload" empty-state overlay (all tabs)
+                  • the "Upload Image" button in the Upload tab
+                fileInputAddRef is used by the Layers tab "Image" add button. */}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+              className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
+
             {/* Tab strip */}
             <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #e9e5e0" }}>
               <div className="flex border-b border-gray-100">
@@ -1711,8 +1719,6 @@ export default function DesignStudio() {
                 {/* ── UPLOAD TAB ── */}
                 {activeTab === "upload" && (
                   <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
-                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-                      className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"

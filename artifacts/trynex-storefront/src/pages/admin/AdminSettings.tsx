@@ -199,17 +199,36 @@ export default function AdminSettings() {
     }
     try {
       // Auto-reset spin wheel for all visitors when the admin turns it on after it was off.
-      // This ensures everyone gets a fresh chance to see the popup after a promotion restart.
-      const turningWheelOn = (data.spinWheelEnabled as unknown as boolean) === true
-        && settings?.spinWheelEnabled === false;
-      const payload: Record<string, unknown> = {
-        ...data,
+      // react-hook-form sends checkbox values as booleans even when the generic type is string.
+      const isWheelNowOn = !!(data.spinWheelEnabled as unknown);
+      const turningWheelOn = isWheelNowOn && settings?.spinWheelEnabled === false;
+
+      // Sanitize numeric fields: replace NaN (from empty number inputs) with safe defaults.
+      const safeData = { ...data };
+      const numericDefaults: Record<string, string> = {
+        spinWheelDelay: "4",
+        spinWheelCooldownHours: "24",
+        freeShippingThreshold: "1500",
+        shippingCost: "100",
+        scarcityThreshold: "10",
+        studioTshirtPrice: "1099",
+        studioMugPrice: "799",
+      };
+      for (const [key, fallback] of Object.entries(numericDefaults)) {
+        const val = safeData[key];
+        if (val === undefined || val === null || val === "" || Number.isNaN(Number(val))) {
+          safeData[key] = fallback;
+        }
+      }
+
+      const payload: Record<string, string> = {
+        ...(safeData as Record<string, string>),
         studioTshirtColors: tshirtColorsJson,
         studioMugColors: mugColorsJson,
       };
       if (turningWheelOn) payload.spinWheelResetAt = String(Date.now());
 
-      await updateSettings({ data: payload as Record<string, string> });
+      await updateSettings({ data: payload });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({ title: "✓ Settings saved successfully!" });
       // Refresh remove.bg configured status so the badge reflects any newly-saved key immediately
