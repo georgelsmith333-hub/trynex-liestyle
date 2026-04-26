@@ -14,6 +14,8 @@
     "@aws-sdk/client-s3": "^3.1033.0",
     "@aws-sdk/s3-request-presigner": "^3.1033.0",
     "@google-cloud/storage": "^7.19.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@types/qrcode": "^1.5.6",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
@@ -24,8 +26,10 @@
     "google-auth-library": "^10.6.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9",
+    "otplib": "^13.4.0",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

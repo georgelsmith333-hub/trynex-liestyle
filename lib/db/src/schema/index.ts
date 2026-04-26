@@ -4,6 +4,8 @@ export const adminTable = pgTable("admins", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -188,6 +190,15 @@ export const hamperPackagesTable = pgTable("hamper_packages", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const customerPasswordResetTokensTable = pgTable("customer_password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const referralsTable = pgTable("referrals", {
   id: serial("id").primaryKey(),
   ownerName: text("owner_name").notNull(),
@@ -235,3 +246,4 @@ export type Referral = typeof referralsTable.$inferSelect;
 export type HamperPackage = typeof hamperPackagesTable.$inferSelect;
 export type InsertHamperPackage = typeof hamperPackagesTable.$inferInsert;
 export type AdminActivityLog = typeof adminActivityLogsTable.$inferSelect;
+export type CustomerPasswordResetToken = typeof customerPasswordResetTokensTable.$inferSelect;

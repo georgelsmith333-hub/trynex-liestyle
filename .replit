@@ -91,3 +91,8 @@ externalPort = 4200
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+ADMIN_RESET_KEY_HASH = "$argon2id$v=19$m=65536,t=3,p=1$NgiNeOzHKe2Il1txCoaI9Q$jlmtVpKlionzlrQSuHkmyTB9drgmEQZUgMHgMSDcVUw"

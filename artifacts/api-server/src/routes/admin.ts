@@ -1,74 +1,138 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable, adminTable, customersTable } from "@workspace/db";
-import { eq, sql, desc, lte, asc } from "drizzle-orm";
+import { db, ordersTable, productsTable, adminTable, customersTable, adminSessionsTable } from "@workspace/db";
+import { eq, sql, desc, lte, asc, and, isNull, gt } from "drizzle-orm";
 import * as crypto from "crypto";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { createAdminSession, revokeAdminSession, ADMIN_SESSION_TTL_MS } from "../lib/adminSessions";
 import { logger } from "../lib/logger";
 import { logActivity, getAdminId } from "../lib/activityLog";
+import {
+  hashPasswordArgon2,
+  verifyPasswordAny,
+  hashPasswordSha256,
+  isArgon2Hash,
+} from "../lib/passwordHash";
+import { generateTotpSecret, generateTotpQr, verifyTotp } from "../lib/totp";
 
 const router: IRouter = Router();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Administration@Trynexshop";
-const SALT = process.env.ADMIN_SALT || "trynex_salt_2024";
+const LEGACY_SALT = process.env.ADMIN_SALT || "trynex_salt_2024";
 
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + SALT).digest("hex");
+// ---------------------------------------------------------------------------
+// Partial-login store for 2FA pending completions (in-memory, 5-min TTL).
+// The partial token is a random opaque blob — not a session token.
+// ---------------------------------------------------------------------------
+interface PartialLogin {
+  adminId: number;
+  userAgent: string | null;
+  ip: string | null;
+  expiresAt: number;
+}
+const pendingTotpLogins = new Map<string, PartialLogin>();
+
+function issuePending2FAToken(adminId: number, userAgent: string | null, ip: string | null): string {
+  const token = crypto.randomBytes(32).toString("base64url");
+  pendingTotpLogins.set(token, {
+    adminId,
+    userAgent,
+    ip,
+    expiresAt: Date.now() + 5 * 60 * 1000,
+  });
+  return token;
 }
 
-async function ensureAdminExists() {
-  const desiredHash = hashPassword(ADMIN_PASSWORD);
+function consumePending2FAToken(token: string): PartialLogin | null {
+  const entry = pendingTotpLogins.get(token);
+  if (!entry) return null;
+  pendingTotpLogins.delete(token);
+  if (Date.now() > entry.expiresAt) return null;
+  return entry;
+}
+
+// Purge stale pending entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of pendingTotpLogins) {
+    if (now > val.expiresAt) pendingTotpLogins.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
+// ---------------------------------------------------------------------------
+// Ensure admin record exists with argon2id hash on startup
+// ---------------------------------------------------------------------------
+async function ensureAdminExists(): Promise<void> {
   const existing = await db.select().from(adminTable).limit(1);
   if (existing.length === 0) {
-    await db.insert(adminTable).values({
-      username: "admin",
-      passwordHash: desiredHash,
-    });
-  } else if (existing[0].passwordHash !== desiredHash) {
-    // Auto-sync to current ADMIN_PASSWORD env var so a fresh deploy
-    // with a new password takes effect without manual reset.
-    await db
-      .update(adminTable)
-      .set({ passwordHash: desiredHash })
-      .where(eq(adminTable.username, "admin"));
+    const hash = await hashPasswordArgon2(ADMIN_PASSWORD);
+    await db.insert(adminTable).values({ username: "admin", passwordHash: hash });
+    return;
+  }
+  // Auto-migrate SHA-256 hashes to argon2id when ADMIN_PASSWORD is the canonical one
+  const admin = existing[0];
+  if (!isArgon2Hash(admin.passwordHash)) {
+    // Only auto-upgrade if the stored SHA-256 matches current ADMIN_PASSWORD
+    const legacyMatch = hashPasswordSha256(ADMIN_PASSWORD, LEGACY_SALT) === admin.passwordHash;
+    if (legacyMatch) {
+      const newHash = await hashPasswordArgon2(ADMIN_PASSWORD);
+      await db.update(adminTable).set({ passwordHash: newHash }).where(eq(adminTable.username, "admin"));
+    }
   }
 }
 
-// Run admin sync once at module load (server startup) instead of on every
-// login attempt — avoids a DB write on every failed login.
 let adminEnsuredOnce: Promise<void> | null = null;
 function ensureAdminOnce(): Promise<void> {
   if (!adminEnsuredOnce) {
     adminEnsuredOnce = ensureAdminExists().catch((err) => {
-      // Reset so a future login attempt can retry if startup ensure failed.
       adminEnsuredOnce = null;
       throw err;
     });
   }
   return adminEnsuredOnce;
 }
-ensureAdminOnce().catch(() => { /* logged on first login retry */ });
+ensureAdminOnce().catch(() => {});
 
+// ---------------------------------------------------------------------------
+// POST /api/admin/login
+// Returns session immediately or {requiresTotp, partialToken} if 2FA active.
+// ---------------------------------------------------------------------------
 router.post("/admin/login", async (req, res) => {
   try {
     await ensureAdminOnce();
     const { password } = req.body;
-    if (!password) {
+    if (!password || typeof password !== "string") {
       res.status(400).json({ error: "validation_error", message: "password required" });
       return;
     }
-    const admin = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
-    const storedHash = admin[0]?.passwordHash || hashPassword(ADMIN_PASSWORD);
-    if (hashPassword(password) !== storedHash) {
+    const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
+    if (!admin) {
       res.status(401).json({ error: "unauthorized", message: "Invalid password" });
       return;
     }
-    const adminId = admin[0]?.id ?? null;
-    const { token } = await createAdminSession({
-      adminId,
-      userAgent: req.headers["user-agent"]?.toString().slice(0, 500) ?? null,
-      ip: (req.ip || req.headers["x-forwarded-for"]?.toString() || "").slice(0, 64) || null,
-    });
+
+    const isValid = await verifyPasswordAny(admin.passwordHash, password, LEGACY_SALT);
+    if (!isValid) {
+      res.status(401).json({ error: "unauthorized", message: "Invalid password" });
+      return;
+    }
+
+    // Transparent re-hash from SHA-256 → argon2id on successful login
+    if (!isArgon2Hash(admin.passwordHash)) {
+      const newHash = await hashPasswordArgon2(password);
+      await db.update(adminTable).set({ passwordHash: newHash }).where(eq(adminTable.id, admin.id));
+    }
+
+    const userAgent = req.headers["user-agent"]?.toString().slice(0, 500) ?? null;
+    const ip = (req.ip || req.headers["x-forwarded-for"]?.toString() || "").slice(0, 64) || null;
+
+    // 2FA gate
+    if (admin.totpEnabled && admin.totpSecret) {
+      const partialToken = issuePending2FAToken(admin.id, userAgent, ip);
+      res.json({ requiresTotp: true, partialToken });
+      return;
+    }
+
+    const { token } = await createAdminSession({ adminId: admin.id, userAgent, ip });
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("admin_token", token, {
       httpOnly: true,
@@ -83,28 +147,89 @@ router.post("/admin/login", async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// POST /api/admin/login-totp
+// Complete 2FA login with TOTP code after password passed.
+// ---------------------------------------------------------------------------
+router.post("/admin/login-totp", async (req, res) => {
+  try {
+    const { partialToken, totpCode } = req.body;
+    if (!partialToken || !totpCode) {
+      res.status(400).json({ error: "validation_error", message: "partialToken and totpCode required" });
+      return;
+    }
+    const pending = consumePending2FAToken(String(partialToken));
+    if (!pending) {
+      res.status(401).json({ error: "unauthorized", message: "Invalid or expired verification token. Please log in again." });
+      return;
+    }
+    const [admin] = await db.select().from(adminTable).where(eq(adminTable.id, pending.adminId)).limit(1);
+    if (!admin || !admin.totpEnabled || !admin.totpSecret) {
+      res.status(401).json({ error: "unauthorized", message: "2FA not configured" });
+      return;
+    }
+    if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+      res.status(401).json({ error: "unauthorized", message: "Invalid authenticator code. Please try again." });
+      return;
+    }
+    const { token } = await createAdminSession({ adminId: admin.id, userAgent: pending.userAgent, ip: pending.ip });
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("admin_token", token, {
+      httpOnly: true,
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction,
+      maxAge: ADMIN_SESSION_TTL_MS,
+    });
+    res.json({ success: true, token });
+  } catch (err) {
+    req.log.error({ err }, "Admin TOTP login failed");
+    res.status(500).json({ error: "internal_error", message: "Login failed" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/reset-password
+// Master reset — uses ADMIN_RESET_KEY_HASH env var (argon2id hash of key).
+// Resets admin password to current ADMIN_PASSWORD env value.
+// ---------------------------------------------------------------------------
 router.post("/admin/reset-password", async (req, res) => {
   try {
     const { resetKey } = req.body;
-    const expectedKey = process.env.ADMIN_RESET_KEY || "TRYNEX_RESET_2026";
-    if (!resetKey || resetKey !== expectedKey) {
+    if (!resetKey || typeof resetKey !== "string") {
+      res.status(400).json({ error: "validation_error", message: "resetKey required" });
+      return;
+    }
+    const storedHash = process.env.ADMIN_RESET_KEY_HASH;
+    if (!storedHash) {
+      req.log.error("ADMIN_RESET_KEY_HASH env var not set — master reset disabled");
+      res.status(503).json({ error: "not_configured", message: "Master reset is not configured on this server" });
+      return;
+    }
+    const { verifyPasswordArgon2 } = await import("../lib/passwordHash");
+    const valid = await verifyPasswordArgon2(storedHash, resetKey);
+    if (!valid) {
       res.status(403).json({ error: "forbidden", message: "Invalid reset key" });
       return;
     }
-    const newHash = hashPassword(ADMIN_PASSWORD);
+    const newHash = await hashPasswordArgon2(ADMIN_PASSWORD);
     const existing = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (existing.length > 0) {
-      await db.update(adminTable).set({ passwordHash: newHash }).where(eq(adminTable.username, "admin"));
+      await db.update(adminTable)
+        .set({ passwordHash: newHash, totpEnabled: false, totpSecret: null })
+        .where(eq(adminTable.username, "admin"));
     } else {
       await db.insert(adminTable).values({ username: "admin", passwordHash: newHash });
     }
-    res.json({ success: true, message: "Admin password reset to ADMIN_PASSWORD env value" });
+    res.json({ success: true, message: "Admin password reset to ADMIN_PASSWORD value. 2FA has been disabled." });
   } catch (err) {
     req.log.error({ err }, "Password reset failed");
     res.status(500).json({ error: "internal_error", message: "Reset failed" });
   }
 });
 
+// ---------------------------------------------------------------------------
+// POST /api/admin/logout
+// ---------------------------------------------------------------------------
 router.post("/admin/logout", async (req, res) => {
   try {
     const bearer = req.headers.authorization?.replace("Bearer ", "");
@@ -120,10 +245,193 @@ router.post("/admin/logout", async (req, res) => {
   res.json({ success: true, message: "Logged out" });
 });
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/me
+// ---------------------------------------------------------------------------
 router.get("/admin/me", requireAdmin, async (req, res) => {
-  res.json({ admin: { id: 1, username: "admin", authenticated: true } });
+  try {
+    const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
+    res.json({
+      admin: {
+        id: admin?.id ?? 1,
+        username: "admin",
+        authenticated: true,
+        totpEnabled: admin?.totpEnabled ?? false,
+      },
+    });
+  } catch {
+    res.json({ admin: { id: 1, username: "admin", authenticated: true, totpEnabled: false } });
+  }
 });
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/totp-setup
+// Generate a new TOTP secret + QR code (not yet saved to DB).
+// ---------------------------------------------------------------------------
+router.get("/admin/totp-setup", requireAdmin, async (req, res) => {
+  try {
+    const secret = generateTotpSecret();
+    const qrDataUrl = await generateTotpQr(secret, "admin");
+    res.json({ secret, qrDataUrl });
+  } catch (err) {
+    req.log.error({ err }, "TOTP setup failed");
+    res.status(500).json({ error: "internal_error", message: "Could not generate TOTP setup" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/totp-enable
+// Verify code against new secret then save it to DB.
+// Body: { secret, totpCode }
+// ---------------------------------------------------------------------------
+router.post("/admin/totp-enable", requireAdmin, async (req, res) => {
+  try {
+    const { secret, totpCode } = req.body;
+    if (!secret || !totpCode) {
+      res.status(400).json({ error: "validation_error", message: "secret and totpCode required" });
+      return;
+    }
+    if (!verifyTotp(String(totpCode), String(secret))) {
+      res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect. Please try again." });
+      return;
+    }
+    await db.update(adminTable)
+      .set({ totpSecret: String(secret), totpEnabled: true })
+      .where(eq(adminTable.username, "admin"));
+    res.json({ success: true, message: "Two-factor authentication enabled successfully." });
+  } catch (err) {
+    req.log.error({ err }, "TOTP enable failed");
+    res.status(500).json({ error: "internal_error", message: "Could not enable 2FA" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/totp-disable
+// Disable 2FA — requires valid TOTP code as confirmation.
+// Body: { totpCode }
+// ---------------------------------------------------------------------------
+router.post("/admin/totp-disable", requireAdmin, async (req, res) => {
+  try {
+    const { totpCode } = req.body;
+    if (!totpCode) {
+      res.status(400).json({ error: "validation_error", message: "totpCode required" });
+      return;
+    }
+    const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
+    if (!admin || !admin.totpEnabled || !admin.totpSecret) {
+      res.status(400).json({ error: "bad_request", message: "2FA is not currently enabled" });
+      return;
+    }
+    if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+      res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect. Please try again." });
+      return;
+    }
+    await db.update(adminTable)
+      .set({ totpSecret: null, totpEnabled: false })
+      .where(eq(adminTable.username, "admin"));
+    res.json({ success: true, message: "Two-factor authentication disabled." });
+  } catch (err) {
+    req.log.error({ err }, "TOTP disable failed");
+    res.status(500).json({ error: "internal_error", message: "Could not disable 2FA" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PUT /api/admin/change-password
+// Requires: currentPassword, newPassword
+// If 2FA is enabled, also requires totpCode.
+// ---------------------------------------------------------------------------
+router.put("/admin/change-password", requireAdmin, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, totpCode } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: "validation_error", message: "currentPassword and newPassword are required" });
+      return;
+    }
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      res.status(400).json({ error: "validation_error", message: "New password must be at least 8 characters" });
+      return;
+    }
+    const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
+    if (!admin) {
+      res.status(404).json({ error: "not_found", message: "Admin account not found" });
+      return;
+    }
+    const isValid = await verifyPasswordAny(admin.passwordHash, String(currentPassword), LEGACY_SALT);
+    if (!isValid) {
+      res.status(401).json({ error: "unauthorized", message: "Current password is incorrect" });
+      return;
+    }
+    if (admin.totpEnabled && admin.totpSecret) {
+      if (!totpCode) {
+        res.status(400).json({ error: "totp_required", message: "Authenticator code required to change password" });
+        return;
+      }
+      if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+        res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect" });
+        return;
+      }
+    }
+    const newHash = await hashPasswordArgon2(String(newPassword));
+    await db.update(adminTable).set({ passwordHash: newHash }).where(eq(adminTable.id, admin.id));
+    res.json({ success: true, message: "Password changed successfully." });
+  } catch (err) {
+    req.log.error({ err }, "Admin change-password failed");
+    res.status(500).json({ error: "internal_error", message: "Could not change password" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/sessions
+// List active admin sessions.
+// ---------------------------------------------------------------------------
+router.get("/admin/sessions", requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const sessions = await db.select()
+      .from(adminSessionsTable)
+      .where(and(isNull(adminSessionsTable.revokedAt), gt(adminSessionsTable.expiresAt, now)))
+      .orderBy(desc(adminSessionsTable.lastUsedAt));
+    res.json({
+      sessions: sessions.map(s => ({
+        id: s.id,
+        createdAt: s.createdAt?.toISOString(),
+        lastUsedAt: s.lastUsedAt?.toISOString(),
+        expiresAt: s.expiresAt?.toISOString(),
+        userAgent: s.userAgent,
+        ip: s.ip,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list sessions");
+    res.status(500).json({ error: "internal_error", message: "Could not list sessions" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/sessions/:id
+// Revoke a session by its DB id.
+// ---------------------------------------------------------------------------
+router.delete("/admin/sessions/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "validation_error", message: "Invalid session id" });
+      return;
+    }
+    await db.update(adminSessionsTable)
+      .set({ revokedAt: new Date() })
+      .where(eq(adminSessionsTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to revoke session");
+    res.status(500).json({ error: "internal_error", message: "Could not revoke session" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/health
+// ---------------------------------------------------------------------------
 router.get("/admin/health", requireAdmin, async (req, res) => {
   const start = Date.now();
   let dbLatencyMs: number | null = null;
@@ -145,6 +453,9 @@ router.get("/admin/health", requireAdmin, async (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/stats
+// ---------------------------------------------------------------------------
 router.get("/admin/stats", requireAdmin, async (req, res) => {
   try {
     const [
@@ -353,8 +664,6 @@ router.get("/admin/customers", requireAdmin, async (req, res) => {
   }
 });
 
-// Guest customers (created via /api/auth/guest) — admin visibility.
-// Joins to orders by customer email so we can show order activity.
 router.get("/admin/guest-customers", requireAdmin, async (req, res) => {
   try {
     const guests = await db
@@ -402,8 +711,6 @@ router.get("/admin/guest-customers", requireAdmin, async (req, res) => {
   }
 });
 
-// Convert a guest account into a full registered account.
-// Body: { email, password, name? } — email becomes the real login.
 router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -421,7 +728,6 @@ router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res)
       return;
     }
     const emailLc = email.toLowerCase().trim();
-    // Guard: this endpoint must only operate on guest accounts.
     const [existing] = await db.select().from(customersTable).where(eq(customersTable.id, id)).limit(1);
     if (!existing) {
       res.status(404).json({ error: "not_found", message: "Customer not found" });
@@ -436,12 +742,10 @@ router.post("/admin/guest-customers/:id/convert", requireAdmin, async (req, res)
       res.status(409).json({ error: "conflict", message: "An account with this email already exists" });
       return;
     }
-    // Migrate historical guest orders so they remain visible under the new email
     await db.update(ordersTable)
       .set({ customerEmail: emailLc, customerId: id })
       .where(eq(ordersTable.customerEmail, existing.email));
-    const SALT = process.env.CUSTOMER_SALT || "trynex_customer_2024";
-    const passwordHash = crypto.createHash("sha256").update(password + SALT).digest("hex");
+    const passwordHash = await hashPasswordArgon2(password);
     const updates: Record<string, unknown> = {
       email: emailLc,
       passwordHash,

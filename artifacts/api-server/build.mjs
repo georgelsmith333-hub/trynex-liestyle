@@ -29,6 +29,14 @@ async function buildAll() {
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
+      "@node-rs/argon2",
+      "@node-rs/argon2-linux-x64-gnu",
+      "@node-rs/argon2-linux-x64-musl",
+      "@node-rs/argon2-linux-arm64-gnu",
+      "@node-rs/argon2-linux-arm64-musl",
+      "@node-rs/argon2-darwin-x64",
+      "@node-rs/argon2-darwin-arm64",
+      "@node-rs/argon2-win32-x64-msvc",
       "sharp",
       "better-sqlite3",
       "sqlite3",

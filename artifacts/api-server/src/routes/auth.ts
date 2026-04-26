@@ -1,9 +1,15 @@
 import { Router, type IRouter } from "express";
-import { db, customersTable, settingsTable } from "@workspace/db";
-import { eq, or, desc, sql } from "drizzle-orm";
+import { db, customersTable, settingsTable, customerPasswordResetTokensTable } from "@workspace/db";
+import { eq, or, desc, sql, and, gt, isNull } from "drizzle-orm";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import {
+  hashPasswordArgon2,
+  verifyPasswordAny,
+  hashPasswordSha256,
+  isArgon2Hash,
+} from "../lib/passwordHash";
 
 // Lazily-built Google OAuth verifier. Re-built only when the configured
 // client ID changes. Verifies signature, issuer, audience, and expiry
@@ -20,8 +26,6 @@ function getGoogleClient(clientId: string): OAuth2Client {
 // Resolve the active Google OAuth client ID. Admins typically configure
 // this in the Site Settings panel (DB), so we MUST consult the settings
 // table — falling back to the env var only when the DB row is absent.
-// Without this lookup, production rejects every Google sign-in with
-// "google_not_configured" even though the admin filled in the field.
 export async function getConfiguredGoogleClientId(): Promise<string> {
   try {
     const [row] = await db
@@ -46,9 +50,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_only_secret_not_for_production
 const CUSTOMER_SALT = process.env.CUSTOMER_SALT || "trynex_customer_2024";
 const IS_PROD = process.env.NODE_ENV === "production";
 
-// Surface the underlying error reason in non-prod (and as a short tag in
-// prod) so a customer reporting "guest failed" can be diagnosed in seconds
-// instead of grepping logs. Never leak stack traces or PII.
 function failureReason(err: unknown, fallback: string): string {
   const e = err as { message?: string; code?: string } | null;
   const code = e?.code;
@@ -56,10 +57,6 @@ function failureReason(err: unknown, fallback: string): string {
   if (!IS_PROD && msg) return `${fallback} (${msg})`;
   if (code) return `${fallback} [${code}]`;
   return fallback;
-}
-
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + CUSTOMER_SALT).digest("hex");
 }
 
 function signCustomerToken(payload: { id: number; email: string }): string {
@@ -71,7 +68,7 @@ function verifyCustomerToken(token: string): { id: number; email: string; role: 
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string; role: string };
     if (decoded.role !== "customer") return null;
     return decoded;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -85,8 +82,6 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
-    // Real-name validation — letters (incl. unicode), spaces, hyphens, apostrophes only.
-    // Rejects digits, emails, phone numbers, junk symbols. Length 2–50.
     const trimmedName = String(name).trim().replace(/\s+/g, " ");
     const nameRegex = /^[\p{L}][\p{L}\s'-]{1,49}$/u;
     if (trimmedName.length < 2 || /\d/.test(trimmedName) || /@/.test(trimmedName) || !nameRegex.test(trimmedName)) {
@@ -105,7 +100,6 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
-    // Phone is optional, but validate if provided
     if (phone && !/^[+\d][\d\s-]{6,18}$/.test(String(phone).trim())) {
       res.status(400).json({ error: "validation_error", message: "Invalid phone number" });
       return;
@@ -117,11 +111,12 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
+    const passwordHash = await hashPasswordArgon2(String(password));
     const [customer] = await db.insert(customersTable).values({
       name: trimmedName,
       email: email.toLowerCase().trim(),
       phone: phone?.trim() || null,
-      passwordHash: hashPassword(password),
+      passwordHash,
       verified: true,
     }).returning();
 
@@ -168,9 +163,18 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
-    if (hashPassword(password) !== customer.passwordHash) {
+    const isValid = await verifyPasswordAny(customer.passwordHash, String(password), CUSTOMER_SALT);
+    if (!isValid) {
       res.status(401).json({ error: "unauthorized", message: "Invalid email or password" });
       return;
+    }
+
+    // Transparent re-hash from SHA-256 → argon2id on successful login
+    if (!isArgon2Hash(customer.passwordHash)) {
+      const newHash = await hashPasswordArgon2(String(password));
+      await db.update(customersTable)
+        .set({ passwordHash: newHash, updatedAt: new Date() })
+        .where(eq(customersTable.id, customer.id));
     }
 
     const token = signCustomerToken({ id: customer.id, email: customer.email });
@@ -210,10 +214,6 @@ router.post("/auth/google", async (req, res) => {
 
     const expectedAud = await getConfiguredGoogleClientId();
 
-    // Production MUST verify the Google ID token signature against Google's
-    // public keys. Without this, anyone can mint a forged JWT with arbitrary
-    // `email`/`sub` and take over any account. Refuse to start the flow if
-    // the server is mis-configured in production.
     if (IS_PROD && !expectedAud) {
       res.status(503).json({ error: "google_not_configured", message: "Google sign-in is not configured on the server. Please contact support or use email login." });
       return;
@@ -221,7 +221,6 @@ router.post("/auth/google", async (req, res) => {
 
     let payload: Record<string, unknown>;
     if (expectedAud) {
-      // Full verification: signature + issuer + audience + expiry.
       try {
         const ticket = await getGoogleClient(expectedAud).verifyIdToken({
           idToken: credential as string,
@@ -247,8 +246,6 @@ router.post("/auth/google", async (req, res) => {
         return;
       }
     } else {
-      // Dev/staging fallback (GOOGLE_CLIENT_ID unset, NODE_ENV !== production).
-      // Manual decode — INSECURE, used only to keep local development working.
       const parts = (credential as string).split(".");
       if (parts.length !== 3) {
         res.status(400).json({ error: "validation_error", message: "Invalid Google credential format. Please retry the sign-in." });
@@ -473,12 +470,14 @@ router.put("/auth/change-password", async (req, res) => {
       res.status(400).json({ error: "bad_request", message: "Password change not available for social login accounts. Please use Google or Facebook to sign in." });
       return;
     }
-    if (hashPassword(currentPassword) !== customer.passwordHash) {
+    const isValid = await verifyPasswordAny(customer.passwordHash, String(currentPassword), CUSTOMER_SALT);
+    if (!isValid) {
       res.status(401).json({ error: "unauthorized", message: "Current password is incorrect" });
       return;
     }
+    const newHash = await hashPasswordArgon2(String(newPassword));
     await db.update(customersTable)
-      .set({ passwordHash: hashPassword(newPassword), updatedAt: new Date() })
+      .set({ passwordHash: newHash, updatedAt: new Date() })
       .where(eq(customersTable.id, decoded.id));
     res.json({ success: true, message: "Password changed successfully" });
   } catch (err) {
@@ -487,9 +486,114 @@ router.put("/auth/change-password", async (req, res) => {
   }
 });
 
-// Create a guest account (no password, synthetic email) so the buyer can
-// place orders & track them without registering. Sequence is monotonic and
-// the email collision is guarded by a retry on the unique index.
+// ---------------------------------------------------------------------------
+// POST /api/auth/forgot-password
+// Issues a one-time reset token. In production, this would be emailed to the
+// user. Here we return the token in the response (admin integration pending).
+// Body: { email }
+// ---------------------------------------------------------------------------
+router.post("/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ error: "validation_error", message: "Email is required" });
+      return;
+    }
+    const [customer] = await db.select().from(customersTable)
+      .where(eq(customersTable.email, email.toLowerCase().trim()))
+      .limit(1);
+
+    // Always respond success to avoid user enumeration
+    if (!customer || customer.isGuest || !customer.passwordHash) {
+      res.json({ success: true, message: "If this email is registered, a reset link has been sent." });
+      return;
+    }
+
+    // Invalidate previous tokens for this customer
+    await db.update(customerPasswordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(customerPasswordResetTokensTable.customerId, customer.id),
+          isNull(customerPasswordResetTokensTable.usedAt)
+        )
+      );
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await db.insert(customerPasswordResetTokensTable).values({
+      customerId: customer.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    req.log.info({ customerId: customer.id }, "Password reset token issued");
+
+    // In production, email the token. For now, return it in response (for frontend/admin use).
+    res.json({
+      success: true,
+      message: "If this email is registered, a reset link has been sent.",
+      // Only expose in non-production; in production this would be emailed
+      ...(process.env.NODE_ENV !== "production" ? { resetToken: rawToken } : {}),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Forgot-password failed");
+    res.status(500).json({ error: "internal_error", message: "Could not process request" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/reset-password
+// Consumes the reset token and sets a new password.
+// Body: { token, newPassword }
+// ---------------------------------------------------------------------------
+router.post("/auth/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      res.status(400).json({ error: "validation_error", message: "token and newPassword are required" });
+      return;
+    }
+    if (String(newPassword).length < 6) {
+      res.status(400).json({ error: "validation_error", message: "Password must be at least 6 characters" });
+      return;
+    }
+    const tokenHash = crypto.createHash("sha256").update(String(token)).digest("hex");
+    const now = new Date();
+
+    const [resetToken] = await db.select().from(customerPasswordResetTokensTable)
+      .where(
+        and(
+          eq(customerPasswordResetTokensTable.tokenHash, tokenHash),
+          isNull(customerPasswordResetTokensTable.usedAt),
+          gt(customerPasswordResetTokensTable.expiresAt, now)
+        )
+      )
+      .limit(1);
+
+    if (!resetToken) {
+      res.status(400).json({ error: "invalid_token", message: "Reset link is invalid or has expired. Please request a new one." });
+      return;
+    }
+
+    const newHash = await hashPasswordArgon2(String(newPassword));
+    await db.update(customersTable)
+      .set({ passwordHash: newHash, updatedAt: now })
+      .where(eq(customersTable.id, resetToken.customerId));
+
+    await db.update(customerPasswordResetTokensTable)
+      .set({ usedAt: now })
+      .where(eq(customerPasswordResetTokensTable.id, resetToken.id));
+
+    res.json({ success: true, message: "Password reset successfully. You can now sign in with your new password." });
+  } catch (err) {
+    req.log.error({ err }, "Reset-password failed");
+    res.status(500).json({ error: "internal_error", message: "Could not reset password" });
+  }
+});
+
 router.post("/auth/guest", async (req, res) => {
   try {
     const { name, phone } = (req.body ?? {}) as { name?: string; phone?: string };
@@ -499,13 +603,6 @@ router.post("/auth/guest", async (req, res) => {
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
       try {
-        // Compute next sequence over ALL rows that ever held a guest_sequence
-        // (including converted accounts, which keep their sequence after
-        // is_guest is flipped to false). This guarantees uniqueness against
-        // the partial unique index on guest_sequence.
-        // Use raw SQL so we can specify NULLS LAST — without it, any
-        // pre-existing customer rows with NULL guest_sequence sort to the
-        // top under DESC and the next-sequence calc collapses to 1.
         const result = await db.execute(
           sql`SELECT MAX(guest_sequence) AS seq FROM customers`,
         );
@@ -516,9 +613,9 @@ router.post("/auth/guest", async (req, res) => {
         const padded = String(nextSeq).padStart(4, "0");
         const username = `guestaccount${padded}`;
         const guestEmail = `${username}@trynex.guest`;
-        // Auto-generated password = username (per guest-account contract)
         const guestPassword = username;
-        const passwordHash = hashPassword(guestPassword);
+        // Guest accounts use SHA-256 (no sensitive data, legacy compat)
+        const passwordHash = hashPasswordSha256(guestPassword, CUSTOMER_SALT);
 
         const [customer] = await db.insert(customersTable).values({
           name: `${safeName} #${padded}`,
@@ -560,7 +657,6 @@ router.post("/auth/guest", async (req, res) => {
         lastErr = err;
         const code = (err as { code?: string } | null)?.code;
         const msg = String((err as { message?: string } | null)?.message ?? "");
-        // Unique violation on email/sequence — retry with a higher sequence
         if (code === "23505" || /duplicate key|unique/i.test(msg)) {
           continue;
         }
@@ -574,8 +670,6 @@ router.post("/auth/guest", async (req, res) => {
   }
 });
 
-// Diagnostic endpoint — returns ONLY booleans so future regressions can be
-// debugged in one curl. Never returns secret values. Safe to expose.
 router.get("/auth/health", async (_req, res) => {
   const googleConfigured = Boolean(await getConfiguredGoogleClientId());
   const jwtSecretPresent = Boolean(process.env.JWT_SECRET);
@@ -590,77 +684,29 @@ router.get("/auth/health", async (_req, res) => {
     const tableCheck = await db.execute(
       sql`SELECT 1 FROM information_schema.tables WHERE table_name = 'customers' LIMIT 1`,
     );
-    customersTableExists = (tableCheck as { rows?: unknown[] }).rows
-      ? ((tableCheck as { rows: unknown[] }).rows.length > 0)
-      : Array.isArray(tableCheck) && tableCheck.length > 0;
+    customersTableExists = (tableCheck as any).rows?.length > 0 || (tableCheck as any).length > 0;
     const colCheck = await db.execute(
       sql`SELECT 1 FROM information_schema.columns WHERE table_name = 'customers' AND column_name = 'guest_sequence' LIMIT 1`,
     );
-    guestSequenceColumnExists = (colCheck as { rows?: unknown[] }).rows
-      ? ((colCheck as { rows: unknown[] }).rows.length > 0)
-      : Array.isArray(colCheck) && colCheck.length > 0;
+    guestSequenceColumnExists = (colCheck as any).rows?.length > 0 || (colCheck as any).length > 0;
   } catch {
-    // dbReachable stays false
+    // ignore
   }
   res.json({
-    google_configured: googleConfigured,
-    jwt_secret_present: jwtSecretPresent,
-    admin_jwt_secret_present: adminJwtSecretPresent,
-    allowed_origins_configured: allowedOriginsConfigured,
-    db_reachable: dbReachable,
-    customers_table_exists: customersTableExists,
-    guest_sequence_column_exists: guestSequenceColumnExists,
-    node_env: process.env.NODE_ENV || "development",
+    ok: dbReachable,
+    googleConfigured,
+    jwtSecretPresent,
+    adminJwtSecretPresent,
+    allowedOriginsConfigured,
+    dbReachable,
+    customersTableExists,
+    guestSequenceColumnExists,
   });
 });
 
-router.post("/auth/logout", (_req, res) => {
-  const isProduction = process.env.NODE_ENV === "production";
-  res.clearCookie("customer_token", {
-    httpOnly: true,
-    sameSite: isProduction ? "none" : "lax",
-    secure: isProduction,
-  });
-  res.json({ success: true });
-});
-
-router.put("/auth/profile", async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace("Bearer ", "") ?? req.cookies?.customer_token;
-    if (!token) {
-      res.status(401).json({ error: "unauthorized", message: "Not authenticated" });
-      return;
-    }
-
-    const decoded = verifyCustomerToken(token);
-    if (!decoded) {
-      res.status(401).json({ error: "unauthorized", message: "Invalid token" });
-      return;
-    }
-
-    const { name, phone } = req.body;
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (name) updates.name = name.trim();
-    if (phone !== undefined) updates.phone = phone?.trim() || null;
-
-    const [customer] = await db.update(customersTable)
-      .set(updates)
-      .where(eq(customersTable.id, decoded.id))
-      .returning();
-
-    res.json({
-      customer: {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone,
-        avatar: customer.avatar,
-      },
-    });
-  } catch (err) {
-    req.log.error({ err }, "Profile update failed");
-    res.status(500).json({ error: "internal_error", message: "Profile update failed" });
-  }
+router.post("/auth/logout", async (req, res) => {
+  res.clearCookie("customer_token");
+  res.json({ success: true, message: "Logged out" });
 });
 
 export default router;
