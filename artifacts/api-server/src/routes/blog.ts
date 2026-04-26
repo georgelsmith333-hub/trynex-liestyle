@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
-import { db, blogPostsTable } from "@workspace/db";
+import { db, blogPostsTable, settingsTable } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin, validateToken } from "../middlewares/adminAuth";
 import { logActivity, getAdminId } from "../lib/activityLog";
 import { z } from "zod";
+
+const DEFAULT_BLOG_CATEGORIES = ["General", "Fashion", "Tips", "News", "Lifestyle"];
 
 // ---------------------------------------------------------------------------
 // Zod schemas for blog mutation endpoints
@@ -37,6 +39,125 @@ function parseBlogBody<T>(schema: z.ZodSchema<T>, body: unknown):
 }
 
 const router: IRouter = Router();
+
+// ---------------------------------------------------------------------------
+// Blog categories helpers (stored in settings table as JSON under "blogCategories")
+// ---------------------------------------------------------------------------
+
+async function getBlogCategories(): Promise<string[]> {
+  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "blogCategories"));
+  if (!row?.value) return DEFAULT_BLOG_CATEGORIES;
+  try {
+    const parsed = JSON.parse(row.value);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_BLOG_CATEGORIES;
+  } catch {
+    return DEFAULT_BLOG_CATEGORIES;
+  }
+}
+
+async function saveBlogCategories(categories: string[]): Promise<void> {
+  const value = JSON.stringify(categories);
+  const [existing] = await db.select().from(settingsTable).where(eq(settingsTable.key, "blogCategories"));
+  if (existing) {
+    await db.update(settingsTable).set({ value, updatedAt: new Date() }).where(eq(settingsTable.key, "blogCategories"));
+  } else {
+    await db.insert(settingsTable).values({ key: "blogCategories", value });
+  }
+}
+
+// GET /blog/categories — public, returns the configured list
+router.get("/blog/categories", async (req, res) => {
+  try {
+    const categories = await getBlogCategories();
+    res.json({ categories });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get blog categories");
+    res.status(500).json({ error: "internal_error", message: "Failed to get blog categories" });
+  }
+});
+
+// POST /blog/categories — admin only, adds a new category
+router.post("/blog/categories", requireAdmin, async (req, res) => {
+  try {
+    const name = String(req.body?.name ?? "").trim();
+    if (!name) {
+      res.status(400).json({ error: "validation_error", message: "Category name is required" });
+      return;
+    }
+    if (name.length > 60) {
+      res.status(400).json({ error: "validation_error", message: "Category name must be 60 characters or fewer" });
+      return;
+    }
+    const categories = await getBlogCategories();
+    if (categories.map(c => c.toLowerCase()).includes(name.toLowerCase())) {
+      res.status(409).json({ error: "conflict", message: "Category already exists" });
+      return;
+    }
+    const updated = [...categories, name];
+    await saveBlogCategories(updated);
+    res.status(201).json({ categories: updated });
+  } catch (err) {
+    req.log.error({ err }, "Failed to add blog category");
+    res.status(500).json({ error: "internal_error", message: "Failed to add blog category" });
+  }
+});
+
+// DELETE /blog/categories/:name — admin only, removes a category
+router.delete("/blog/categories/:name", requireAdmin, async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name ?? "").trim();
+    if (!name) {
+      res.status(400).json({ error: "validation_error", message: "Category name is required" });
+      return;
+    }
+    const categories = await getBlogCategories();
+    const updated = categories.filter(c => c.toLowerCase() !== name.toLowerCase());
+    if (updated.length === categories.length) {
+      res.status(404).json({ error: "not_found", message: "Category not found" });
+      return;
+    }
+    await saveBlogCategories(updated);
+    res.json({ categories: updated });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete blog category");
+    res.status(500).json({ error: "internal_error", message: "Failed to delete blog category" });
+  }
+});
+
+// PUT /blog/categories — admin only, replace entire list (ordered)
+router.put("/blog/categories", requireAdmin, async (req, res) => {
+  try {
+    const rawList = req.body?.categories;
+    if (!Array.isArray(rawList)) {
+      res.status(400).json({ error: "validation_error", message: "categories must be an array" });
+      return;
+    }
+    const seen = new Set<string>();
+    const categories: string[] = [];
+    for (const raw of rawList) {
+      const name = String(raw).trim();
+      if (!name) continue;
+      if (name.length > 60) {
+        res.status(400).json({ error: "validation_error", message: `Category name "${name}" must be 60 characters or fewer` });
+        return;
+      }
+      const key = name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        categories.push(name);
+      }
+    }
+    if (categories.length === 0) {
+      res.status(400).json({ error: "validation_error", message: "categories list cannot be empty" });
+      return;
+    }
+    await saveBlogCategories(categories);
+    res.json({ categories });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update blog categories");
+    res.status(500).json({ error: "internal_error", message: "Failed to update blog categories" });
+  }
+});
 
 // blog_posts table is created at startup by lib/autoSeed.ts
 

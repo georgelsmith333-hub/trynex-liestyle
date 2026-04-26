@@ -25,7 +25,18 @@ interface BlogPost {
   createdAt: string;
 }
 
-const CATEGORIES = ["All", "Gift Ideas", "Custom Apparel", "Business", "Design Tips", "Lifestyle"];
+function useBlogCategories() {
+  return useQuery<{ categories: string[] }>({
+    queryKey: ["/api/blog/categories"],
+    queryFn: async () => {
+      const res = await fetch(getApiUrl("/api/blog/categories"));
+      if (!res.ok) throw new Error("Failed to load categories");
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+    placeholderData: { categories: ["General", "Fashion", "Tips", "News", "Lifestyle"] },
+  });
+}
 
 function useBlogPosts(category: string) {
   return useQuery<{ posts: BlogPost[] }>({
@@ -176,6 +187,8 @@ export default function Blog() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const { data, isLoading } = useBlogPosts(activeCategory);
+  const { data: categoriesData } = useBlogCategories();
+  const CATEGORIES = ["All", ...(categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"])];
 
   const posts = data?.posts ?? [];
 

@@ -48,6 +48,8 @@ const SETTINGS_KEYS = [
   "seoDefaultTitle", "seoDefaultDescription", "seoDefaultKeywords", "seoOgImage", "seoTwitterHandle",
   // Hero typewriter phrases (newline-separated string; blank = use frontend defaults)
   "heroTypewriterPhrases",
+  // Blog categories (JSON array stored as string)
+  "blogCategories",
 ];
 
 // Trim-aware fallback: treats null, undefined, or empty/whitespace-only strings as "missing"

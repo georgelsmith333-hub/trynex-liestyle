@@ -1,9 +1,9 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthHeaders } from "@/lib/utils";
+import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import {
@@ -14,13 +14,11 @@ import {
   type BlogPost as ApiBlogPost,
   type BlogPostInput,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 
 type BlogPost = ApiBlogPost;
 
 const inputClass = "w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all placeholder:text-gray-400 border border-gray-200 bg-white text-gray-900";
-
-const CATEGORIES = ["General", "Fashion", "Tips", "News", "Lifestyle"];
 
 function slugify(str: string): string {
   return str.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").trim();
@@ -32,12 +30,27 @@ const EMPTY_POST: Partial<BlogPost> = {
   category: "General", tags: [], published: false, featured: false,
 };
 
+function useBlogCategories() {
+  return useQuery<{ categories: string[] }>({
+    queryKey: ["/api/blog/categories"],
+    queryFn: async () => {
+      const res = await fetch(getApiUrl("/api/blog/categories"));
+      if (!res.ok) throw new Error("Failed to load categories");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
+
 export default function AdminBlog() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const reqOpts = { request: { headers: getAuthHeaders() } };
   const { data: blogData, isLoading } = useListBlogPosts({ limit: "100" }, reqOpts);
   const posts = blogData?.posts ?? [];
+
+  const { data: categoriesData } = useBlogCategories();
+  const categories = categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"];
 
   const createMutation = useCreateBlogPost();
   const updateMutation = useUpdateBlogPost();
@@ -48,6 +61,52 @@ export default function AdminBlog() {
   const [isSaving, setIsSaving] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isCatManagerOpen, setIsCatManagerOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [catDeleteConfirm, setCatDeleteConfirm] = useState<string | null>(null);
+
+  const addCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(getApiUrl("/api/blog/categories"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? "Failed to add category");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/categories"] });
+      setNewCatName("");
+      toast({ title: "Category added" });
+    },
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch(getApiUrl(`/api/blog/categories/${encodeURIComponent(name)}`), {
+        method: "DELETE",
+        headers: { ...getAuthHeaders() },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? "Failed to delete category");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/categories"] });
+      toast({ title: "Category removed" });
+    },
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+  });
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -83,6 +142,38 @@ export default function AdminBlog() {
   };
 
   const invalidateBlog = () => queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+
+  const handleUploadImage = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const reqRes = await fetch(getApiUrl("/api/storage/uploads/request-url"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!reqRes.ok) {
+        const errData = await reqRes.json().catch(() => ({}));
+        throw new Error(errData.message ?? "Failed to get upload URL");
+      }
+      const { uploadURL, objectPath } = await reqRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error("Upload failed");
+
+      const imageUrl = getApiUrl(`/api/storage/objects${objectPath.replace(/^\/objects/, "")}`);
+      setEditing(prev => ({ ...prev!, imageUrl }));
+      toast({ title: "Image uploaded successfully" });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Upload failed", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async () => {
     if (!editing?.title || !editing?.content) {
@@ -159,13 +250,21 @@ export default function AdminBlog() {
           <h1 className="text-3xl font-black font-display tracking-tighter text-gray-900">Blog Posts</h1>
           <p className="text-gray-400 text-sm mt-1 font-medium">{posts.length} total posts</p>
         </div>
-        <button
-          onClick={() => openEditor()}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white text-sm transition-all hover:scale-105"
-          style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 24px rgba(232,93,4,0.3)" }}
-        >
-          <Plus className="w-4 h-4" /> New Post
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCatManagerOpen(true)}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all hover:scale-105 bg-gray-50 border border-gray-200 text-gray-700"
+          >
+            <Tag className="w-4 h-4" /> Categories
+          </button>
+          <button
+            onClick={() => openEditor()}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white text-sm transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 24px rgba(232,93,4,0.3)" }}
+          >
+            <Plus className="w-4 h-4" /> New Post
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -328,7 +427,7 @@ export default function AdminBlog() {
                       onChange={e => setEditing(prev => ({ ...prev!, category: e.target.value }))}
                       className={inputClass}
                     >
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
@@ -344,16 +443,57 @@ export default function AdminBlog() {
 
                 {/* Cover Image */}
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">Cover Image URL</label>
-                  <input
-                    value={editing.imageUrl || ""}
-                    onChange={e => setEditing(prev => ({ ...prev!, imageUrl: e.target.value }))}
-                    placeholder="https://..."
-                    className={inputClass}
-                  />
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">Cover Image</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      value={editing.imageUrl || ""}
+                      onChange={e => setEditing(prev => ({ ...prev!, imageUrl: e.target.value }))}
+                      placeholder="https://... or upload below"
+                      className={`${inputClass} flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all hover:scale-105 disabled:opacity-50 whitespace-nowrap"
+                      style={{ background: "rgba(232,93,4,0.08)", border: "1px solid rgba(232,93,4,0.2)", color: "#E85D04" }}
+                    >
+                      {isUploading ? (
+                        <span className="animate-spin inline-block">↻</span>
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      {isUploading ? "Uploading..." : "Upload"}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadImage(file);
+                      }}
+                    />
+                  </div>
                   {editing.imageUrl && (
-                    <img src={editing.imageUrl} alt="preview" className="mt-2 h-24 rounded-xl object-cover w-full border border-gray-100" onError={e => (e.currentTarget.style.display = "none")} />
+                    <div className="relative group">
+                      <img
+                        src={editing.imageUrl}
+                        alt="preview"
+                        className="mt-1 h-28 rounded-xl object-cover w-full border border-gray-100"
+                        onError={e => (e.currentTarget.style.display = "none")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditing(prev => ({ ...prev!, imageUrl: "" }))}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   )}
+                  <p className="text-[11px] text-gray-400 mt-1.5">Accepts JPEG, PNG, GIF, WebP · Max 25 MB</p>
                 </div>
 
                 {/* Excerpt */}
@@ -490,6 +630,82 @@ export default function AdminBlog() {
         )}
       </AnimatePresence>
 
+      {/* Categories Manager Modal */}
+      <AnimatePresence>
+        {isCatManagerOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={e => e.target === e.currentTarget && setIsCatManagerOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md rounded-3xl overflow-hidden bg-white"
+              style={{ border: "1px solid #e5e7eb", boxShadow: "0 25px 60px rgba(0,0,0,0.15)" }}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(232,93,4,0.08)", border: "1px solid rgba(232,93,4,0.15)" }}>
+                    <Settings2 className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black font-display text-gray-900">Blog Categories</h2>
+                    <p className="text-xs text-gray-400">Manage the category list</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsCatManagerOpen(false)} className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {categories.map(cat => (
+                    <div
+                      key={cat}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50 border border-gray-100"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">{cat}</span>
+                      <button
+                        onClick={() => setCatDeleteConfirm(cat)}
+                        disabled={deleteCategoryMutation.isPending}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Remove category"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  <input
+                    value={newCatName}
+                    onChange={e => setNewCatName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && newCatName.trim() && addCategoryMutation.mutate(newCatName.trim())}
+                    placeholder="New category name..."
+                    className={`${inputClass} flex-1`}
+                    maxLength={60}
+                  />
+                  <button
+                    onClick={() => newCatName.trim() && addCategoryMutation.mutate(newCatName.trim())}
+                    disabled={!newCatName.trim() || addCategoryMutation.isPending}
+                    className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-all hover:scale-105"
+                    style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <ConfirmDialog
         open={deleteConfirm !== null}
         title="Delete this blog post?"
@@ -502,6 +718,20 @@ export default function AdminBlog() {
           }
         }}
         onCancel={() => setDeleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        open={catDeleteConfirm !== null}
+        title={`Remove "${catDeleteConfirm}" category?`}
+        description="Posts in this category will keep their existing category label, but the category won't appear in the dropdown going forward."
+        confirmText="Remove"
+        onConfirm={() => {
+          if (catDeleteConfirm) {
+            deleteCategoryMutation.mutate(catDeleteConfirm);
+            setCatDeleteConfirm(null);
+          }
+        }}
+        onCancel={() => setCatDeleteConfirm(null)}
       />
     </AdminLayout>
   );
