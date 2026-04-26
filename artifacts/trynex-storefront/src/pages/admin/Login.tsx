@@ -16,6 +16,8 @@ export default function AdminLogin() {
   const [totpCode, setTotpCode] = useState("");
   const [partialToken, setPartialToken] = useState("");
   const [resetKey, setResetKey] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showReset, setShowReset] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -107,11 +109,21 @@ export default function AdminLogin() {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+    if (newPassword.length < 12) {
+      setErrorMsg("New password must be at least 12 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErrorMsg("Passwords do not match. Please re-enter.");
+      return;
+    }
     setIsPending(true);
     try {
-      const data = await apiPost("/admin/reset-password", { resetKey });
-      setSuccessMsg(data.message || "Password reset successfully. You can now log in.");
+      const data = await apiPost("/admin/reset-password", { resetKey, newPassword });
+      setSuccessMsg(data.message || "Password reset successfully. You can now log in with your new password.");
       setResetKey("");
+      setNewPassword("");
+      setConfirmPassword("");
       setStep("password");
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
@@ -304,7 +316,7 @@ export default function AdminLogin() {
                 className="space-y-4"
               >
                 <p className="text-sm text-gray-500 text-center mb-2">
-                  Enter the master reset key to restore admin access. This also disables 2FA.
+                  Enter the master reset key and a new admin password. This also disables 2FA and revokes all sessions.
                 </p>
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Master Reset Key</label>
@@ -318,10 +330,35 @@ export default function AdminLogin() {
                     className="w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">New Password <span className="text-orange-400">(min 12 chars)</span></label>
+                  <input
+                    required
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Set new admin password"
+                    autoComplete="new-password"
+                    minLength={12}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-2">Confirm New Password</label>
+                  <input
+                    required
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    autoComplete="new-password"
+                    className="w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400"
+                  />
+                </div>
 
                 <button
                   type="submit"
-                  disabled={isPending || !resetKey}
+                  disabled={isPending || !resetKey || !newPassword || !confirmPassword}
                   className="w-full py-4 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 24px rgba(232,93,4,0.3)" }}
                 >
@@ -331,7 +368,7 @@ export default function AdminLogin() {
 
                 <button
                   type="button"
-                  onClick={() => { setStep("password"); setErrorMsg(""); setResetKey(""); }}
+                  onClick={() => { setStep("password"); setErrorMsg(""); setResetKey(""); setNewPassword(""); setConfirmPassword(""); }}
                   className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-1 flex items-center justify-center gap-1"
                 >
                   <ArrowLeft className="w-3 h-3" /> Back to login
