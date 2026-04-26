@@ -17,7 +17,13 @@ export type ProductType =
   | "white-longsleeve"
   | "white-waterbottle";
 
-export type Face = "front" | "back";
+/** All possible design zones — front/back are garment views; sleeve/neck are flat templates. */
+export type Face =
+  | "front"
+  | "back"
+  | "left-sleeve"
+  | "right-sleeve"
+  | "neck-label";
 
 export interface PrintZone { x: number; y: number; w: number; h: number }
 
@@ -37,14 +43,16 @@ export interface DesignProduct {
   backSrc?: string;
 }
 
-/* ── Per-category print zones ─────────────────────────
+/* ── Per-zone print zones ─────────────────────────────────
    All in the unified 1000×1000 viewBox.
-   Mug has three zones:
-     MUG_SIDE_PZ — single-side editing (left side or right side)
-     MUG_PZ      — full 360° wrap editing (wider zone)
-   For the left-side 2D view the mug image is shown normally (handle right).
-   For the right-side 2D view the mug image is flipped horizontally so the
-   handle appears on the left and the print zone covers the correct area.
+   Garment zones:
+     TSHIRT_PZ / LONGSLEEVE_PZ / HOODIE_PZ / CAP_PZ — front/back
+   Flat-template zones (no garment image):
+     SLEEVE_PZ    — left-sleeve and right-sleeve
+     NECK_LABEL_PZ — neck-label
+   Mug zones:
+     MUG_SIDE_PZ — single-side editing
+     MUG_PZ      — full 360° wrap
 ──────────────────────────────────────────────────────── */
 export const TSHIRT_PZ: PrintZone        = { x: 320, y: 270, w: 360, h: 430 };
 export const LONGSLEEVE_PZ: PrintZone    = { x: 330, y: 285, w: 340, h: 410 };
@@ -53,8 +61,61 @@ export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
 export const MUG_PZ: PrintZone           = { x: 150, y: 180, w: 700, h: 640 };
 export const MUG_SIDE_PZ: PrintZone      = { x: 185, y: 205, w: 430, h: 570 };
 export const WATERBOTTLE_PZ: PrintZone   = { x: 358, y: 345, w: 284, h: 420 };
+/** Sleeve print area — roughly square (1228×1087px real-world ratio). */
+export const SLEEVE_PZ: PrintZone        = { x: 175, y: 175, w: 650, h: 650 };
+/** Neck label — wider than tall (1299×945px real-world ratio). */
+export const NECK_LABEL_PZ: PrintZone    = { x: 150, y: 265, w: 700, h: 470 };
 
 export const WATERBOTTLE_MOCKUP_URL = "/mockups/white-waterbottle-front.png";
+
+/* ── Zone configuration ─────────────────────────────────── */
+export interface ApparelZone {
+  face: Face;
+  label: string;
+  shortLabel: string;
+  /** Indicative print resolution dimensions shown to the designer. */
+  pxDimensions: string;
+  pz: PrintZone;
+  /** Whether this zone uses a flat-template canvas (no garment photo). */
+  isFlat: boolean;
+}
+
+const FRONT_BACK_DIMS = "4606 × 5787 px";
+const SLEEVE_DIMS = "1228 × 1087 px";
+const NECK_DIMS = "1299 × 945 px";
+
+/** Returns the ordered print zones for a given product category. */
+export function getApparelZones(
+  category: DesignProduct["category"],
+  productPZ?: PrintZone,
+): ApparelZone[] {
+  const frontPZ = productPZ ?? TSHIRT_PZ;
+  switch (category) {
+    case "tshirt":
+    case "longsleeve":
+    case "hoodie":
+      return [
+        { face: "front",       label: "Front",       shortLabel: "Front",    pxDimensions: FRONT_BACK_DIMS, pz: frontPZ,       isFlat: false },
+        { face: "back",        label: "Back",        shortLabel: "Back",     pxDimensions: FRONT_BACK_DIMS, pz: frontPZ,       isFlat: false },
+        { face: "left-sleeve", label: "Left Sleeve", shortLabel: "L.Sleeve", pxDimensions: SLEEVE_DIMS,     pz: SLEEVE_PZ,     isFlat: true },
+        { face: "right-sleeve",label: "Right Sleeve",shortLabel: "R.Sleeve", pxDimensions: SLEEVE_DIMS,     pz: SLEEVE_PZ,     isFlat: true },
+        { face: "neck-label",  label: "Neck Label",  shortLabel: "Neck",     pxDimensions: NECK_DIMS,       pz: NECK_LABEL_PZ, isFlat: true },
+      ];
+    default:
+      return [
+        { face: "front", label: "Front", shortLabel: "Front", pxDimensions: FRONT_BACK_DIMS, pz: frontPZ, isFlat: false },
+      ];
+  }
+}
+
+/** Get the print zone for a given face and product (used by DesignStudio). */
+export function getZonePZ(face: Face, product: DesignProduct): PrintZone {
+  if (product.category === "mug") return MUG_SIDE_PZ;
+  if (face === "left-sleeve" || face === "right-sleeve") return SLEEVE_PZ;
+  if (face === "neck-label") return NECK_LABEL_PZ;
+  if (face === "back" && product.printZoneBack) return product.printZoneBack;
+  return product.printZone;
+}
 
 const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
@@ -95,9 +156,7 @@ export const PRODUCTS: DesignProduct[] = [
    • Left Side (face="front"): normal image, handle visible on right.
    • Right Side (face="back") : image flipped horizontally so handle
      appears on the left — this represents the opposite side of the mug
-     as seen from outside.  The print-zone rect is drawn in the same
-     SVG coordinate space (before the flip transform) so it sits in the
-     correct mirrored position automatically.
+     as seen from outside.
 ════════════════════════════════════════════════════════ */
 
 export const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
@@ -132,7 +191,6 @@ export function GarmentSVG({
   color?: string;
   showPrintZone: boolean;
   face?: Face;
-  /** For mug: "side1" | "side2" | "wrap" — drives the correct image/PZ. */
   mugMode?: "side1" | "side2" | "wrap";
 }) {
   const isMug = product.category === "mug";
@@ -173,10 +231,6 @@ export function GarmentSVG({
       )}
 
       {isMugRightSide ? (
-        /* Right side: horizontally flip the mug image so the handle appears
-           on the LEFT — simulating a view of the opposite side of the mug.
-           The flip is applied only to the image; the print-zone rect is drawn
-           OUTSIDE the flip group so it shows at the correct mirrored position. */
         <g transform="translate(1000,0) scale(-1,1)">
           <image
             href={src}
@@ -215,6 +269,146 @@ export function GarmentSVG({
             style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
           >
             {isMug && mugMode === "wrap" ? "Full Wrap Area" : "Print Area"}
+          </text>
+        </g>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLAT ZONE RENDERER — used for sleeve and neck-label zones
+   where no garment photo is needed. Renders a professional
+   flat canvas / artboard view with the print zone outlined.
+════════════════════════════════════════════════════════ */
+export function FlatZoneSVG({
+  zone,
+  showPrintZone,
+}: {
+  zone: ApparelZone;
+  showPrintZone: boolean;
+}) {
+  const { pz, label, pxDimensions } = zone;
+  const cx = pz.x + pz.w / 2;
+
+  const isNeck = zone.face === "neck-label";
+  const isLeftSleeve = zone.face === "left-sleeve";
+
+  return (
+    <>
+      <defs>
+        <pattern id="flat-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="rgba(0,0,0,0.06)" />
+        </pattern>
+        <filter id="flat-shadow">
+          <feDropShadow dx="0" dy="3" stdDeviation="8" floodColor="rgba(0,0,0,0.10)" />
+        </filter>
+      </defs>
+
+      {/* Background */}
+      <rect width={1000} height={1000} fill="#EDEAE5" />
+      <rect width={1000} height={1000} fill="url(#flat-dots)" />
+
+      {/* White artboard */}
+      <rect x={60} y={60} width={880} height={880} rx={12} fill="white" filter="url(#flat-shadow)" />
+
+      {/* Zone label above artboard */}
+      <text
+        x={500} y={44}
+        textAnchor="middle" fontSize={22} fontWeight={800}
+        fill="#6b7280"
+        style={{ fontFamily: "system-ui, -apple-system, sans-serif", letterSpacing: "0.04em", textTransform: "uppercase" }}
+      >
+        {label.toUpperCase()}
+      </text>
+
+      {/* Garment zone diagram — mini silhouette showing where this zone lives */}
+      {isNeck ? (
+        /* Neck label indicator: collar icon */
+        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
+          <path d="M -38 0 Q -28 -30 0 -30 Q 28 -30 38 0 Q 24 10 0 10 Q -24 10 -38 0 Z"
+            fill="none" stroke="#E85D04" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M -12 -30 Q 0 -42 12 -30"
+            fill="none" stroke="#E85D04" strokeWidth="2.5" strokeLinecap="round" />
+          <text y={30} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+            style={{ fontFamily: "system-ui" }}>
+            inside collar
+          </text>
+        </g>
+      ) : isLeftSleeve ? (
+        /* Left sleeve indicator */
+        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
+          <rect x={-45} y={-28} width={30} height={56} rx={6} fill="none" stroke="#E85D04" strokeWidth={2.5} />
+          <rect x={-15} y={-28} width={60} height={56} rx={4} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
+          <text y={46} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+            style={{ fontFamily: "system-ui" }}>
+            left sleeve
+          </text>
+        </g>
+      ) : (
+        /* Right sleeve indicator */
+        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
+          <rect x={15} y={-28} width={30} height={56} rx={6} fill="none" stroke="#E85D04" strokeWidth={2.5} />
+          <rect x={-45} y={-28} width={60} height={56} rx={4} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
+          <text y={46} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+            style={{ fontFamily: "system-ui" }}>
+            right sleeve
+          </text>
+        </g>
+      )}
+
+      {/* Print zone border */}
+      {showPrintZone && (
+        <g style={{ pointerEvents: "none" }}>
+          {/* Subtle fill to indicate printable area */}
+          <rect
+            x={pz.x} y={pz.y} width={pz.w} height={pz.h}
+            fill="rgba(232,93,4,0.04)"
+            rx={6}
+          />
+          <rect
+            x={pz.x} y={pz.y} width={pz.w} height={pz.h}
+            fill="none"
+            stroke="rgba(232,93,4,0.65)"
+            strokeWidth={2.5}
+            strokeDasharray="9 6"
+            rx={6}
+          />
+          {/* Corner registration marks */}
+          {[
+            [pz.x, pz.y],
+            [pz.x + pz.w, pz.y],
+            [pz.x, pz.y + pz.h],
+            [pz.x + pz.w, pz.y + pz.h],
+          ].map(([cx2, cy2], i) => {
+            const dx = i % 2 === 0 ? 1 : -1;
+            const dy = i < 2 ? 1 : -1;
+            return (
+              <g key={i} style={{ pointerEvents: "none" }}>
+                <line x1={cx2 + dx * 6} y1={cy2} x2={cx2 + dx * 22} y2={cy2}
+                  stroke="rgba(232,93,4,0.4)" strokeWidth={1.5} />
+                <line x1={cx2} y1={cy2 + dy * 6} x2={cx2} y2={cy2 + dy * 22}
+                  stroke="rgba(232,93,4,0.4)" strokeWidth={1.5} />
+              </g>
+            );
+          })}
+          {/* Zone name */}
+          <text
+            x={cx} y={pz.y - 14}
+            textAnchor="middle" fontSize={16} fontWeight={700}
+            fill="rgba(232,93,4,0.85)"
+            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+          >
+            Print Area
+          </text>
+          {/* Pixel dimensions */}
+          <text
+            x={cx} y={pz.y + pz.h + 26}
+            textAnchor="middle" fontSize={13} fontWeight={600}
+            fill="rgba(107,114,128,0.75)"
+            style={{ fontFamily: "ui-monospace, monospace" }}
+          >
+            {pxDimensions}
           </text>
         </g>
       )}

@@ -22,8 +22,9 @@ import {
   Box, Image as Image2D,
 } from "lucide-react";
 import {
-  PRODUCTS, type DesignProduct, GarmentSVG,
+  PRODUCTS, type DesignProduct, GarmentSVG, FlatZoneSVG,
   STICKERS, BASE_BY_CATEGORY, MUG_SIDE_PZ, MUG_PZ,
+  getApparelZones, getZonePZ, type ApparelZone,
 } from "./design-studio/mockups";
 import { composeLayers, composeGarmentMockup, composeDesignTexture, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
 
@@ -37,7 +38,7 @@ const ProductViewer3D = lazy(() => import("./design-studio/ProductViewer3D"));
 interface Transform { x: number; y: number; scale: number; rotation: number; opacity: number }
 const ZERO_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 
-type Face = "front" | "back";
+type Face = "front" | "back" | "left-sleeve" | "right-sleeve" | "neck-label";
 interface BaseLayer { id: string; name: string; visible: boolean; locked: boolean; transform: Transform; face?: Face }
 interface ImageLayer extends BaseLayer { type: "image"; src: string; naturalW: number; naturalH: number }
 interface TextLayer extends BaseLayer {
@@ -194,12 +195,6 @@ export default function DesignStudio() {
   // for Side 2 / Wrap, but the *apparel* Front/Back UI must stay hidden for it.
   const supportsBack = useMemo(
     () => ["tshirt", "longsleeve", "hoodie", "mug"].includes(selectedProduct.category),
-    [selectedProduct.category]
-  );
-
-  // Apparel Front/Back tab UI: only for tee/longsleeve/hoodie (not mug)
-  const showFaceTabs = useMemo(
-    () => ["tshirt", "longsleeve", "hoodie"].includes(selectedProduct.category),
     [selectedProduct.category]
   );
 
@@ -412,16 +407,15 @@ export default function DesignStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputAddRef = useRef<HTMLInputElement>(null);
 
-  // Print zone is face-aware: products may have a different rectangle for the back panel.
-  // For mugs: use MUG_PZ (full wrap zone) in wrap mode, MUG_SIDE_PZ for left/right sides.
-  // For all other products: same zone for front and back (printZoneBack is deprecated).
+  // Print zone is face/zone-aware.
+  // Mug: MUG_PZ in wrap mode, MUG_SIDE_PZ for sides.
+  // Apparel sleeve/neck zones: use getZonePZ which returns SLEEVE_PZ or NECK_LABEL_PZ.
+  // Apparel front/back: product's own printZone.
   const pz = useMemo(() => {
     if (isMugProduct) {
       return mugMode === "wrap" ? MUG_PZ : MUG_SIDE_PZ;
     }
-    return (activeFace === "back" && selectedProduct.printZoneBack)
-      ? selectedProduct.printZoneBack
-      : selectedProduct.printZone;
+    return getZonePZ(activeFace, selectedProduct);
   }, [isMugProduct, mugMode, activeFace, selectedProduct]);
   const pzRef = useRef(pz);
   useEffect(() => { pzRef.current = pz; }, [pz]);
@@ -436,8 +430,27 @@ export default function DesignStudio() {
   const isMug = selectedProduct.category === "mug";
   const isCap = selectedProduct.category === "cap";
   const isWaterBottle = selectedProduct.category === "waterbottle";
-  // Water bottle has no 3D GLB model — fall back to 2D flat preview only.
-  const effectiveSupports3D = supports3D && !isWaterBottle;
+
+  /** Zones list for apparel (tshirt/longsleeve/hoodie) — 5 tabs. */
+  const apparelZones = useMemo(
+    () => getApparelZones(selectedProduct.category, selectedProduct.printZone),
+    [selectedProduct.category, selectedProduct.printZone]
+  );
+  /** True when the product supports the multi-zone tab bar. */
+  const isZoneTabs = useMemo(
+    () => ["tshirt", "longsleeve", "hoodie"].includes(selectedProduct.category),
+    [selectedProduct.category]
+  );
+  /** True when the active zone is a flat template (sleeve / neck-label). */
+  const isFlatZone = activeFace === "left-sleeve" || activeFace === "right-sleeve" || activeFace === "neck-label";
+  /** Config of the currently active apparel zone. */
+  const activeZoneConfig = useMemo(
+    () => apparelZones.find(z => z.face === activeFace) ?? apparelZones[0],
+    [apparelZones, activeFace]
+  );
+
+  // Water bottle has no 3D GLB model, and flat zones (sleeve/neck) don't have 3D.
+  const effectiveSupports3D = supports3D && !isWaterBottle && !isFlatZone;
 
   /* ── Cap dark-color mockup override ─────────────────
      The cap has no transparent-bg cutout PNG, so the
@@ -903,10 +916,13 @@ export default function DesignStudio() {
     }
     setIsAddingToCart(true);
     try {
-      const frontPZ = isMugProduct ? MUG_SIDE_PZ : selectedProduct.printZone;
-      const backPZ  = isMugProduct ? MUG_SIDE_PZ : (selectedProduct.printZoneBack ?? selectedProduct.printZone);
-      const frontLayers = layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[];
-      const backLayers  = layers.filter(l => (l.face ?? "front") === "back")  as unknown as ComposerLayer[];
+      const frontPZ         = isMugProduct ? MUG_SIDE_PZ : selectedProduct.printZone;
+      const backPZ          = isMugProduct ? MUG_SIDE_PZ : (selectedProduct.printZoneBack ?? selectedProduct.printZone);
+      const frontLayers     = layers.filter(l => (l.face ?? "front") === "front")        as unknown as ComposerLayer[];
+      const backLayers      = layers.filter(l => (l.face ?? "front") === "back")         as unknown as ComposerLayer[];
+      const leftSleeveLayers = layers.filter(l => l.face === "left-sleeve")              as unknown as ComposerLayer[];
+      const rightSleeveLayers = layers.filter(l => l.face === "right-sleeve")            as unknown as ComposerLayer[];
+      const neckLabelLayers  = layers.filter(l => l.face === "neck-label")               as unknown as ComposerLayer[];
       const imageCache  = new Map<string, HTMLImageElement>();
 
       // 0. Upload ORIGINAL full-resolution image layers to object storage
@@ -1021,6 +1037,29 @@ export default function DesignStudio() {
         backTexUrl = backTexCanvas.toDataURL("image/webp", 0.85);
       }
 
+      // 4. Sleeve & neck-label design textures (apparel with flat zones)
+      let leftSleeveTexUrl: string | undefined;
+      let rightSleeveTexUrl: string | undefined;
+      let neckLabelTexUrl: string | undefined;
+      if (isZoneTabs) {
+        const { SLEEVE_PZ, NECK_LABEL_PZ } = await import("./design-studio/mockups");
+        if (leftSleeveLayers.length > 0) {
+          const c = document.createElement("canvas");
+          await composeDesignTexture({ canvas: c, printZone: SLEEVE_PZ, layers: leftSleeveLayers, outSize: 1024, imageCache });
+          leftSleeveTexUrl = c.toDataURL("image/webp", 0.85);
+        }
+        if (rightSleeveLayers.length > 0) {
+          const c = document.createElement("canvas");
+          await composeDesignTexture({ canvas: c, printZone: SLEEVE_PZ, layers: rightSleeveLayers, outSize: 1024, imageCache });
+          rightSleeveTexUrl = c.toDataURL("image/webp", 0.85);
+        }
+        if (neckLabelLayers.length > 0) {
+          const c = document.createElement("canvas");
+          await composeDesignTexture({ canvas: c, printZone: NECK_LABEL_PZ, layers: neckLabelLayers, outSize: 1024, imageCache });
+          neckLabelTexUrl = c.toDataURL("image/webp", 0.85);
+        }
+      }
+
       const displayPrice = studioPrice;
 
       // Save full session for cart re-edit — MUST match the studio's
@@ -1046,7 +1085,13 @@ export default function DesignStudio() {
         size: isMug || isCap || isWaterBottle ? undefined : selectedSize,
         color: selectedColor.name,
         imageUrl: mockupUrl,
-        customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
+        customImages: [
+          frontTexUrl,
+          ...(backTexUrl ? [backTexUrl] : []),
+          ...(leftSleeveTexUrl ? [leftSleeveTexUrl] : []),
+          ...(rightSleeveTexUrl ? [rightSleeveTexUrl] : []),
+          ...(neckLabelTexUrl ? [neckLabelTexUrl] : []),
+        ],
         originalAssetUrls,
         originalAssets,
         customNote: JSON.stringify({
@@ -1060,13 +1105,14 @@ export default function DesignStudio() {
           layerCount: layers.length,
           frontLayerCount: frontLayers.length,
           backLayerCount: backLayers.length,
+          leftSleeveLayerCount: leftSleeveLayers.length,
+          rightSleeveLayerCount: rightSleeveLayers.length,
+          neckLabelLayerCount: neckLabelLayers.length,
           // Garment provenance — used by useCartItemPreview fallback composer
           mockupSrc: garmentSrc,
           printZone: frontPZ,
           printZoneBack: selectedProduct.printZoneBack ?? null,
           // Print-ready originals — admin downloads these to fulfill the order.
-          // originalAssets has full metadata (filename, mime, bytes, dimensions).
-          // originalAssetUrls is kept for backward compatibility.
           originalAssets,
           originalAssetUrls,
         }),
@@ -1081,7 +1127,7 @@ export default function DesignStudio() {
     } finally {
       setIsAddingToCart(false);
     }
-  }, [layers, selectedProduct, displayProduct, selectedColor, selectedSize, quantity, isMug, isCap, isWaterBottle, studioPrice, pz, addToCart, toast, navigate, settings]);
+  }, [layers, selectedProduct, displayProduct, selectedColor, selectedSize, quantity, isMug, isCap, isWaterBottle, isZoneTabs, studioPrice, pz, addToCart, toast, navigate, settings]);
 
   /* ── Studio color palette — per product category ───── */
   const parseColors = (raw: string) => {
@@ -1203,7 +1249,7 @@ export default function DesignStudio() {
               <span className="text-gray-400"> · {
                 isMugProduct
                   ? (mugMode === "side1" ? "Left Side" : mugMode === "side2" ? "Right Side" : "Full Wrap")
-                  : (activeFace === "front" ? "Front" : "Back")
+                  : (activeZoneConfig?.label ?? activeFace)
               }</span>
             </p>
           </div>
@@ -1369,36 +1415,58 @@ export default function DesignStudio() {
               ))}
             </div>
 
-            {/* Face switcher — hidden in 3D mode (the orbit camera lets the
-                user see every angle, so a Front/Back tab is redundant + confusing).
-                Apparel: shows "Front / Back" tabs.
-                Mug:     shows "Side 1 / Side 2 / Wrap (full body)" — never Front/Back. */}
-            {showFaceTabs && viewMode === "2d" && (
-              <div className="flex gap-1.5 mb-3" data-testid="face-switcher">
-                {(["front", "back"] as const).map(f => (
-                  <button key={f}
-                    onClick={() => setActiveFace(f)}
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      background: activeFace === f ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
-                      color: activeFace === f ? "white" : "#374151",
-                      border: activeFace === f ? "none" : "1.5px solid #e5e7eb",
-                      boxShadow: activeFace === f ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
-                    }}
-                    data-testid={`face-${f}`}
-                  >
-                    {f === "front" ? "Front" : "Back"}
-                  </button>
-                ))}
-                {otherFaceCount > 0 && (
-                  <span className="px-3 py-2 text-[11px] font-bold text-gray-500" style={{ background: "#f3f4f6", borderRadius: 12 }}>
-                    {otherFaceCount} layer{otherFaceCount !== 1 ? "s" : ""} on the {activeFace === "front" ? "back" : "front"}
-                  </span>
+            {/* Zone switcher — hidden in 3D mode.
+                Apparel (tshirt/longsleeve/hoodie): shows 5 zone tabs (Front, Back,
+                Left Sleeve, Right Sleeve, Neck Label) in a horizontally scrollable row.
+                Mug: shows Side 1 / Side 2 / Full Wrap (handled separately below). */}
+            {isZoneTabs && viewMode === "2d" && (
+              <div className="mb-3" data-testid="zone-switcher">
+                {/* Scrollable zone tab row */}
+                <div
+                  className="flex gap-1.5 overflow-x-auto pb-1"
+                  style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+                >
+                  {apparelZones.map(zone => {
+                    const isActive = activeFace === zone.face;
+                    const zoneLayerCount = layers.filter(l => (l.face ?? "front") === zone.face).length;
+                    return (
+                      <button
+                        key={zone.face}
+                        onClick={() => setActiveFace(zone.face)}
+                        className="relative shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
+                        style={{
+                          background: isActive ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
+                          color: isActive ? "white" : "#374151",
+                          border: isActive ? "none" : "1.5px solid #e5e7eb",
+                          boxShadow: isActive ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
+                        }}
+                        data-testid={`zone-${zone.face}`}
+                        title={zone.label}
+                      >
+                        {zone.shortLabel}
+                        {/* Layer badge */}
+                        {zoneLayerCount > 0 && !isActive && (
+                          <span
+                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                            style={{ background: "#E85D04", boxShadow: "0 1px 4px rgba(232,93,4,0.4)" }}
+                          >
+                            {zoneLayerCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Dimensions hint for flat zones */}
+                {isFlatZone && activeZoneConfig && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Ruler className="w-3 h-3 text-gray-400 shrink-0" />
+                    <span className="text-[10px] font-semibold text-gray-400">
+                      Print area: {activeZoneConfig.pxDimensions}
+                    </span>
+                  </div>
                 )}
-                {/* Quick action: copy whatever is on the front to the back so the
-                    user doesn't have to rebuild the design twice. Only shown
-                    while viewing the back face and only when the back is empty
-                    AND the front has at least one layer. */}
+                {/* Copy front → back helper */}
                 {activeFace === "back" && currentFaceLayers.length === 0 && (() => {
                   const frontLayers = layers.filter(l => (l.face ?? "front") === "front");
                   if (frontLayers.length === 0) return null;
@@ -1409,11 +1477,11 @@ export default function DesignStudio() {
                         const cloned = frontLayers.map(l => ({
                           ...l,
                           id: `${l.id}-back-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                          face: "back" as const,
+                          face: "back" as Face,
                         }));
                         commitLayers([...layers, ...cloned]);
                       }}
-                      className="px-3 py-2 text-[11px] font-bold rounded-xl transition-all"
+                      className="mt-1.5 px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all"
                       style={{
                         background: "linear-gradient(135deg,#E85D04,#F48C06)",
                         color: "white",
@@ -1536,7 +1604,7 @@ export default function DesignStudio() {
                 {/* Floating face label inside the canvas — gives a clear, premium
                     "you are looking at the FRONT" indicator and animates between
                     faces. Doesn't affect interaction (pointer-events: none). */}
-                {supportsBack && (
+                {(supportsBack || isZoneTabs) && (
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={isMugProduct ? mugMode : activeFace}
@@ -1549,7 +1617,7 @@ export default function DesignStudio() {
                     >
                       {isMugProduct
                         ? (mugMode === "side1" ? "Left Side" : mugMode === "side2" ? "Right Side" : "Full Wrap")
-                        : (activeFace === "front" ? "Front" : "Back")}
+                        : (activeZoneConfig?.label ?? (activeFace === "front" ? "Front" : "Back"))}
                     </motion.div>
                   </AnimatePresence>
                 )}
@@ -1566,7 +1634,10 @@ export default function DesignStudio() {
                   transition={{ duration: 0.18, ease: "easeInOut" }}
                   {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
-                  <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} mugMode={isMugProduct ? mugMode : undefined} />
+                  {isFlatZone && activeZoneConfig
+                    ? <FlatZoneSVG zone={activeZoneConfig} showPrintZone={effectiveShowPrintZone} />
+                    : <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} mugMode={isMugProduct ? mugMode : undefined} />
+                  }
 
                   {/* Layers (clipped to print zone) */}
                   <defs>
