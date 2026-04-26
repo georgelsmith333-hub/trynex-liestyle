@@ -24,43 +24,34 @@ export interface PrintZone { x: number; y: number; w: number; h: number }
 export interface DesignProduct {
   id: ProductType;
   name: string;
-  /** Emoji or single Unicode character shown in the product tab */
   icon: string;
   category: "tshirt" | "mug" | "hoodie" | "cap" | "longsleeve" | "waterbottle";
   garmentColor: string;
   description: string;
-  /** viewBox string — unified 1000×1000 coordinate space */
   viewBox: string;
-  /** aspect ratio of viewBox (width/height) */
   aspect: number;
-  /** print zone for the front face */
   printZone: PrintZone;
-  /** optional separate print zone for back; falls back to front */
   printZoneBack?: PrintZone;
-  /** base canvas height (used for snapshot composition) */
   baseHeight: number;
-  /** front-face mockup image (relative to /public) */
   frontSrc: string;
-  /** back-face mockup image; absent for products without a back (cap, mug) */
   backSrc?: string;
 }
 
-// Print zones — UNIFIED per garment so flipping front↔back keeps the same
-// design at the same apparent size and position. Each garment uses ONE
-// zone for both faces; the front-only fields below are the source of
-// truth and `printZoneBack` is no longer set per product.
-//
-// Sizes were averaged from the previous front/back values and re-centred
-// so a 200×200 logo lands in the same spot on both sides.
-//   tshirt        →  360 × 430   (was 350×400 / 370×460)
-//   longsleeve    →  340 × 410   (was 330×380 / 350×440)
-//   hoodie        →  330 × 380   (was 310×320 / 350×440 — chest pocket aware)
-// Coordinates live in the unified 1000×1000 viewBox.
+/* ── Per-category print zones ─────────────────────────
+   All in the unified 1000×1000 viewBox.
+   Mug has three zones:
+     MUG_SIDE_PZ — single-side editing (left side or right side)
+     MUG_PZ      — full 360° wrap editing (wider zone)
+   For the left-side 2D view the mug image is shown normally (handle right).
+   For the right-side 2D view the mug image is flipped horizontally so the
+   handle appears on the left and the print zone covers the correct area.
+──────────────────────────────────────────────────────── */
 export const TSHIRT_PZ: PrintZone        = { x: 320, y: 270, w: 360, h: 430 };
 export const LONGSLEEVE_PZ: PrintZone    = { x: 330, y: 285, w: 340, h: 410 };
 export const HOODIE_PZ: PrintZone        = { x: 335, y: 305, w: 330, h: 380 };
 export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
 export const MUG_PZ: PrintZone           = { x: 150, y: 180, w: 700, h: 640 };
+export const MUG_SIDE_PZ: PrintZone      = { x: 185, y: 205, w: 430, h: 570 };
 export const WATERBOTTLE_PZ: PrintZone   = { x: 358, y: 345, w: 284, h: 420 };
 
 export const WATERBOTTLE_MOCKUP_URL = "/mockups/white-waterbottle-front.png";
@@ -69,7 +60,6 @@ const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
 const BASE = 1000;
 
-// Tab order (per spec): t-shirt → mug → long sleeve → cap → hoodie → water bottle
 export const PRODUCTS: DesignProduct[] = [
   { id: "white-tshirt",     name: "Unisex T-Shirt",    icon: "👕", category: "tshirt",     garmentColor: "#F5F5F3",
     description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
@@ -77,7 +67,7 @@ export const PRODUCTS: DesignProduct[] = [
     frontSrc: "/mockups/white-tshirt-front.png", backSrc: "/mockups/white-tshirt-back.png" },
   { id: "white-mug",        name: "Coffee Mug",        icon: "☕", category: "mug",        garmentColor: "#F5F5F5",
     description: "11oz Ceramic · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: MUG_PZ,
+    printZone: MUG_SIDE_PZ,
     frontSrc: "/mockups/white-mug-front.png" },
   { id: "white-longsleeve", name: "Unisex Long Sleeve", icon: "👔", category: "longsleeve", garmentColor: "#F5F5F3",
     description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
@@ -100,32 +90,25 @@ export const PRODUCTS: DesignProduct[] = [
 /* ═══════════════════════════════════════════════════════
    GARMENT RENDERER — embeds the mockup PNG inside the
    parent <svg viewBox="0 0 1000 1000"> as an SVG <image>.
-   For tintable categories (tshirt / longsleeve / hoodie / mug)
-   we always render the WHITE base photo and multiply-tint it
-   with the selected garment color so all 11 colour swatches
-   work on a single, consistently-framed mockup. Caps and the
-   black-only variants without a white counterpart fall back
-   to their bundled PNG.
+
+   MUG SPECIAL HANDLING:
+   • Left Side (face="front"): normal image, handle visible on right.
+   • Right Side (face="back") : image flipped horizontally so handle
+     appears on the left — this represents the opposite side of the mug
+     as seen from outside.  The print-zone rect is drawn in the same
+     SVG coordinate space (before the flip transform) so it sits in the
+     correct mirrored position automatically.
 ════════════════════════════════════════════════════════ */
 
-// Per-category base PNGs (white versions, BACKGROUND-REMOVED cutouts) —
-// these have the best framing/lighting and have a transparent background
-// so when we multiply-tint them with a swatch hex only the GARMENT pixels
-// take the colour. The white card behind the SVG stays white. If you ever
-// need to regenerate the cutouts, run remove_image_background_tool against
-// the originals (white-*.png) and save as *-cutout.png.
 export const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string; back?: string } | undefined> = {
   tshirt:      { front: "/mockups/white-tshirt-front-cutout.png",     back: "/mockups/white-tshirt-back-cutout.png" },
   longsleeve:  { front: "/mockups/white-longsleeve-front-cutout.png", back: "/mockups/white-longsleeve-back-cutout.png" },
   hoodie:      { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },
-  mug:         { front: "/mockups/white-mug-front-cutout.png" },
+  mug:         { front: "/mockups/white-mug-front-cutout.png",        back: "/mockups/white-mug-front-cutout.png" },
   cap:         undefined,
-  // Water bottle uses a real product photo — no tint applied.
   waterbottle: undefined,
 };
 
-// Generate a stable, unique filter id per render so multiple
-// GarmentSVGs on the same page don't collide.
 let _filterUid = 0;
 function nextFilterId() { _filterUid = (_filterUid + 1) % 1_000_000; return `tint-${_filterUid}`; }
 
@@ -135,8 +118,6 @@ function isLightTint(hex: string): boolean {
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  // Perceived luminance — anything brighter than ~92% is treated
-  // as "white-ish" and we skip the tint to avoid a faint grey wash.
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.92;
 }
 
@@ -145,40 +126,43 @@ export function GarmentSVG({
   color,
   showPrintZone,
   face = "front",
+  mugMode,
 }: {
   product: DesignProduct;
-  /** Selected garment colour. For tintable categories the white
-   *  base PNG is multiplied by this hex so all colours work on
-   *  a single, consistently-framed mockup. */
   color?: string;
   showPrintZone: boolean;
   face?: Face;
+  /** For mug: "side1" | "side2" | "wrap" — drives the correct image/PZ. */
+  mugMode?: "side1" | "side2" | "wrap";
 }) {
+  const isMug = product.category === "mug";
+
   const base = BASE_BY_CATEGORY[product.category];
   const useBase = !!base;
+
   const src = useBase
     ? (face === "back" && base!.back ? base!.back : base!.front)
     : (face === "back" && product.backSrc ? product.backSrc : product.frontSrc);
-  const pz = face === "back" && product.printZoneBack ? product.printZoneBack : product.printZone;
+
+  const pz = (() => {
+    if (!isMug) {
+      return (face === "back" && product.printZoneBack) ? product.printZoneBack : product.printZone;
+    }
+    if (mugMode === "wrap") return MUG_PZ;
+    return MUG_SIDE_PZ;
+  })();
 
   const tintHex = color || product.garmentColor;
   const applyTint = useBase && !!tintHex && !isLightTint(tintHex);
   const filterId = useMemo(() => nextFilterId(), [product.id, face, tintHex]);
 
+  const isMugRightSide = isMug && (face === "back" || mugMode === "side2");
+
   return (
     <>
       {applyTint && (
         <defs>
-          {/* Multiply-tint filter: paints the source with the tint hex
-              wherever the garment has opacity, then multiplies the
-              result with the original photograph to preserve fabric
-              shading, folds and shadows. */}
           <filter id={filterId} x="0" y="0" width="1" height="1" colorInterpolationFilters="sRGB">
-            {/* Desaturate first so photo white-balance artefacts don't bleed
-                into the tint colour — then multiply the flat tint with the
-                neutral-luminosity garment to preserve fabric shading cleanly.
-                Final feComposite clips back to SourceGraphic so the card
-                background is never replaced, regardless of browser compositing. */}
             <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="gray" />
             <feFlood floodColor={tintHex} result="flood" />
             <feComposite in="flood" in2="SourceAlpha" operator="in" result="tinted" />
@@ -187,13 +171,31 @@ export function GarmentSVG({
           </filter>
         </defs>
       )}
-      <image
-        href={src}
-        x={0} y={0} width={1000} height={1000}
-        preserveAspectRatio="xMidYMid meet"
-        filter={applyTint ? `url(#${filterId})` : undefined}
-        style={{ pointerEvents: "none" }}
-      />
+
+      {isMugRightSide ? (
+        /* Right side: horizontally flip the mug image so the handle appears
+           on the LEFT — simulating a view of the opposite side of the mug.
+           The flip is applied only to the image; the print-zone rect is drawn
+           OUTSIDE the flip group so it shows at the correct mirrored position. */
+        <g transform="translate(1000,0) scale(-1,1)">
+          <image
+            href={src}
+            x={0} y={0} width={1000} height={1000}
+            preserveAspectRatio="xMidYMid meet"
+            filter={applyTint ? `url(#${filterId})` : undefined}
+            style={{ pointerEvents: "none" }}
+          />
+        </g>
+      ) : (
+        <image
+          href={src}
+          x={0} y={0} width={1000} height={1000}
+          preserveAspectRatio="xMidYMid meet"
+          filter={applyTint ? `url(#${filterId})` : undefined}
+          style={{ pointerEvents: "none" }}
+        />
+      )}
+
       {showPrintZone && (
         <g style={{ pointerEvents: "none" }}>
           <rect
@@ -212,7 +214,7 @@ export function GarmentSVG({
             fill="rgba(232,93,4,0.85)"
             style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
           >
-            Print Area
+            {isMug && mugMode === "wrap" ? "Full Wrap Area" : "Print Area"}
           </text>
         </g>
       )}
@@ -222,18 +224,12 @@ export function GarmentSVG({
 
 /* ═══════════════════════════════════════════════════════
    STICKERS — curated vector decoration library
-   Each sticker is a self-contained 100×100 SVG string.
-   They are added to the canvas as image layers (data URLs)
-   so they inherit move/scale/rotate/opacity/snap/undo for free.
 ════════════════════════════════════════════════════════ */
 
 export interface Sticker {
   id: string;
   name: string;
-  /** Inline SVG markup, viewBox 0 0 100 100, with width/height set so
-   *  HTMLImageElement.naturalWidth resolves reliably across browsers. */
   svg: string;
-  /** Pre-encoded data: URL — derived once at module load, not per render. */
   dataUrl: string;
 }
 

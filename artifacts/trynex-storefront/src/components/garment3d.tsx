@@ -490,21 +490,21 @@ export function MugBody({
     if (wrapTex) {
       wrapTex.wrapS = THREE.RepeatWrapping;
       wrapTex.wrapT = THREE.ClampToEdgeWrapping;
-      // THREE CylinderGeometry default UVs: u increases as theta goes from
-      // thetaStart=0 to 2π, mapped CW when viewed from +Y (because vertex.x
-      // = sin(θ), vertex.z = cos(θ)). So u=0 is at +Z (front, camera-facing),
-      // u=0.25 is at +X (right, where the handle lives), u=0.5 is at -Z (back),
-      // u=0.75 is at -X (left).
+      // Wrap canvas layout (2048×768):
+      //   [0–1024]    = Left Side (front face) — design centred at canvas x=512
+      //   [1024–2048] = Right Side (back face) — design centred at canvas x=1536
       //
-      // Our 2048×768 wrap canvas has the design centred at U_tex≈0.5 (because
-      // MUG_PZ x=250, w=400 in the 1000-unit space → centre x=450/1000=0.45,
-      // close enough to the middle of the texture). We want canvas centre to
-      // land at +Z (u_geo=0). Solve: u_tex = u_geo*repeat + offset
-      //   0.5 = 0*1 + offset → offset = 0.5
-      // No mirror — the cylinder's outside-facing UV unwraps so text reads
-      // correctly with repeat=+1.
+      // THREE CylinderGeometry UV convention (thetaStart=0, CW from +Y):
+      //   u=0.00 → +Z (front, camera-facing)
+      //   u=0.25 → +X (handle side)
+      //   u=0.50 → −Z (back)
+      //   u=0.75 → −X (left)
+      //
+      // We need u_geo=0 (front) → canvas x=512 (centre of left half) → u_tex=0.25
+      // Solve: u_tex = u_geo + offset  →  0.25 = 0 + 0.25  → offset = 0.25
+      // Verify: u_geo=0.50 (back) → u_tex=0.75 → canvas x=1536 (centre right) ✓
       wrapTex.repeat.set(1, 1);
-      wrapTex.offset.set(0.5, 0);
+      wrapTex.offset.set(0.25, 0);
       wrapTex.flipY = true;
       wrapTex.needsUpdate = true;
     }

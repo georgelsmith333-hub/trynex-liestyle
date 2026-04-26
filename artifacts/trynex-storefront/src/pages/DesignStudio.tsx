@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
-  STICKERS, BASE_BY_CATEGORY,
+  STICKERS, BASE_BY_CATEGORY, MUG_SIDE_PZ, MUG_PZ,
 } from "./design-studio/mockups";
 import { composeLayers, composeGarmentMockup, composeDesignTexture, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
 
@@ -413,14 +413,16 @@ export default function DesignStudio() {
   const fileInputAddRef = useRef<HTMLInputElement>(null);
 
   // Print zone is face-aware: products may have a different rectangle for the back panel.
-  // Front and back share the same print zone per garment, so flipping
-  // faces preserves a design's apparent size and position. The
-  // `printZoneBack` field is kept on the type for backward compatibility
-  // but is no longer set by any product — the fallback always wins.
-  const pz = useMemo(
-    () => (activeFace === "back" && selectedProduct.printZoneBack) ? selectedProduct.printZoneBack : selectedProduct.printZone,
-    [activeFace, selectedProduct]
-  );
+  // For mugs: use MUG_PZ (full wrap zone) in wrap mode, MUG_SIDE_PZ for left/right sides.
+  // For all other products: same zone for front and back (printZoneBack is deprecated).
+  const pz = useMemo(() => {
+    if (isMugProduct) {
+      return mugMode === "wrap" ? MUG_PZ : MUG_SIDE_PZ;
+    }
+    return (activeFace === "back" && selectedProduct.printZoneBack)
+      ? selectedProduct.printZoneBack
+      : selectedProduct.printZone;
+  }, [isMugProduct, mugMode, activeFace, selectedProduct]);
   const pzRef = useRef(pz);
   useEffect(() => { pzRef.current = pz; }, [pz]);
 
@@ -901,8 +903,8 @@ export default function DesignStudio() {
     }
     setIsAddingToCart(true);
     try {
-      const frontPZ = selectedProduct.printZone;
-      const backPZ = selectedProduct.printZoneBack ?? selectedProduct.printZone;
+      const frontPZ = isMugProduct ? MUG_SIDE_PZ : selectedProduct.printZone;
+      const backPZ  = isMugProduct ? MUG_SIDE_PZ : (selectedProduct.printZoneBack ?? selectedProduct.printZone);
       const frontLayers = layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[];
       const backLayers  = layers.filter(l => (l.face ?? "front") === "back")  as unknown as ComposerLayer[];
       const imageCache  = new Map<string, HTMLImageElement>();
@@ -1198,7 +1200,11 @@ export default function DesignStudio() {
             <p className="text-xs text-gray-500 mt-0.5 truncate">
               <span className="hidden sm:inline">Designing: </span>
               <strong className="text-gray-700">{selectedProduct.name}</strong>
-              <span className="text-gray-400"> · {activeFace === "front" ? "Front" : "Back"}</span>
+              <span className="text-gray-400"> · {
+                isMugProduct
+                  ? (mugMode === "side1" ? "Left Side" : mugMode === "side2" ? "Right Side" : "Full Wrap")
+                  : (activeFace === "front" ? "Front" : "Back")
+              }</span>
             </p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
@@ -1429,9 +1435,9 @@ export default function DesignStudio() {
             {isMugProduct && viewMode === "2d" && (
               <div className="flex gap-1.5 mb-3" data-testid="mug-mode-switcher">
                 {([
-                  { v: "side1", label: "Side 1" },
-                  { v: "side2", label: "Side 2" },
-                  { v: "wrap",  label: "Wrap (full body)" },
+                  { v: "side1", label: "Left Side" },
+                  { v: "side2", label: "Right Side" },
+                  { v: "wrap",  label: "Full Wrap" },
                 ] as const).map(({ v, label }) => (
                   <button key={v}
                     onClick={() => setMugMode(v)}
@@ -1497,15 +1503,16 @@ export default function DesignStudio() {
                         garmentColor={selectedColor.hex}
                         front={{
                           layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
-                          printZone: selectedProduct.printZone,
+                          printZone: isMugProduct ? MUG_SIDE_PZ : selectedProduct.printZone,
                           baseHeight: selectedProduct.baseHeight,
                         }}
                         back={supportsBack ? {
                           layers: layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[],
-                          printZone: selectedProduct.printZoneBack ?? selectedProduct.printZone,
+                          printZone: isMugProduct ? MUG_SIDE_PZ : (selectedProduct.printZoneBack ?? selectedProduct.printZone),
                           baseHeight: selectedProduct.baseHeight,
                         } : undefined}
                         activeFace={activeFace}
+                        isWrapMode={isWrapMode}
                       />
                     </Suspense>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[11px] font-bold text-white pointer-events-none"
@@ -1532,7 +1539,7 @@ export default function DesignStudio() {
                 {supportsBack && (
                   <AnimatePresence mode="wait">
                     <motion.div
-                      key={activeFace}
+                      key={isMugProduct ? mugMode : activeFace}
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
@@ -1540,13 +1547,15 @@ export default function DesignStudio() {
                       className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest pointer-events-none z-10"
                       style={{ background: "rgba(17,24,39,0.88)", color: "white", letterSpacing: "0.12em" }}
                     >
-                      {activeFace}
+                      {isMugProduct
+                        ? (mugMode === "side1" ? "Left Side" : mugMode === "side2" ? "Right Side" : "Full Wrap")
+                        : (activeFace === "front" ? "Front" : "Back")}
                     </motion.div>
                   </AnimatePresence>
                 )}
                 <AnimatePresence mode="wait" initial={false}>
                 <motion.svg
-                  key={`${selectedProduct.id}-${activeFace}`}
+                  key={`${selectedProduct.id}-${isMugProduct ? mugMode : activeFace}`}
                   ref={svgRef}
                   viewBox={selectedProduct.viewBox}
                   className="absolute inset-0 w-full h-full"
@@ -1557,7 +1566,7 @@ export default function DesignStudio() {
                   transition={{ duration: 0.18, ease: "easeInOut" }}
                   {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
-                  <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
+                  <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} mugMode={isMugProduct ? mugMode : undefined} />
 
                   {/* Layers (clipped to print zone) */}
                   <defs>

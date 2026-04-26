@@ -1,11 +1,15 @@
 /* ═══════════════════════════════════════════════════════
    PRODUCT VIEWER 3D — realtime preview using R3F
-   Uses the shared garment3d helpers so the studio preview
-   matches the cart/checkout/admin 3D viewers exactly.
 
-   Texture composition (live CanvasTexture from offscreen canvas):
-     • Garment (tshirt/longsleeve/hoodie/cap) → front + back transparent textures
-     • Mug → wide wrap texture (2048×768)
+   Mug wrap texture layout (2048×768):
+     [0 – 1024]    = Left Side  (front face layers, handle-side ≈ right)
+     [1024 – 2048] = Right Side (back face layers, handle-side ≈ left)
+
+   UV offset = 0.25 (set in MugBody):
+     u_geo=0.00 (+Z front)  → u_tex=0.25 → canvas x=512  (centre left half) ✓
+     u_geo=0.50 (−Z back)   → u_tex=0.75 → canvas x=1536 (centre right half) ✓
+
+   Wrap mode: back layers compose into full 2048 canvas (no half-split).
 ════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -42,15 +46,14 @@ interface FacePayload {
 export interface ProductViewer3DProps {
   product: DesignProduct;
   garmentColor: string;
-  /** "front" face content (always present) */
   front: FacePayload;
-  /** "back" face content — only used for tshirt/longsleeve/hoodie */
   back?: FacePayload;
-  /** Which face the user is currently viewing/editing — camera will rotate to it */
   activeFace?: "front" | "back";
+  /** True when the mug is in "Full Wrap" mode — back layers fill the full 360° body. */
+  isWrapMode?: boolean;
 }
 
-/** Hook: build a CanvasTexture that re-composes whenever its inputs change. */
+/* ── Generic face texture (garments: tshirt / longsleeve / hoodie / cap) ─── */
 function useFaceTexture(
   face: FacePayload | undefined,
   garmentColor: string | null,
@@ -61,9 +64,7 @@ function useFaceTexture(
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
   const [, setVersion] = useState(0);
 
-  if (!canvasRef.current) {
-    canvasRef.current = document.createElement("canvas");
-  }
+  if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
   if (!textureRef.current) {
     const tex = new THREE.CanvasTexture(canvasRef.current);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -108,16 +109,140 @@ function useFaceTexture(
       if (textureRef.current) textureRef.current.needsUpdate = true;
       setVersion((v) => v + 1);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, garmentColor, opts.outW, opts.outH, clipFlag]);
 
   return face ? textureRef.current : null;
 }
 
-/* ── Camera: smoothly orbits to face the active side, framing per category ── */
+/* ── Mug cylindrical wrap texture ────────────────────────────────────────────
+   2048×768 canvas:
+     [0–1024]    = Left Side (front layers)
+     [1024–2048] = Right Side (back layers)
+   In Wrap mode the back layers are composed at full 2048 width so the design
+   runs continuously all the way around the cylinder.
+──────────────────────────────────────────────────────────────────────────── */
+function useMugWrapTexture(
+  front: FacePayload,
+  back: FacePayload | undefined,
+  isWrapMode: boolean
+): THREE.CanvasTexture | null {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cacheRef  = useRef<Map<string, HTMLImageElement>>(new Map());
+  const texRef    = useRef<THREE.CanvasTexture | null>(null);
+  const [, setVersion] = useState(0);
+
+  if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
+  if (!texRef.current) {
+    const tex = new THREE.CanvasTexture(canvasRef.current);
+    tex.colorSpace  = THREE.SRGBColorSpace;
+    tex.anisotropy  = 8;
+    tex.wrapS       = THREE.RepeatWrapping;
+    tex.wrapT       = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(1, 1);
+    tex.offset.set(0.25, 0);
+    tex.flipY       = true;
+    texRef.current  = tex;
+  }
+
+  const makeSig = (f: FacePayload | undefined) =>
+    f
+      ? f.layers.map((l) =>
+          l.type === "image"
+            ? [l.visible, l.transform, l.src.slice(0, 64)]
+            : [l.visible, l.transform, l.text, l.color]
+        )
+      : [];
+
+  const sig = JSON.stringify({
+    wrap: isWrapMode,
+    fl: makeSig(front),
+    bl: makeSig(back),
+    pz: front.printZone,
+  });
+
+  useEffect(() => {
+    const mainCanvas = canvasRef.current!;
+    mainCanvas.width  = 2048;
+    mainCanvas.height = 768;
+    const ctx = mainCanvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 2048, 768);
+
+    let cancelled = false;
+
+    (async () => {
+      if (isWrapMode && back && back.layers.length > 0) {
+        /* ── WRAP MODE: back layers span the full 2048 canvas ── */
+        const tmp = document.createElement("canvas");
+        await composeLayers({
+          canvas: tmp,
+          baseHeight: back.baseHeight,
+          printZone: back.printZone,
+          layers: back.layers,
+          garmentColor: null,
+          outW: 2048,
+          outH: 768,
+          imageCache: cacheRef.current,
+          clipToPrintZone: false,
+          blendMode: "source-over",
+        });
+        if (!cancelled) ctx.drawImage(tmp, 0, 0);
+      } else {
+        /* ── SIDE MODE: each face goes into its half of the canvas ── */
+
+        if (front.layers.length > 0) {
+          /* Left Side (front face) → left half [0–1024] */
+          const tmp = document.createElement("canvas");
+          await composeLayers({
+            canvas: tmp,
+            baseHeight: front.baseHeight,
+            printZone: front.printZone,
+            layers: front.layers,
+            garmentColor: null,
+            outW: 1024,
+            outH: 768,
+            imageCache: cacheRef.current,
+            clipToPrintZone: true,
+            blendMode: "source-over",
+          });
+          if (!cancelled) ctx.drawImage(tmp, 0, 0);
+        }
+
+        if (back && back.layers.length > 0) {
+          /* Right Side (back face) → right half [1024–2048] */
+          const tmp = document.createElement("canvas");
+          await composeLayers({
+            canvas: tmp,
+            baseHeight: back.baseHeight,
+            printZone: back.printZone,
+            layers: back.layers,
+            garmentColor: null,
+            outW: 1024,
+            outH: 768,
+            imageCache: cacheRef.current,
+            clipToPrintZone: true,
+            blendMode: "source-over",
+          });
+          if (!cancelled) ctx.drawImage(tmp, 1024, 0);
+        }
+      }
+
+      if (!cancelled && texRef.current) {
+        texRef.current.needsUpdate = true;
+        setVersion((v) => v + 1);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig]);
+
+  return texRef.current;
+}
+
+/* ── Camera rig: smooth orbit to the active face ─────────────────────────── */
 function CameraRig({
   activeFace,
   category,
@@ -127,17 +252,14 @@ function CameraRig({
 }) {
   const f = VIEWER_FRAMING[category];
   const b = VIEWER_FRAMING_BACK[category] || {};
-  
-  // Mug, cap & waterbottle have no separate "back" face — keep them facing front.
   const hasBackFace = category === "tshirt" || category === "longsleeve" || category === "hoodie";
   const isBack = hasBackFace && activeFace === "back";
-  
   const targetY = isBack ? Math.PI : 0;
-  const radius = isBack && b.radius !== undefined ? b.radius : f.radius;
-  const cameraY = isBack && b.cameraY !== undefined ? b.cameraY : f.cameraY;
+  const radius  = isBack && b.radius   !== undefined ? b.radius   : f.radius;
+  const cameraY = isBack && b.cameraY  !== undefined ? b.cameraY  : f.cameraY;
 
   useFrame(({ camera }) => {
-    const cur = Math.atan2(camera.position.x, camera.position.z);
+    const cur  = Math.atan2(camera.position.x, camera.position.z);
     const next = cur + (targetY - cur) * 0.06;
     camera.position.x = Math.sin(next) * radius;
     camera.position.z = Math.cos(next) * radius;
@@ -153,36 +275,34 @@ export default function ProductViewer3D({
   front,
   back,
   activeFace = "front",
+  isWrapMode = false,
 }: ProductViewer3DProps) {
-  const isMug = product.category === "mug";
+  const isMug         = product.category === "mug";
+  const isWaterBottle = product.category === "waterbottle";
 
-  // Mug: wide wrap texture — design only (transparent bg).
-  // MugBody applies garmentColor directly as the body material base so that
-  // cart (which loads the stored texture URL) and studio render identically.
-  const mugTex = useFaceTexture(
-    isMug ? front : undefined,
-    null,
-    { outW: 2048, outH: 768, clipToPrintZone: true }
+  /* Mug: build a combined cylindrical wrap texture from both sides */
+  const mugTex = useMugWrapTexture(
+    isMug ? front : { layers: [], printZone: front.printZone, baseHeight: front.baseHeight },
+    isMug ? back : undefined,
+    isMug && isWrapMode
   );
 
-  // Garments: transparent front + back textures
+  /* Garments (tshirt / longsleeve / hoodie / cap): transparent per-face overlays */
   const frontTex = useFaceTexture(
-    !isMug ? front : undefined,
+    !isMug && !isWaterBottle ? front : undefined,
     null,
     { outW: 1024, outH: 1024, clipToPrintZone: true }
   );
   const backTex = useFaceTexture(
-    !isMug && back ? back : undefined,
+    !isMug && !isWaterBottle && back ? back : undefined,
     null,
     { outW: 1024, outH: 1024, clipToPrintZone: true }
   );
 
-  // WebGL2 capability check — gracefully degrade to 2D mockup if unsupported
   const supports3D = useMemo(() => hasWebGL2(), []);
-  // Compose a one-shot 2D mockup (garment + design) for the WebGL-less fallback.
-  // Lightweight: only runs when 3D isn't supported; reuses the same composer
-  // pipeline used by the live texture so the personalization is faithful.
-  const [fallbackDesignUrl, setFallbackDesignUrl] = useState<string | undefined>();
+
+  /* Fallback 2D composition for WebGL-less devices */
+  const [fallbackUrl, setFallbackUrl] = useState<string | undefined>();
   useEffect(() => {
     if (supports3D || !front) return;
     const c = document.createElement("canvas");
@@ -197,16 +317,22 @@ export default function ProductViewer3D({
       imageCache: new Map(),
       clipToPrintZone: true,
       blendMode: "source-over",
-    }).then(() => setFallbackDesignUrl(c.toDataURL("image/png")));
+    }).then(() => setFallbackUrl(c.toDataURL("image/png")));
   }, [supports3D, front]);
 
-  if (!supports3D) {
+  /* Water bottle has no 3D GLB model — show the 2D photo mockup with the design overlaid */
+  if (isWaterBottle || !supports3D) {
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <NoWebGLFallback
           garmentSrc={product.frontSrc}
-          designSrc={fallbackDesignUrl}
+          designSrc={fallbackUrl}
           garmentColor={garmentColor}
+          message={
+            isWaterBottle
+              ? "3D preview not available for Water Bottle — the 2D mockup is shown above."
+              : "Your browser does not support 3D preview. Showing the 2D mockup instead."
+          }
         />
       </div>
     );
@@ -214,77 +340,74 @@ export default function ProductViewer3D({
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-    <Canvas
-      shadows
-      dpr={VIEWER_DEFAULTS.dpr}
-      camera={{ position: VIEWER_DEFAULTS.cameraPosition, fov: VIEWER_DEFAULTS.fov }}
-      // preserveDrawingBuffer: true is studio-only — needed for the
-      // "Save mockup" snapshot. Cart never snapshots, so it leaves it false.
-      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
-      style={{ width: "100%", height: "100%", background: "transparent" }}
-    >
-      <Suspense fallback={null}>
-        <StudioLightRig rim />
+      <Canvas
+        shadows
+        dpr={VIEWER_DEFAULTS.dpr}
+        camera={{ position: VIEWER_DEFAULTS.cameraPosition, fov: VIEWER_DEFAULTS.fov }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        style={{ width: "100%", height: "100%", background: "transparent" }}
+      >
+        <Suspense fallback={null}>
+          <StudioLightRig rim />
+          <Environment preset="city" />
+          <CameraRig activeFace={activeFace} category={product.category} />
 
-        <Environment preset="city" />
-        <CameraRig activeFace={activeFace} category={product.category} />
+          {product.category === "mug" && (
+            <MugBody wrapTex={mugTex ?? undefined} garmentColor={garmentColor} />
+          )}
 
-        {product.category === "mug" && (
-          <MugBody wrapTex={mugTex} garmentColor={garmentColor} />
-        )}
+          {product.category === "tshirt" && (
+            <RealisticShirt
+              frontTex={frontTex}
+              backTex={backTex}
+              garmentColor={garmentColor}
+            />
+          )}
 
-        {product.category === "tshirt" && (
-          <RealisticShirt
-            frontTex={frontTex}
-            backTex={backTex}
-            garmentColor={garmentColor}
+          {product.category === "longsleeve" && (
+            <LongSleeveBody
+              frontTex={frontTex}
+              backTex={backTex}
+              garmentColor={garmentColor}
+            />
+          )}
+
+          {product.category === "hoodie" && (
+            <HoodieBody
+              frontTex={frontTex}
+              backTex={backTex}
+              garmentColor={garmentColor}
+            />
+          )}
+
+          {product.category === "cap" && (
+            <CapBody frontTex={frontTex} garmentColor={garmentColor} />
+          )}
+
+          <ContactShadows
+            position={[0, VIEWER_FRAMING[product.category].shadowY, 0]}
+            opacity={VIEWER_DEFAULTS.shadowOpacity}
+            blur={VIEWER_DEFAULTS.shadowBlur}
+            scale={VIEWER_DEFAULTS.shadowScale}
+            far={VIEWER_DEFAULTS.shadowFar}
           />
-        )}
 
-        {product.category === "longsleeve" && (
-          <LongSleeveBody
-            frontTex={frontTex}
-            backTex={backTex}
-            garmentColor={garmentColor}
+          <ResettableOrbitControls
+            enablePan={false}
+            enableZoom={true}
+            enableDamping
+            dampingFactor={0.08}
+            rotateSpeed={0.7}
+            zoomSpeed={0.8}
+            minDistance={VIEWER_FRAMING[product.category].minDistance}
+            maxDistance={VIEWER_FRAMING[product.category].maxDistance}
+            minPolarAngle={Math.PI * 0.25}
+            maxPolarAngle={Math.PI * 0.65}
+            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           />
-        )}
-
-        {product.category === "hoodie" && (
-          <HoodieBody
-            frontTex={frontTex}
-            backTex={backTex}
-            garmentColor={garmentColor}
-          />
-        )}
-
-        {product.category === "cap" && (
-          <CapBody frontTex={frontTex} garmentColor={garmentColor} />
-        )}
-
-        <ContactShadows
-          position={[0, VIEWER_FRAMING[product.category].shadowY, 0]}
-          opacity={VIEWER_DEFAULTS.shadowOpacity}
-          blur={VIEWER_DEFAULTS.shadowBlur}
-          scale={VIEWER_DEFAULTS.shadowScale}
-          far={VIEWER_DEFAULTS.shadowFar}
-        />
-
-        <ResettableOrbitControls
-          enablePan={false}
-          enableZoom={true}
-          enableDamping
-          dampingFactor={0.08}
-          rotateSpeed={0.7}
-          zoomSpeed={0.8}
-          minDistance={VIEWER_FRAMING[product.category].minDistance}
-          maxDistance={VIEWER_FRAMING[product.category].maxDistance}
-          minPolarAngle={Math.PI * 0.25}
-          maxPolarAngle={Math.PI * 0.65}
-          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
-        />
-      </Suspense>
-    </Canvas>
-    <ViewerLoadingOverlay />
+        </Suspense>
+      </Canvas>
+      <ViewerLoadingOverlay />
     </div>
   );
 }
