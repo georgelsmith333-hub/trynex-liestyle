@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -28,7 +28,7 @@ interface BlogPost {
 }
 
 function useBlogCategories() {
-  return useQuery<{ categories: string[] }>({
+  return useQuery<{ categories: string[]; counts: Record<string, number> }>({
     queryKey: ["/api/blog/categories"],
     queryFn: async () => {
       const res = await fetch(getApiUrl("/api/blog/categories"));
@@ -36,7 +36,7 @@ function useBlogCategories() {
       return res.json();
     },
     staleTime: 5 * 60_000,
-    placeholderData: { categories: ["General", "Fashion", "Tips", "News", "Lifestyle"] },
+    placeholderData: { categories: ["General", "Fashion", "Tips", "News", "Lifestyle"], counts: {} },
   });
 }
 
@@ -290,6 +290,15 @@ export default function Blog() {
   const { data, isLoading } = useBlogPosts(activeCategory, sortBy);
   const { data: categoriesData } = useBlogCategories();
   const CATEGORIES = ["All", ...(categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"])];
+  const categoryCounts = categoriesData?.counts ?? {};
+
+  const hasCount = Object.keys(categoryCounts).length > 0;
+
+  useEffect(() => {
+    if (hasCount && activeCategory !== "All" && (categoryCounts[activeCategory] ?? 0) === 0) {
+      setActiveCategory("All");
+    }
+  }, [hasCount, activeCategory, categoryCounts]);
 
   const posts = data?.posts ?? [];
 
@@ -363,16 +372,28 @@ export default function Blog() {
               />
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => { setActiveCategory(cat); setSearch(""); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeCategory === cat ? "text-white" : "text-gray-500 hover:text-gray-700 bg-white"}`}
-                  style={activeCategory === cat ? { background: "var(--color-primary, #E85D04)" } : { border: "1px solid #e5e7eb" }}
-                >
-                  {cat}
-                </button>
-              ))}
+              {CATEGORIES.map(cat => {
+                const count = categoryCounts[cat] ?? 0;
+                const isEmpty = hasCount && cat !== "All" && count === 0;
+                const isActive = activeCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => { if (!isEmpty) { setActiveCategory(cat); setSearch(""); } }}
+                    disabled={isEmpty}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isActive ? "text-white" : isEmpty ? "text-gray-300 bg-white cursor-not-allowed" : "text-gray-500 hover:text-gray-700 bg-white"}`}
+                    style={isActive ? { background: "var(--color-primary, #E85D04)" } : { border: `1px solid ${isEmpty ? "#f0f0f0" : "#e5e7eb"}` }}
+                    title={isEmpty ? `${cat} — no posts` : undefined}
+                  >
+                    {cat}
+                    {hasCount && (
+                      <span className={`ml-1.5 text-[10px] font-black tabular-nums ${isActive ? "text-white/80" : isEmpty ? "text-gray-300" : "text-gray-400"}`}>
+                        ({count})
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
               <div className="w-px h-5 bg-gray-200 hidden sm:block" />
               <button
                 onClick={() => setSortBy(sortBy === "views" ? "newest" : "views")}

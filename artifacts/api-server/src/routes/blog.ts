@@ -66,11 +66,29 @@ async function saveBlogCategories(categories: string[]): Promise<void> {
   }
 }
 
-// GET /blog/categories — public, returns the configured list
+// GET /blog/categories — public, returns the configured list with published post counts
 router.get("/blog/categories", async (req, res) => {
   try {
-    const categories = await getBlogCategories();
-    res.json({ categories });
+    const [categories, countRows] = await Promise.all([
+      getBlogCategories(),
+      db
+        .select({ category: blogPostsTable.category, count: sql<number>`count(*)` })
+        .from(blogPostsTable)
+        .where(eq(blogPostsTable.published, true))
+        .groupBy(blogPostsTable.category),
+    ]);
+
+    const counts: Record<string, number> = {};
+    let total = 0;
+    for (const row of countRows) {
+      const cat = row.category ?? "General";
+      const n = Number(row.count ?? 0);
+      counts[cat] = (counts[cat] ?? 0) + n;
+      total += n;
+    }
+    counts["All"] = total;
+
+    res.json({ categories, counts });
   } catch (err) {
     req.log.error({ err }, "Failed to get blog categories");
     res.status(500).json({ error: "internal_error", message: "Failed to get blog categories" });
