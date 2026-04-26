@@ -756,12 +756,27 @@ async function seedBlogPostsIfEmpty(): Promise<void> {
     for (let i = 0; i < posts.length; i++) {
       const createdAt = blogPostDate(i, posts.length);
       const updatedAt = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+      const values = { ...posts[i], createdAt, updatedAt };
       await db
         .insert(blogPostsTable)
-        .values({ ...posts[i], createdAt, updatedAt })
+        .values(values)
         .onConflictDoUpdate({
           target: blogPostsTable.slug,
-          set: { createdAt, updatedAt },
+          set: {
+            title: values.title,
+            excerpt: values.excerpt,
+            content: values.content,
+            imageUrl: values.imageUrl,
+            author: values.author,
+            authorBio: values.authorBio,
+            category: values.category,
+            tags: values.tags,
+            published: values.published,
+            featured: values.featured,
+            readingTimeOverride: values.readingTimeOverride,
+            createdAt,
+            updatedAt,
+          },
         });
     }
     logger.info({ count: posts.length }, "Seeded blog posts");

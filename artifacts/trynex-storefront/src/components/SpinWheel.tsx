@@ -48,7 +48,6 @@ const STORAGE_LAST_SPIN = "spin_last_date";
 const STORAGE_SHOWN     = "spin_modal_shown_v2";
 const STORAGE_REWARD    = "spin_reward";
 
-/* ── Confetti particle system — fully typed, no any casts ── */
 interface Particle {
   id: number;
   x: number;
