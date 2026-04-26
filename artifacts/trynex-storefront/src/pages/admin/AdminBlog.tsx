@@ -11,6 +11,7 @@ import {
   useCreateBlogPost,
   useUpdateBlogPost,
   useDeleteBlogPost,
+  useGetBlogSettings,
   type BlogPost as ApiBlogPost,
   type BlogPostInput,
 } from "@workspace/api-client-react";
@@ -48,6 +49,8 @@ export default function AdminBlog() {
   const reqOpts = { request: { headers: getAuthHeaders() } };
   const { data: blogData, isLoading } = useListBlogPosts({ limit: "100" }, reqOpts);
   const posts = blogData?.posts ?? [];
+  const { data: blogSettings } = useGetBlogSettings(reqOpts);
+  const trendingThreshold = blogSettings?.trendingThreshold;
 
   const { data: categoriesData, refetch: refetchCategories } = useBlogCategories();
   const categories = categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"];
@@ -358,6 +361,16 @@ export default function AdminBlog() {
           <p className="text-gray-400 text-sm mt-1 font-medium">{posts.length} total posts</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {trendingThreshold !== undefined && (
+            <a
+              href="/admin/designer#blog-settings"
+              title="Go to Blog Settings in Visual Page Designer"
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 bg-red-50 border border-red-200 text-red-600 no-underline"
+            >
+              <Flame className="w-4 h-4" />
+              Trending: ≥{trendingThreshold.toLocaleString()} views
+            </a>
+          )}
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as typeof sortBy)}

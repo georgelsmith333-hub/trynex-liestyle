@@ -665,9 +665,11 @@ export default function AdminDesigner() {
             <SectionCard icon={MessageSquare} title="Testimonials Manager" iconColor="#FB8500" collapsible>
               <TestimonialsManager />
             </SectionCard>
-            <SectionCard icon={Flame} title="Blog Settings" iconColor="#dc2626" collapsible>
-              <BlogSettingsManager />
-            </SectionCard>
+            <div id="blog-settings">
+              <SectionCard icon={Flame} title="Blog Settings" iconColor="#dc2626" collapsible>
+                <BlogSettingsManager />
+              </SectionCard>
+            </div>
           </div>
         </div>
 
