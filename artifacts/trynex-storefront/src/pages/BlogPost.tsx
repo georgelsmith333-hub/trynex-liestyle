@@ -4,7 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Loader } from "@/components/ui/Loader";
-import { ArrowLeft, Calendar, User, Clock, Share2, Copy, Check, BookOpen, ChevronRight, Eye } from "lucide-react";
+import { ArrowLeft, Calendar, User, Clock, Share2, Copy, Check, BookOpen, ChevronRight, Eye, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { getApiUrl } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +24,7 @@ interface BlogPostData {
   tags: string[];
   published: boolean;
   featured: boolean;
+  trending: boolean;
   readingTime: number;
   viewCount: number;
   createdAt: string;
@@ -484,6 +485,11 @@ export default function BlogPost() {
                   <span className="px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider"
                     style={{ background: "rgba(232,93,4,0.08)", color: "var(--color-primary, #E85D04)" }}>
                     {post.category}
+                  </span>
+                )}
+                {post.trending && (
+                  <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black text-red-600 bg-red-50 border border-red-100">
+                    <Flame className="w-3 h-3" /> Trending
                   </span>
                 )}
                 {post.tags.slice(0, 4).map(tag => (
