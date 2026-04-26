@@ -104,6 +104,7 @@ export const blogPostsTable = pgTable("blog_posts", {
   published: boolean("published").default(false),
   featured: boolean("featured").default(false),
   readingTimeOverride: integer("reading_time_override"),
+  viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

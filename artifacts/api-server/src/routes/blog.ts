@@ -64,6 +64,7 @@ function mapPost(p: any) {
     featured: p.featured ?? false,
     readingTime,
     readingTimeOverride: p.readingTimeOverride ?? null,
+    viewCount: p.viewCount ?? 0,
     createdAt: p.createdAt?.toISOString(),
     updatedAt: p.updatedAt?.toISOString(),
   };
@@ -117,6 +118,13 @@ router.get("/blog/:id", async (req, res) => {
       res.status(404).json({ error: "not_found", message: "Blog post not found" });
       return;
     }
+
+    db.update(blogPostsTable)
+      .set({ viewCount: sql`${blogPostsTable.viewCount} + 1` })
+      .where(eq(blogPostsTable.id, post.id))
+      .execute()
+      .catch((err) => { req.log.error({ err, postId: post.id }, "Failed to increment view count"); });
+
     res.json(mapPost(post));
   } catch (err) {
     req.log.error({ err }, "Failed to get blog post");

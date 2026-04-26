@@ -4,7 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Loader } from "@/components/ui/Loader";
-import { ArrowLeft, Calendar, User, Clock, Share2, Copy, Check, BookOpen, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, User, Clock, Share2, Copy, Check, BookOpen, ChevronRight, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { getApiUrl } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ interface BlogPostData {
   published: boolean;
   featured: boolean;
   readingTime: number;
+  viewCount: number;
   createdAt: string;
 }
 
@@ -522,6 +523,10 @@ export default function BlogPost() {
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   {post.readingTime} min read
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" />
+                  {(post.viewCount ?? 0).toLocaleString()} views
                 </span>
               </motion.div>
 
