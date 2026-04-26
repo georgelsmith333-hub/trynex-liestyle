@@ -4,6 +4,7 @@ import {
   useGetDesignerSettings, usePatchDesignerSettings,
   useAdminListTestimonials, useCreateTestimonial, useUpdateTestimonial, useDeleteTestimonial,
   useListProducts, useToggleProductFeatured,
+  useGetBlogSettings, usePatchBlogSettings,
   type DesignerSettings,
 } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
@@ -335,6 +336,71 @@ interface SectionVisibility {
   announcementEnabled: boolean;
 }
 
+function BlogSettingsManager() {
+  const { toast } = useToast();
+  const { data, isLoading } = useGetBlogSettings({ request: { headers: getAuthHeaders() } });
+  const { mutateAsync: patchBlogSettings, isPending } = usePatchBlogSettings({ request: { headers: getAuthHeaders() } });
+  const [thresholdStr, setThresholdStr] = useState<string>("100");
+
+  useEffect(() => {
+    if (data?.trendingThreshold !== undefined) {
+      setThresholdStr(String(data.trendingThreshold));
+    }
+  }, [data?.trendingThreshold]);
+
+  const parsedValue = /^\d+$/.test(thresholdStr.trim()) ? parseInt(thresholdStr.trim(), 10) : null;
+  const isValid = parsedValue !== null && parsedValue >= 0;
+
+  const handleSave = async () => {
+    if (!isValid || parsedValue === null) {
+      toast({ title: "Invalid value", description: "Please enter a non-negative whole number.", variant: "destructive" });
+      return;
+    }
+    try {
+      await patchBlogSettings({ data: { trendingThreshold: parsedValue }, request: { headers: getAuthHeaders() } });
+      toast({ title: "Blog settings saved", description: `Trending threshold set to ${parsedValue} views.` });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Please try again.";
+      toast({ title: "Save failed", description: msg, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center py-8"><Loader /></div>;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Trending Threshold (views)</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={thresholdStr}
+            onChange={e => setThresholdStr(e.target.value)}
+            className={`${inputClass} max-w-[180px]`}
+            style={{ ...inputStyle, borderColor: !isValid && thresholdStr !== "" ? '#ef4444' : '#e5e7eb' }}
+            placeholder="100"
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isPending}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white text-sm"
+            style={{ background: isPending ? '#d1d5db' : 'linear-gradient(135deg, #E85D04, #FB8500)', boxShadow: '0 4px 12px rgba(232,93,4,0.25)' }}
+          >
+            <Save className="w-4 h-4" />
+            {isPending ? "Saving…" : "Save"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Posts with at least this many views will show the <strong>Trending</strong> badge. Default is 100.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDesigner() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -598,6 +664,9 @@ export default function AdminDesigner() {
             </SectionCard>
             <SectionCard icon={MessageSquare} title="Testimonials Manager" iconColor="#FB8500" collapsible>
               <TestimonialsManager />
+            </SectionCard>
+            <SectionCard icon={Flame} title="Blog Settings" iconColor="#dc2626" collapsible>
+              <BlogSettingsManager />
             </SectionCard>
           </div>
         </div>

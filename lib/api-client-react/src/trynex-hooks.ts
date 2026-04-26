@@ -893,6 +893,34 @@ export const useDeleteBlogPost = (_opts?: ReqOpts) => {
   });
 };
 
+export interface BlogSettings {
+  trendingThreshold: number;
+}
+
+export const useGetBlogSettings = (opts?: ReqOpts) => {
+  const headers = opts?.request?.headers ?? {};
+  return useQuery({
+    queryKey: ["/api/blog/settings"],
+    queryFn: () => customFetch<BlogSettings>("/api/blog/settings", { headers }),
+    staleTime: 60 * 1000,
+  });
+};
+
+export const usePatchBlogSettings = (opts?: ReqOpts) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, request }: { data: Partial<BlogSettings>; request?: { headers?: Record<string, string> } }) =>
+      customFetch<BlogSettings>("/api/blog/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(opts?.request?.headers ?? {}), ...(request?.headers ?? {}) },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/blog/settings"] });
+    },
+  });
+};
+
 // ─── Facebook / Social Import Hooks ──────────────────────────────────────────
 
 export const useFetchFacebookPosts = (opts?: ReqOpts) => {

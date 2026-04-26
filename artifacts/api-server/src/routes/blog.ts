@@ -184,15 +184,70 @@ router.put("/blog/categories", requireAdmin, async (req, res) => {
 
 // blog_posts table is created at startup by lib/autoSeed.ts
 
+const DEFAULT_TRENDING_THRESHOLD = 100;
+
+async function getTrendingThreshold(): Promise<number> {
+  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "trendingThreshold"));
+  if (!row?.value) return DEFAULT_TRENDING_THRESHOLD;
+  const parsed = parseInt(row.value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_TRENDING_THRESHOLD;
+}
+
+async function saveTrendingThreshold(value: number): Promise<void> {
+  const strValue = String(value);
+  const [existing] = await db.select().from(settingsTable).where(eq(settingsTable.key, "trendingThreshold"));
+  if (existing) {
+    await db.update(settingsTable).set({ value: strValue, updatedAt: new Date() }).where(eq(settingsTable.key, "trendingThreshold"));
+  } else {
+    await db.insert(settingsTable).values({ key: "trendingThreshold", value: strValue });
+  }
+}
+
+// GET /blog/settings — public, returns configurable blog settings
+router.get("/blog/settings", async (req, res) => {
+  try {
+    const trendingThreshold = await getTrendingThreshold();
+    res.json({ trendingThreshold });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get blog settings");
+    res.status(500).json({ error: "internal_error", message: "Failed to get blog settings" });
+  }
+});
+
+// PATCH /blog/settings — admin only, updates blog settings
+router.patch("/blog/settings", requireAdmin, async (req, res) => {
+  try {
+    const raw = req.body?.trendingThreshold;
+    if (raw === undefined) {
+      res.status(400).json({ error: "validation_error", message: "trendingThreshold is required" });
+      return;
+    }
+    const rawStr = String(raw).trim();
+    if (!/^\d+$/.test(rawStr)) {
+      res.status(400).json({ error: "validation_error", message: "trendingThreshold must be a non-negative integer" });
+      return;
+    }
+    const value = parseInt(rawStr, 10);
+    if (!Number.isFinite(value) || value < 0) {
+      res.status(400).json({ error: "validation_error", message: "trendingThreshold must be a non-negative integer" });
+      return;
+    }
+    await saveTrendingThreshold(value);
+    res.json({ trendingThreshold: value });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update blog settings");
+    res.status(500).json({ error: "internal_error", message: "Failed to update blog settings" });
+  }
+});
+
 function calcReadingTime(content: string): number {
   const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const words = plainText.split(' ').filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
 }
 
-function mapPost(p: any) {
+function mapPost(p: any, trendingThreshold: number = DEFAULT_TRENDING_THRESHOLD) {
   const readingTime = p.readingTimeOverride ?? calcReadingTime(p.content ?? "");
-  const TRENDING_THRESHOLD = 100;
   return {
     id: p.id,
     title: p.title,
@@ -210,7 +265,7 @@ function mapPost(p: any) {
     readingTime,
     readingTimeOverride: p.readingTimeOverride ?? null,
     viewCount: p.viewCount ?? 0,
-    trending: (p.viewCount ?? 0) >= TRENDING_THRESHOLD,
+    trending: (p.viewCount ?? 0) >= trendingThreshold,
     createdAt: p.createdAt?.toISOString(),
     updatedAt: p.updatedAt?.toISOString(),
   };
@@ -236,13 +291,14 @@ router.get("/blog", async (req, res) => {
       ? [desc(blogPostsTable.viewCount), desc(blogPostsTable.createdAt)]
       : [desc(blogPostsTable.featured), desc(blogPostsTable.createdAt)];
 
-    const [posts, countResult] = await Promise.all([
+    const [posts, countResult, threshold] = await Promise.all([
       db.select().from(blogPostsTable).where(where).orderBy(...orderClause).limit(limitNum).offset(offset),
       db.select({ count: sql<number>`count(*)` }).from(blogPostsTable).where(where),
+      getTrendingThreshold(),
     ]);
 
     res.json({
-      posts: posts.map(mapPost),
+      posts: posts.map(p => mapPost(p, threshold)),
       total: Number(countResult[0]?.count ?? 0),
       page: pageNum,
       limit: limitNum,
@@ -276,7 +332,8 @@ router.get("/blog/:id", async (req, res) => {
       .execute()
       .catch((err) => { req.log.error({ err, postId: post.id }, "Failed to increment view count"); });
 
-    res.json(mapPost(post));
+    const threshold = await getTrendingThreshold();
+    res.json(mapPost(post, threshold));
   } catch (err) {
     req.log.error({ err }, "Failed to get blog post");
     res.status(500).json({ error: "internal_error", message: "Failed to get blog post" });
@@ -312,8 +369,10 @@ router.get("/blog/:id/related", async (req, res) => {
 
     const sameCatFiltered = sameCat.filter(r => r.id !== post!.id).slice(0, LIMIT);
 
+    const threshold = await getTrendingThreshold();
+
     if (sameCatFiltered.length >= LIMIT) {
-      res.json({ posts: sameCatFiltered.map(mapPost) });
+      res.json({ posts: sameCatFiltered.map(p => mapPost(p, threshold)) });
       return;
     }
 
@@ -336,7 +395,7 @@ router.get("/blog/:id/related", async (req, res) => {
     }
 
     const combined = [...sameCatFiltered, ...tagMatches].slice(0, LIMIT);
-    res.json({ posts: combined.map(mapPost) });
+    res.json({ posts: combined.map(p => mapPost(p, threshold)) });
   } catch (err) {
     req.log.error({ err }, "Failed to get related posts");
     res.status(500).json({ error: "internal_error", message: "Failed to get related posts" });
@@ -363,7 +422,8 @@ router.post("/blog", requireAdmin, async (req, res) => {
       readingTimeOverride: readingTimeOverride ?? undefined,
     }).returning();
     logActivity({ action: "create", entity: "blog", entityId: post.id, entityName: post.title, after: post as unknown as Record<string, unknown>, adminId: getAdminId(req) });
-    res.status(201).json(mapPost(post));
+    const threshold = await getTrendingThreshold();
+    res.status(201).json(mapPost(post, threshold));
   } catch (err) {
     req.log.error({ err }, "Failed to create blog post");
     res.status(500).json({ error: "internal_error", message: "Failed to create blog post" });
@@ -401,7 +461,8 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
       return;
     }
     logActivity({ action: "update", entity: "blog", entityId: id, entityName: post.title, before: (beforeSnapshot ?? null) as unknown as Record<string, unknown>, after: post as unknown as Record<string, unknown>, adminId: getAdminId(req) });
-    res.json(mapPost(post));
+    const threshold = await getTrendingThreshold();
+    res.json(mapPost(post, threshold));
   } catch (err) {
     req.log.error({ err }, "Failed to update blog post");
     res.status(500).json({ error: "internal_error", message: "Failed to update blog post" });
