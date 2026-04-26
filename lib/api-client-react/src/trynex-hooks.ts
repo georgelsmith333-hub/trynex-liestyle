@@ -238,6 +238,7 @@ export interface BlogPostInput {
   published?: boolean;
   featured?: boolean;
   readingTimeOverride?: number | null;
+  viewCount?: number;
 }
 
 export interface DesignerSettings {

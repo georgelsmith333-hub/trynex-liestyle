@@ -24,6 +24,7 @@ const BlogCreateSchema = z.object({
   published:           z.boolean().optional(),
   featured:            z.boolean().optional(),
   readingTimeOverride: z.number().int().positive().optional().nullable(),
+  viewCount:           z.number().int().min(0).optional(),
 });
 
 const BlogUpdateSchema = BlogCreateSchema.partial();
@@ -375,7 +376,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
     if (!Number.isFinite(id)) { res.status(400).json({ error: "validation_error", message: "Invalid blog post id" }); return; }
     const parsed = parseBlogBody(BlogUpdateSchema, req.body);
     if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
-    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = parsed.data;
+    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride, viewCount } = parsed.data;
     const [beforeSnapshot] = await db.select().from(blogPostsTable).where(eq(blogPostsTable.id, id));
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -392,6 +393,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
     if (published !== undefined) updateData.published = published;
     if (featured !== undefined) updateData.featured = featured;
     if (readingTimeOverride !== undefined) updateData.readingTimeOverride = readingTimeOverride ?? null;
+    if (viewCount !== undefined) updateData.viewCount = viewCount;
 
     const [post] = await db.update(blogPostsTable).set(updateData).where(eq(blogPostsTable.id, id)).returning();
     if (!post) {

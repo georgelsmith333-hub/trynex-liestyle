@@ -305,6 +305,7 @@ export default function AdminBlog() {
         published: editing.published,
         featured: editing.featured,
         readingTimeOverride: rtoValue ? Number(rtoValue) : null,
+        ...(editing.id && editing.viewCount !== undefined ? { viewCount: editing.viewCount } : {}),
       } satisfies Omit<BlogPostInput, "readingTimeOverride"> & { readingTimeOverride: number | null };
 
       if (editing.id) {
@@ -691,6 +692,35 @@ export default function AdminBlog() {
                     className={inputClass}
                   />
                 </div>
+
+                {/* View count adjustment — only shown when editing an existing post */}
+                {editing.id && (
+                  <div className="rounded-2xl p-5 space-y-3" style={{ background: "#fafafa", border: "1px solid #e5e7eb" }}>
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-gray-400" />
+                      <p className="text-xs font-black uppercase tracking-wider text-gray-400">View Count</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={editing.viewCount ?? 0}
+                        onChange={e => setEditing(prev => ({ ...prev!, viewCount: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+                        className={`${inputClass} flex-1`}
+                        aria-label="View count"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditing(prev => ({ ...prev!, viewCount: 0 }))}
+                        className="px-4 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all hover:scale-105"
+                        style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}
+                      >
+                        Reset to 0
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-400">Adjust or reset the view count to correct bot inflation or testing data.</p>
+                  </div>
+                )}
 
                 {/* Featured + Published toggles */}
                 <div className="grid grid-cols-2 gap-4">
