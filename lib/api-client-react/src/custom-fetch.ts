@@ -358,6 +358,13 @@ export async function customFetch<T = unknown>(
     }
   }
 
+  // CSRF mitigation: mark every request as an XHR so the server can
+  // distinguish legitimate JavaScript-initiated calls from cross-origin
+  // HTML form submissions (which cannot set custom headers).
+  if (!headers.has("x-requested-with")) {
+    headers.set("x-requested-with", "XMLHttpRequest");
+  }
+
   const requestInfo = { method, url: resolveUrl(input) };
 
   const response = await fetch(input, { ...init, method, headers });

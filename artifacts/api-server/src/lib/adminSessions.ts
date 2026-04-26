@@ -65,6 +65,13 @@ export async function revokeAdminSession(token: string): Promise<void> {
     .where(eq(adminSessionsTable.tokenHash, tokenHash));
 }
 
+export async function revokeAllAdminSessions(): Promise<void> {
+  await db
+    .update(adminSessionsTable)
+    .set({ revokedAt: new Date() })
+    .where(isNull(adminSessionsTable.revokedAt));
+}
+
 export async function purgeExpiredAdminSessions(): Promise<void> {
   // Best-effort cleanup; safe to call from a periodic job.
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);

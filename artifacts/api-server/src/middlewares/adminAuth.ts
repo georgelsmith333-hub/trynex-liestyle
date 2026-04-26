@@ -14,6 +14,13 @@ import { validateAdminSession } from "../lib/adminSessions";
  *   - lastUsedAt can be tracked for activity audits.
  *
  * No JWT — admin auth is fully stateful and can be revoked.
+ *
+ * CSRF Defense (layered):
+ *   Layer 1: Requests using `Authorization: Bearer` are immune to CSRF by design.
+ *   Layer 2: Cookie-only mutations MUST include `X-Requested-With: XMLHttpRequest`.
+ *            This custom header cannot be added by a cross-origin HTML form or
+ *            img/script tag — browsers block it per the CORS pre-flight rules.
+ *   Layer 3: When ALLOWED_ORIGINS is configured, Origin/Referer is also checked.
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   const bearer = req.headers.authorization?.replace("Bearer ", "");
@@ -38,20 +45,29 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
         req.method === "PATCH" ||
         req.method === "DELETE";
       const cookieOnly = !bearer && !!cookieToken;
+
       if (isMutation && cookieOnly) {
-        const origin = req.headers.origin || "";
-        const referer = req.headers.referer || "";
+        // Layer 2: Always enforce X-Requested-With for cookie-only mutations.
+        const xrw = req.headers["x-requested-with"];
+        if (!xrw || String(xrw).toLowerCase() !== "xmlhttprequest") {
+          res.status(403).json({ error: "csrf_blocked", message: "Cross-site request blocked (missing X-Requested-With)" });
+          return;
+        }
+
+        // Layer 3: Also enforce Origin/Referer when ALLOWED_ORIGINS is configured.
         const allowedRaw = process.env.ALLOWED_ORIGINS;
         if (allowedRaw) {
           const allowed = allowedRaw.split(",").map((o) => o.trim()).filter(Boolean);
+          const origin = req.headers.origin || "";
+          const referer = req.headers.referer || "";
           const refererOrigin = referer
-            ? (() => { try { return new URL(referer).origin; } catch (err) { return ""; } })()
+            ? (() => { try { return new URL(referer).origin; } catch { return ""; } })()
             : "";
           const ok =
             (origin && allowed.includes(origin)) ||
             (refererOrigin && allowed.includes(refererOrigin));
           if (!ok) {
-            res.status(403).json({ error: "csrf_blocked", message: "Cross-site request blocked" });
+            res.status(403).json({ error: "csrf_blocked", message: "Cross-site request blocked (origin mismatch)" });
             return;
           }
         }
@@ -66,11 +82,6 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     });
 }
 
-/**
- * Legacy helpers retained for backwards compatibility with any caller that
- * still imports from this module. New code should use the session helpers in
- * `lib/adminSessions.ts` directly.
- */
 export async function validateToken(token: string): Promise<boolean> {
   return (await validateAdminSession(token)) !== null;
 }

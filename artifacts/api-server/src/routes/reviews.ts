@@ -75,7 +75,6 @@ router.post("/reviews", async (req, res) => {
       rating,
       body: text || "",
       approved: false,
-      verified,
     }).returning();
 
     res.status(201).json({ ...review, message: "Review submitted! It will appear after approval." });

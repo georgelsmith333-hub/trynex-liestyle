@@ -1,11 +1,13 @@
 import * as argon2 from "@node-rs/argon2";
 import * as crypto from "crypto";
 
+// Algorithm.Argon2id = 2 (the default for @node-rs/argon2; avoids ambient
+// const enum access which is incompatible with isolatedModules).
 const ARGON2_OPTIONS: argon2.Options = {
   memoryCost: 65536,
   timeCost: 3,
   parallelism: 1,
-  algorithm: argon2.Algorithm.Argon2id,
+  algorithm: 2,
 };
 
 export async function hashPasswordArgon2(password: string): Promise<string> {

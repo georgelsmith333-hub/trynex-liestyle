@@ -24,7 +24,10 @@ export default function AdminLogin() {
   async function apiPost(path: string, body: Record<string, unknown>) {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
       credentials: "include",
       body: JSON.stringify(body),
     });

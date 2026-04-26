@@ -93,7 +93,7 @@ router.put("/storage/upload-direct/:objectId", async (req: Request, res: Respons
     res.status(404).json({ error: "not_found" });
     return;
   }
-  const { objectId } = req.params;
+  const objectId = String(req.params.objectId ?? "");
   if (!objectId || !/^[a-zA-Z0-9-]+$/.test(objectId)) {
     res.status(400).json({ error: "Invalid object id" });
     return;

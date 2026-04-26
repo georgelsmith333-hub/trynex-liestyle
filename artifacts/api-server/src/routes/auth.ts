@@ -3,13 +3,60 @@ import { db, customersTable, settingsTable, customerPasswordResetTokensTable } f
 import { eq, or, desc, sql, and, gt, isNull } from "drizzle-orm";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 import { OAuth2Client } from "google-auth-library";
 import {
   hashPasswordArgon2,
   verifyPasswordAny,
-  hashPasswordSha256,
   isArgon2Hash,
 } from "../lib/passwordHash";
+
+// ---------------------------------------------------------------------------
+// Zod schemas
+// ---------------------------------------------------------------------------
+const RegisterSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  phone: z.string().optional(),
+});
+
+const LoginSchema = z.object({
+  email: z.string().min(1, "Email is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email("Valid email is required"),
+});
+
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1, "token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "currentPassword is required"),
+  newPassword: z.string().min(6, "newPassword must be at least 6 characters"),
+});
+
+function parseBody<T>(schema: z.ZodType<T>, body: unknown): { ok: true; data: T } | { ok: false; message: string } {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    const msg = result.error.errors.map((e) => e.message).join("; ");
+    return { ok: false, message: msg };
+  }
+  return { ok: true, data: result.data };
+}
+
+function hasRows(result: unknown): boolean {
+  if (Array.isArray(result)) return result.length > 0;
+  if (result && typeof result === "object" && "rows" in result) {
+    const rows = (result as { rows?: unknown[] }).rows;
+    return Array.isArray(rows) && rows.length > 0;
+  }
+  return false;
+}
 
 // Lazily-built Google OAuth verifier. Re-built only when the configured
 // client ID changes. Verifies signature, issuer, audience, and expiry
@@ -75,32 +122,18 @@ function verifyCustomerToken(token: string): { id: number; email: string; role: 
 
 router.post("/auth/register", async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const parsed = parseBody(RegisterSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { name, email, phone, password } = parsed.data;
 
-    if (!name || !email || !password) {
-      res.status(400).json({ error: "validation_error", message: "Name, email, and password are required" });
-      return;
-    }
-
-    const trimmedName = String(name).trim().replace(/\s+/g, " ");
+    const trimmedName = name.trim().replace(/\s+/g, " ");
     const nameRegex = /^[\p{L}][\p{L}\s'-]{1,49}$/u;
     if (trimmedName.length < 2 || /\d/.test(trimmedName) || /@/.test(trimmedName) || !nameRegex.test(trimmedName)) {
       res.status(400).json({ error: "validation_error", message: "Please enter a valid name (letters only, 2–50 characters)" });
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: "validation_error", message: "Password must be at least 6 characters" });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      res.status(400).json({ error: "validation_error", message: "Invalid email address" });
-      return;
-    }
-
-    if (phone && !/^[+\d][\d\s-]{6,18}$/.test(String(phone).trim())) {
+    if (phone && !/^[+\d][\d\s-]{6,18}$/.test(phone.trim())) {
       res.status(400).json({ error: "validation_error", message: "Invalid phone number" });
       return;
     }
@@ -111,7 +144,7 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
 
-    const passwordHash = await hashPasswordArgon2(String(password));
+    const passwordHash = await hashPasswordArgon2(password);
     const [customer] = await db.insert(customersTable).values({
       name: trimmedName,
       email: email.toLowerCase().trim(),
@@ -149,12 +182,9 @@ router.post("/auth/register", async (req, res) => {
 
 router.post("/auth/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      res.status(400).json({ error: "validation_error", message: "Email and password are required" });
-      return;
-    }
+    const parsed = parseBody(LoginSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { email, password } = parsed.data;
 
     const [customer] = await db.select().from(customersTable).where(eq(customersTable.email, email.toLowerCase())).limit(1);
 
@@ -163,7 +193,7 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
-    const isValid = await verifyPasswordAny(customer.passwordHash, String(password), CUSTOMER_SALT);
+    const isValid = await verifyPasswordAny(customer.passwordHash, password, CUSTOMER_SALT);
     if (!isValid) {
       res.status(401).json({ error: "unauthorized", message: "Invalid email or password" });
       return;
@@ -171,7 +201,7 @@ router.post("/auth/login", async (req, res) => {
 
     // Transparent re-hash from SHA-256 → argon2id on successful login
     if (!isArgon2Hash(customer.passwordHash)) {
-      const newHash = await hashPasswordArgon2(String(password));
+      const newHash = await hashPasswordArgon2(password);
       await db.update(customersTable)
         .set({ passwordHash: newHash, updatedAt: new Date() })
         .where(eq(customersTable.id, customer.id));
@@ -452,15 +482,9 @@ router.put("/auth/change-password", async (req, res) => {
       res.status(401).json({ error: "unauthorized", message: "Invalid token" });
       return;
     }
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({ error: "validation_error", message: "Current and new passwords are required" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      res.status(400).json({ error: "validation_error", message: "New password must be at least 6 characters" });
-      return;
-    }
+    const parsed = parseBody(ChangePasswordSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { currentPassword, newPassword } = parsed.data;
     const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, decoded.id)).limit(1);
     if (!customer) {
       res.status(404).json({ error: "not_found", message: "Customer not found" });
@@ -470,12 +494,12 @@ router.put("/auth/change-password", async (req, res) => {
       res.status(400).json({ error: "bad_request", message: "Password change not available for social login accounts. Please use Google or Facebook to sign in." });
       return;
     }
-    const isValid = await verifyPasswordAny(customer.passwordHash, String(currentPassword), CUSTOMER_SALT);
+    const isValid = await verifyPasswordAny(customer.passwordHash, currentPassword, CUSTOMER_SALT);
     if (!isValid) {
       res.status(401).json({ error: "unauthorized", message: "Current password is incorrect" });
       return;
     }
-    const newHash = await hashPasswordArgon2(String(newPassword));
+    const newHash = await hashPasswordArgon2(newPassword);
     await db.update(customersTable)
       .set({ passwordHash: newHash, updatedAt: new Date() })
       .where(eq(customersTable.id, decoded.id));
@@ -494,11 +518,9 @@ router.put("/auth/change-password", async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/auth/forgot-password", async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email || typeof email !== "string") {
-      res.status(400).json({ error: "validation_error", message: "Email is required" });
-      return;
-    }
+    const parsed = parseBody(ForgotPasswordSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { email } = parsed.data;
     const [customer] = await db.select().from(customersTable)
       .where(eq(customersTable.email, email.toLowerCase().trim()))
       .limit(1);
@@ -551,16 +573,10 @@ router.post("/auth/forgot-password", async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/auth/reset-password", async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) {
-      res.status(400).json({ error: "validation_error", message: "token and newPassword are required" });
-      return;
-    }
-    if (String(newPassword).length < 6) {
-      res.status(400).json({ error: "validation_error", message: "Password must be at least 6 characters" });
-      return;
-    }
-    const tokenHash = crypto.createHash("sha256").update(String(token)).digest("hex");
+    const parsed = parseBody(ResetPasswordSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { token, newPassword } = parsed.data;
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const now = new Date();
 
     const [resetToken] = await db.select().from(customerPasswordResetTokensTable)
@@ -578,7 +594,7 @@ router.post("/auth/reset-password", async (req, res) => {
       return;
     }
 
-    const newHash = await hashPasswordArgon2(String(newPassword));
+    const newHash = await hashPasswordArgon2(newPassword);
     await db.update(customersTable)
       .set({ passwordHash: newHash, updatedAt: now })
       .where(eq(customersTable.id, resetToken.customerId));
@@ -614,8 +630,7 @@ router.post("/auth/guest", async (req, res) => {
         const username = `guestaccount${padded}`;
         const guestEmail = `${username}@trynex.guest`;
         const guestPassword = username;
-        // Guest accounts use SHA-256 (no sensitive data, legacy compat)
-        const passwordHash = hashPasswordSha256(guestPassword, CUSTOMER_SALT);
+        const passwordHash = await hashPasswordArgon2(guestPassword);
 
         const [customer] = await db.insert(customersTable).values({
           name: `${safeName} #${padded}`,
@@ -684,11 +699,11 @@ router.get("/auth/health", async (_req, res) => {
     const tableCheck = await db.execute(
       sql`SELECT 1 FROM information_schema.tables WHERE table_name = 'customers' LIMIT 1`,
     );
-    customersTableExists = (tableCheck as any).rows?.length > 0 || (tableCheck as any).length > 0;
+    customersTableExists = hasRows(tableCheck);
     const colCheck = await db.execute(
       sql`SELECT 1 FROM information_schema.columns WHERE table_name = 'customers' AND column_name = 'guest_sequence' LIMIT 1`,
     );
-    guestSequenceColumnExists = (colCheck as any).rows?.length > 0 || (colCheck as any).length > 0;
+    guestSequenceColumnExists = hasRows(colCheck);
   } catch {
     // ignore
   }

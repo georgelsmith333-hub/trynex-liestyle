@@ -1,18 +1,61 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, productsTable, adminTable, customersTable, adminSessionsTable } from "@workspace/db";
+import { db, ordersTable, productsTable, adminTable, customersTable, adminSessionsTable, settingsTable } from "@workspace/db";
 import { eq, sql, desc, lte, asc, and, isNull, gt } from "drizzle-orm";
 import * as crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "../middlewares/adminAuth";
-import { createAdminSession, revokeAdminSession, ADMIN_SESSION_TTL_MS } from "../lib/adminSessions";
+import { createAdminSession, revokeAdminSession, revokeAllAdminSessions, ADMIN_SESSION_TTL_MS } from "../lib/adminSessions";
 import { logger } from "../lib/logger";
 import { logActivity, getAdminId } from "../lib/activityLog";
 import {
   hashPasswordArgon2,
   verifyPasswordAny,
+  verifyPasswordArgon2,
   hashPasswordSha256,
   isArgon2Hash,
 } from "../lib/passwordHash";
 import { generateTotpSecret, generateTotpQr, verifyTotp } from "../lib/totp";
+
+// ---------------------------------------------------------------------------
+// Zod schemas for request body validation
+// ---------------------------------------------------------------------------
+const LoginSchema = z.object({
+  password: z.string().min(1, "password required"),
+});
+
+const LoginTotpSchema = z.object({
+  partialToken: z.string().min(1, "partialToken required"),
+  totpCode: z.string().min(1, "totpCode required"),
+});
+
+const ResetPasswordSchema = z.object({
+  resetKey: z.string().min(1, "resetKey required"),
+  newPassword: z.string().min(8, "newPassword must be at least 8 characters").optional(),
+});
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "currentPassword required"),
+  newPassword: z.string().min(8, "newPassword must be at least 8 characters"),
+  totpCode: z.string().optional(),
+});
+
+const TotpEnableSchema = z.object({
+  secret: z.string().min(1, "secret required"),
+  totpCode: z.string().min(6, "totpCode required"),
+});
+
+const TotpDisableSchema = z.object({
+  totpCode: z.string().min(6, "totpCode required"),
+});
+
+function parseBody<T>(schema: z.ZodType<T>, body: unknown): { ok: true; data: T } | { ok: false; message: string } {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    const msg = result.error.errors.map((e) => e.message).join("; ");
+    return { ok: false, message: msg };
+  }
+  return { ok: true, data: result.data };
+}
 
 const router: IRouter = Router();
 
@@ -99,11 +142,9 @@ ensureAdminOnce().catch(() => {});
 router.post("/admin/login", async (req, res) => {
   try {
     await ensureAdminOnce();
-    const { password } = req.body;
-    if (!password || typeof password !== "string") {
-      res.status(400).json({ error: "validation_error", message: "password required" });
-      return;
-    }
+    const parsed = parseBody(LoginSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { password } = parsed.data;
     const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (!admin) {
       res.status(401).json({ error: "unauthorized", message: "Invalid password" });
@@ -153,12 +194,10 @@ router.post("/admin/login", async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/admin/login-totp", async (req, res) => {
   try {
-    const { partialToken, totpCode } = req.body;
-    if (!partialToken || !totpCode) {
-      res.status(400).json({ error: "validation_error", message: "partialToken and totpCode required" });
-      return;
-    }
-    const pending = consumePending2FAToken(String(partialToken));
+    const parsed = parseBody(LoginTotpSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { partialToken, totpCode } = parsed.data;
+    const pending = consumePending2FAToken(partialToken);
     if (!pending) {
       res.status(401).json({ error: "unauthorized", message: "Invalid or expired verification token. Please log in again." });
       return;
@@ -168,7 +207,7 @@ router.post("/admin/login-totp", async (req, res) => {
       res.status(401).json({ error: "unauthorized", message: "2FA not configured" });
       return;
     }
-    if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+    if (!verifyTotp(totpCode, admin.totpSecret)) {
       res.status(401).json({ error: "unauthorized", message: "Invalid authenticator code. Please try again." });
       return;
     }
@@ -189,29 +228,42 @@ router.post("/admin/login-totp", async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // POST /api/admin/reset-password
-// Master reset — uses ADMIN_RESET_KEY_HASH env var (argon2id hash of key).
-// Resets admin password to current ADMIN_PASSWORD env value.
+// Master reset — verifies the master reset key (hash stored in settings table,
+// key = 'adminResetKeyHash'). Sets a new password (from body or ADMIN_PASSWORD
+// env fallback), disables 2FA, and revokes ALL active sessions.
 // ---------------------------------------------------------------------------
 router.post("/admin/reset-password", async (req, res) => {
   try {
-    const { resetKey } = req.body;
-    if (!resetKey || typeof resetKey !== "string") {
-      res.status(400).json({ error: "validation_error", message: "resetKey required" });
-      return;
+    const parsed = parseBody(ResetPasswordSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { resetKey, newPassword } = parsed.data;
+
+    // Read the hash from the settings table (primary) or env var (fallback).
+    let storedHash: string | null = null;
+    try {
+      const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "adminResetKeyHash")).limit(1);
+      storedHash = row?.value?.trim() || null;
+    } catch {
+      // fall through to env fallback
     }
-    const storedHash = process.env.ADMIN_RESET_KEY_HASH;
     if (!storedHash) {
-      req.log.error("ADMIN_RESET_KEY_HASH env var not set — master reset disabled");
+      storedHash = process.env.ADMIN_RESET_KEY_HASH?.trim() || null;
+    }
+    if (!storedHash) {
+      req.log.error("adminResetKeyHash not found in settings table or env — master reset disabled");
       res.status(503).json({ error: "not_configured", message: "Master reset is not configured on this server" });
       return;
     }
-    const { verifyPasswordArgon2 } = await import("../lib/passwordHash");
+
     const valid = await verifyPasswordArgon2(storedHash, resetKey);
     if (!valid) {
       res.status(403).json({ error: "forbidden", message: "Invalid reset key" });
       return;
     }
-    const newHash = await hashPasswordArgon2(ADMIN_PASSWORD);
+
+    const passwordToSet = newPassword?.trim() || ADMIN_PASSWORD;
+    const newHash = await hashPasswordArgon2(passwordToSet);
+
     const existing = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (existing.length > 0) {
       await db.update(adminTable)
@@ -220,7 +272,18 @@ router.post("/admin/reset-password", async (req, res) => {
     } else {
       await db.insert(adminTable).values({ username: "admin", passwordHash: newHash });
     }
-    res.json({ success: true, message: "Admin password reset to ADMIN_PASSWORD value. 2FA has been disabled." });
+
+    // Revoke every active session so the attacker who triggered this cannot
+    // continue using a previously hijacked session.
+    await revokeAllAdminSessions();
+
+    req.log.warn("Admin master reset executed — all sessions revoked");
+    res.json({
+      success: true,
+      message: newPassword
+        ? "Admin password updated. 2FA disabled. All sessions revoked."
+        : "Admin password reset to default. 2FA disabled. All sessions revoked.",
+    });
   } catch (err) {
     req.log.error({ err }, "Password reset failed");
     res.status(500).json({ error: "internal_error", message: "Reset failed" });
@@ -286,17 +349,15 @@ router.get("/admin/totp-setup", requireAdmin, async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/admin/totp-enable", requireAdmin, async (req, res) => {
   try {
-    const { secret, totpCode } = req.body;
-    if (!secret || !totpCode) {
-      res.status(400).json({ error: "validation_error", message: "secret and totpCode required" });
-      return;
-    }
-    if (!verifyTotp(String(totpCode), String(secret))) {
+    const parsed = parseBody(TotpEnableSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { secret, totpCode } = parsed.data;
+    if (!verifyTotp(totpCode, secret)) {
       res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect. Please try again." });
       return;
     }
     await db.update(adminTable)
-      .set({ totpSecret: String(secret), totpEnabled: true })
+      .set({ totpSecret: secret, totpEnabled: true })
       .where(eq(adminTable.username, "admin"));
     res.json({ success: true, message: "Two-factor authentication enabled successfully." });
   } catch (err) {
@@ -312,17 +373,15 @@ router.post("/admin/totp-enable", requireAdmin, async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/admin/totp-disable", requireAdmin, async (req, res) => {
   try {
-    const { totpCode } = req.body;
-    if (!totpCode) {
-      res.status(400).json({ error: "validation_error", message: "totpCode required" });
-      return;
-    }
+    const parsed = parseBody(TotpDisableSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { totpCode } = parsed.data;
     const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (!admin || !admin.totpEnabled || !admin.totpSecret) {
       res.status(400).json({ error: "bad_request", message: "2FA is not currently enabled" });
       return;
     }
-    if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+    if (!verifyTotp(totpCode, admin.totpSecret)) {
       res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect. Please try again." });
       return;
     }
@@ -343,21 +402,15 @@ router.post("/admin/totp-disable", requireAdmin, async (req, res) => {
 // ---------------------------------------------------------------------------
 router.put("/admin/change-password", requireAdmin, async (req, res) => {
   try {
-    const { currentPassword, newPassword, totpCode } = req.body;
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({ error: "validation_error", message: "currentPassword and newPassword are required" });
-      return;
-    }
-    if (typeof newPassword !== "string" || newPassword.length < 8) {
-      res.status(400).json({ error: "validation_error", message: "New password must be at least 8 characters" });
-      return;
-    }
+    const parsed = parseBody(ChangePasswordSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { currentPassword, newPassword, totpCode } = parsed.data;
     const [admin] = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (!admin) {
       res.status(404).json({ error: "not_found", message: "Admin account not found" });
       return;
     }
-    const isValid = await verifyPasswordAny(admin.passwordHash, String(currentPassword), LEGACY_SALT);
+    const isValid = await verifyPasswordAny(admin.passwordHash, currentPassword, LEGACY_SALT);
     if (!isValid) {
       res.status(401).json({ error: "unauthorized", message: "Current password is incorrect" });
       return;
@@ -367,12 +420,12 @@ router.put("/admin/change-password", requireAdmin, async (req, res) => {
         res.status(400).json({ error: "totp_required", message: "Authenticator code required to change password" });
         return;
       }
-      if (!verifyTotp(String(totpCode), admin.totpSecret)) {
+      if (!verifyTotp(totpCode, admin.totpSecret)) {
         res.status(400).json({ error: "invalid_code", message: "Authenticator code is incorrect" });
         return;
       }
     }
-    const newHash = await hashPasswordArgon2(String(newPassword));
+    const newHash = await hashPasswordArgon2(newPassword);
     await db.update(adminTable).set({ passwordHash: newHash }).where(eq(adminTable.id, admin.id));
     res.json({ success: true, message: "Password changed successfully." });
   } catch (err) {
