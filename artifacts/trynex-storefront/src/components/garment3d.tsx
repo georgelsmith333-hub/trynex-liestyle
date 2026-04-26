@@ -614,8 +614,9 @@ export const VIEWER_FRAMING_BACK: Partial<Record<ViewerCategory, Partial<typeof 
 /** Overlay shown while GLB / texture assets are streaming in.
  *  MUST be rendered as a sibling of <Canvas>, not inside it. */
 export function ViewerLoadingOverlay() {
-  const { active, progress, total, loaded } = useProgress();
-  if (!active || total === 0) return null;
+  const { active, progress } = useProgress();
+  if (!active) return null;
+  const pct = Math.round(Math.max(progress, 2));
   return (
     <div
       style={{
@@ -625,28 +626,80 @@ export function ViewerLoadingOverlay() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(255,255,255,0.88)",
+        background: "rgba(255,255,255,0.92)",
         pointerEvents: "none",
         zIndex: 3,
-        color: "#475569",
+        gap: 14,
         fontFamily: "system-ui, -apple-system, sans-serif",
-        fontSize: 12,
-        fontWeight: 600,
-        gap: 10,
       }}
       aria-live="polite"
+      aria-label={`Loading 3D preview, ${pct}%`}
     >
-      <div
-        style={{
-          width: 36, height: 36, borderRadius: "50%",
-          border: "3px solid rgba(232,93,4,0.18)",
-          borderTopColor: "#E85D04",
-          animation: "trynex-spin 0.8s linear infinite",
-        }}
-      />
-      <div>Loading 3D preview… {Math.round(progress)}%</div>
-      <div style={{ fontSize: 10, opacity: 0.7 }}>
-        {loaded}/{total} asset{total === 1 ? "" : "s"}
+      {/* Animated product silhouette skeleton */}
+      <div style={{ position: "relative", width: 72, height: 72 }}>
+        <div
+          style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "linear-gradient(135deg, #fff7ed, #fef3c7)",
+            border: "2px solid rgba(232,93,4,0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Rotating ring */}
+          <div
+            style={{
+              position: "absolute",
+              width: 66, height: 66,
+              borderRadius: "50%",
+              border: "3px solid rgba(232,93,4,0.1)",
+              borderTopColor: "#E85D04",
+              animation: "trynex-spin 0.9s linear infinite",
+            }}
+          />
+          {/* Inner icon placeholder */}
+          <div
+            style={{
+              width: 28, height: 32,
+              borderRadius: 4,
+              background: "rgba(232,93,4,0.08)",
+            }}
+          />
+        </div>
+      </div>
+      {/* Progress bar */}
+      <div style={{ width: 140 }}>
+        <div
+          style={{
+            height: 4,
+            borderRadius: 9999,
+            background: "rgba(232,93,4,0.12)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${pct}%`,
+              borderRadius: 9999,
+              background: "linear-gradient(90deg, #E85D04, #FB8500)",
+              transition: "width 0.35s ease",
+            }}
+          />
+        </div>
+        <div
+          style={{
+            marginTop: 8,
+            textAlign: "center",
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#94a3b8",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Loading 3D preview… {pct}%
+        </div>
       </div>
       <style>{`@keyframes trynex-spin { to { transform: rotate(360deg) } }`}</style>
     </div>

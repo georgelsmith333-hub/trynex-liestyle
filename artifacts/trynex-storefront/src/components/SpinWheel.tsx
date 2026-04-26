@@ -17,13 +17,13 @@ type Prize = {
 };
 
 const PRIZES: Prize[] = [
-  { id: "miss1",     label: "Better luck next time", short: "TRY AGAIN",     emoji: "💔", weight: 30, color: "#1f2937", textColor: "#ffffff" },
-  { id: "off5",      label: "5% off your next order", short: "5% OFF",       emoji: "🎉", code: "SPIN5",     weight: 15, color: "#fb923c", textColor: "#ffffff" },
-  { id: "miss2",     label: "Better luck next time", short: "TRY AGAIN",     emoji: "💔", weight: 30, color: "#0f172a", textColor: "#ffffff" },
-  { id: "off10",     label: "10% off your next order", short: "10% OFF",     emoji: "🔥", code: "SPIN10",    weight: 10, color: "#f97316", textColor: "#ffffff" },
-  { id: "freedeliv", label: "Free delivery on ৳1500+", short: "FREE\nDELIVERY", emoji: "🚚", code: "FREEDELIV", weight: 5, color: "#16a34a", textColor: "#ffffff" },
-  { id: "off15",     label: "15% off your next order", short: "15% OFF",     emoji: "💎", code: "SPIN15",    weight: 5,  color: "#ea580c", textColor: "#ffffff" },
-  { id: "super",     label: "SUPER DEAL: Free delivery + 10% off", short: "SUPER\nDEAL", emoji: "🏆", code: "SUPERDEAL", weight: 5, color: "#dc2626", textColor: "#ffffff", message: "Jackpot!" },
+  { id: "miss1",     label: "Better luck next time", short: "TRY\nAGAIN",      emoji: "🌟", weight: 28, color: "#1e293b", textColor: "#ffffff" },
+  { id: "off5",      label: "5% off your next order", short: "5%\nOFF",        emoji: "🎉", code: "SPIN5",     weight: 16, color: "#ea580c", textColor: "#ffffff" },
+  { id: "miss2",     label: "Better luck next time", short: "TRY\nAGAIN",      emoji: "🌟", weight: 28, color: "#0f172a", textColor: "#ffffff" },
+  { id: "off10",     label: "10% off your next order", short: "10%\nOFF",      emoji: "🔥", code: "SPIN10",    weight: 12, color: "#f97316", textColor: "#ffffff" },
+  { id: "freedeliv", label: "Free delivery on ৳1500+", short: "FREE\nDELIV",  emoji: "🚚", code: "FREEDELIV", weight:  6, color: "#16a34a", textColor: "#ffffff" },
+  { id: "off15",     label: "15% off your next order", short: "15%\nOFF",      emoji: "💎", code: "SPIN15",    weight:  6, color: "#dc2626", textColor: "#ffffff" },
+  { id: "super",     label: "SUPER DEAL: Free delivery + 10% off", short: "SUPER\nDEAL", emoji: "🏆", code: "SUPERDEAL", weight: 4, color: "#7c3aed", textColor: "#ffffff", message: "Jackpot! 🎊" },
 ];
 
 const SLICES = PRIZES.length;
@@ -48,6 +48,102 @@ const STORAGE_LAST_SPIN = "spin_last_date";
 const STORAGE_SHOWN     = "spin_modal_shown_v2";
 const STORAGE_REWARD    = "spin_reward";
 
+/* ── Confetti particle system ── */
+interface Particle {
+  id: number;
+  x: number;
+  vy: number;
+  vx: number;
+  color: string;
+  size: number;
+  rotation: number;
+  rotSpeed: number;
+  shape: "rect" | "circle";
+}
+
+const CONFETTI_COLORS = ["#E85D04", "#FB8500", "#fbbf24", "#34d399", "#60a5fa", "#f472b6", "#a78bfa"];
+
+function Confetti({ active }: { active: boolean }) {
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const animRef = useRef<number | null>(null);
+  const stateRef = useRef<Particle[]>([]);
+
+  useEffect(() => {
+    if (!active) {
+      setParticles([]);
+      stateRef.current = [];
+      return;
+    }
+
+    const initial: Particle[] = Array.from({ length: 60 }, (_, i) => ({
+      id: i,
+      x: 35 + Math.random() * 30,
+      vy: -(6 + Math.random() * 8),
+      vx: (Math.random() - 0.5) * 8,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      size: 6 + Math.random() * 8,
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 12,
+      shape: Math.random() > 0.4 ? "rect" : "circle",
+    }));
+
+    stateRef.current = initial.map(p => ({ ...p, y: 50 } as Particle & { y: number }));
+    setParticles(stateRef.current);
+
+    let lastTime = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min((now - lastTime) / 16.67, 3);
+      lastTime = now;
+      stateRef.current = (stateRef.current as (Particle & { y: number })[])
+        .map(p => {
+          const np = {
+            ...p,
+            x: p.x + p.vx * dt * 0.4,
+            y: (p as any).y + p.vy * dt * 0.4,
+            vy: p.vy + 0.25 * dt,
+            rotation: p.rotation + p.rotSpeed * dt,
+          };
+          return np;
+        })
+        .filter((p: any) => p.y < 130) as (Particle & { y: number })[];
+      setParticles([...stateRef.current]);
+      if (stateRef.current.length > 0) {
+        animRef.current = requestAnimationFrame(tick);
+      }
+    };
+    animRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [active]);
+
+  if (!active || particles.length === 0) return null;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden z-20"
+      aria-hidden="true"
+    >
+      {(particles as (Particle & { y: number })[]).map(p => (
+        <div
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.shape === "rect" ? p.size * 0.5 : p.size,
+            borderRadius: p.shape === "circle" ? "50%" : 2,
+            background: p.color,
+            transform: `rotate(${p.rotation}deg)`,
+            opacity: Math.max(0, 1 - (p.y - 50) / 80),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   autoOpen?: boolean;
   forceOpen?: boolean;
@@ -66,6 +162,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<Prize | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const spunTodayRef = useRef(false);
 
   useEffect(() => {
@@ -99,6 +196,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     setOpen(false);
     setResult(null);
     setCopied(false);
+    setShowConfetti(false);
     onClose?.();
   };
 
@@ -119,6 +217,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     setTimeout(() => {
       setSpinning(false);
       setResult(prize);
+      if (prize.code) setShowConfetti(true);
       try {
         localStorage.setItem(STORAGE_LAST_SPIN, todayKey());
         if (prize.code) {
@@ -157,10 +256,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
 
   const WHEEL_SIZE = 320;
   const RADIUS = WHEEL_SIZE / 2;
-  // Place each label along its slice's center radius. Labels are rendered
-  // upright by counter-rotating them so they always read horizontally —
-  // text never overlaps because each slice gets its own fixed wedge.
-  const LABEL_RADIUS = RADIUS - 58; // distance from wheel center
+  const LABEL_RADIUS = RADIUS - 58;
 
   return createPortal(
     <AnimatePresence>
@@ -170,7 +266,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.72)" }}
+          style={{ background: "rgba(0,0,0,0.75)" }}
           onClick={() => !spinning && close()}
         >
           <motion.div
@@ -182,6 +278,8 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
             style={{ background: "linear-gradient(180deg, #fff7ed 0%, #ffffff 60%)" }}
             onClick={(e) => e.stopPropagation()}
           >
+            <Confetti active={showConfetti} />
+
             <button
               onClick={close}
               disabled={spinning}
@@ -218,10 +316,10 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                 style={{
                   ...conicStyle,
                   border: "8px solid #fff",
-                  boxShadow: "0 0 0 4px #E85D04, 0 14px 30px rgba(0,0,0,0.25)",
+                  boxShadow: "0 0 0 4px #E85D04, 0 14px 40px rgba(0,0,0,0.3)",
                 }}
               >
-                {/* Slice separator lines for clarity */}
+                {/* Separator lines */}
                 {PRIZES.map((_, i) => {
                   const a = i * SLICE_DEG;
                   return (
@@ -231,22 +329,19 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                       style={{
                         width: 1.5,
                         height: RADIUS - 8,
-                        background: "rgba(255,255,255,0.5)",
+                        background: "rgba(255,255,255,0.45)",
                         transform: `translate(-50%, 0) rotate(${a}deg)`,
                         transformOrigin: "50% 0",
                       }}
                     />
                   );
                 })}
-                {/* Labels — positioned along slice midline, counter-rotated to read upright */}
+                {/* Labels */}
                 {PRIZES.map((p, i) => {
-                  const angleDeg = i * SLICE_DEG + SLICE_DEG / 2; // center of slice
-                  const angleRad = (angleDeg - 90) * Math.PI / 180; // -90 so 0deg points up
+                  const angleDeg = i * SLICE_DEG + SLICE_DEG / 2;
+                  const angleRad = (angleDeg - 90) * Math.PI / 180;
                   const x = RADIUS + LABEL_RADIUS * Math.cos(angleRad);
                   const y = RADIUS + LABEL_RADIUS * Math.sin(angleRad);
-                  // Counter-rotate so text reads outward from center but stays upright on wheel
-                  // Each label rotates with its slice (so they don't all face up flat) but is readable.
-                  // Use slice angle minus 90 to make text sit perpendicular to radius (tangent style).
                   return (
                     <div
                       key={p.id}
@@ -266,7 +361,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                           color: p.textColor || "#ffffff",
                           fontSize: 10,
                           letterSpacing: "0.05em",
-                          textShadow: "0 1px 3px rgba(0,0,0,0.55), 0 0 1px rgba(0,0,0,0.4)",
+                          textShadow: "0 1px 3px rgba(0,0,0,0.6), 0 0 1px rgba(0,0,0,0.4)",
                         }}
                       >
                         {p.short}
@@ -279,7 +374,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full flex items-center justify-center z-10"
                 style={{
                   background: "radial-gradient(circle at 30% 30%, #fff, #f3f4f6)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.1)",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.1)",
                   border: "3px solid #fff",
                 }}>
                 <Gift className="w-7 h-7 text-orange-500" />
@@ -296,7 +391,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                     className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                     style={{ background: spinning ? "#9ca3af" : "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 16px rgba(232,93,4,0.35)" }}
                   >
-                    {spinning ? "Spinning…" : spunTodayRef.current ? "Come back tomorrow!" : "SPIN NOW"}
+                    {spinning ? "Spinning…" : spunTodayRef.current ? "Come back tomorrow!" : "SPIN NOW 🎰"}
                   </button>
                   <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">
                     One spin per day &middot; T&amp;Cs apply
@@ -306,30 +401,32 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                   {result.code ? (
                     <>
-                      <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">You Won!</p>
+                      <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">
+                        {result.message || "You Won! 🎊"}
+                      </p>
                       <p className="text-lg font-black text-gray-900">{result.label}</p>
                       <button
                         onClick={copyCode}
-                        className="mx-auto inline-flex items-center gap-2 px-5 py-3 rounded-xl font-black border-2 border-dashed text-base"
+                        className="mx-auto inline-flex items-center gap-2 px-5 py-3 rounded-xl font-black border-2 border-dashed text-base transition-all active:scale-95"
                         style={{ borderColor: "#E85D04", color: "#E85D04", background: "#fff7ed" }}
                       >
                         {result.code}
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                       </button>
                       <p className="text-[11px] text-gray-500">
-                        Coupon auto-applies at checkout. {result.message && <strong className="text-orange-600">{result.message}</strong>}
+                        {copied ? "✓ Copied to clipboard!" : "Tap the code to copy it. Applies at checkout automatically."}
                       </p>
                       <button onClick={close} className="w-full py-3 rounded-xl font-bold text-white"
-                        style={{ background: "#1f2937" }}>
+                        style={{ background: "linear-gradient(135deg, #1f2937, #374151)" }}>
                         Continue Shopping
                       </button>
                     </>
                   ) : (
                     <>
-                      <p className="text-xl font-black text-gray-900">Better luck next time!</p>
-                      <p className="text-sm text-gray-500">Come back tomorrow for another free spin.</p>
+                      <p className="text-2xl font-black text-gray-900">Better luck next time! ✨</p>
+                      <p className="text-sm text-gray-500">Come back tomorrow for another free spin. Every day is a new chance!</p>
                       <button onClick={close} className="w-full py-3 rounded-xl font-bold text-white"
-                        style={{ background: "#E85D04" }}>
+                        style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}>
                         Keep Shopping
                       </button>
                     </>

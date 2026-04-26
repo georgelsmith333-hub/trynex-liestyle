@@ -1,13 +1,39 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Tag, Copy, Check, ArrowRight, Loader2 } from "lucide-react";
+import { X, Tag, Copy, Check, ArrowRight, Loader2, Clock } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { useLocation } from "wouter";
 import { getApiUrl } from "@/lib/utils";
 import { trackLead } from "@/lib/tracking";
 
 const SESSION_KEY = "trynex_exit_intent_shown";
+const OFFER_DURATION_S = 15 * 60;
+
+function useOfferCountdown(active: boolean) {
+  const [remaining, setRemaining] = useState(OFFER_DURATION_S);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    setRemaining(OFFER_DURATION_S);
+    intervalRef.current = setInterval(() => {
+      setRemaining(prev => {
+        if (prev <= 1) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [active]);
+
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { display: `${pad(m)}:${pad(s)}`, pct: (remaining / OFFER_DURATION_S) * 100, expired: remaining === 0 };
+}
 
 export function ExitIntentPopup() {
   const { exitIntentPromoEnabled, exitIntentPromoDiscount } = useSiteSettings();
@@ -22,6 +48,8 @@ export function ExitIntentPopup() {
   const shownRef = useRef(false);
 
   const excluded = ["/checkout", "/admin"].some(p => location.startsWith(p));
+
+  const { display: countdownDisplay, pct: countdownPct, expired: offerExpired } = useOfferCountdown(show);
 
   useEffect(() => {
     if (!exitIntentPromoEnabled || excluded || shownRef.current) return;
@@ -59,6 +87,10 @@ export function ExitIntentPopup() {
       window.removeEventListener("scroll", onScroll);
     };
   }, [exitIntentPromoEnabled, excluded]);
+
+  useEffect(() => {
+    if (offerExpired && show) setShow(false);
+  }, [offerExpired, show]);
 
   const handleDismiss = () => setShow(false);
 
@@ -115,7 +147,7 @@ export function ExitIntentPopup() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.55)" }}
+          style={{ background: "rgba(0,0,0,0.6)" }}
           onClick={e => { if (e.target === e.currentTarget) handleDismiss(); }}
         >
           <motion.div
@@ -125,32 +157,53 @@ export function ExitIntentPopup() {
             transition={{ type: "spring", damping: 22, stiffness: 300 }}
             className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
           >
+            {/* Urgency timer bar */}
+            <div className="h-1 bg-gray-100">
+              <motion.div
+                className="h-full"
+                style={{ background: "linear-gradient(90deg, #E85D04, #FB8500)" }}
+                animate={{ width: `${countdownPct}%` }}
+                transition={{ duration: 1, ease: "linear" }}
+              />
+            </div>
+
             <button
               onClick={handleDismiss}
               aria-label="Close offer"
-              className="absolute top-2 right-2 z-10 touch-target rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              className="absolute top-3 right-3 z-10 touch-target rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div
               className="p-8 pb-6 text-center text-white relative overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}
+              style={{ background: "linear-gradient(135deg, #E85D04 0%, #FB8500 100%)" }}
             >
-              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "30px 30px" }} />
+              {/* Decorative dots */}
+              <div className="absolute inset-0 opacity-10" style={{
+                backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+              }} />
               <div className="relative z-10">
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Tag className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-1">Wait! Before you go...</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-1">Wait! Before you go…</p>
                 <h2 className="text-3xl font-black font-display mb-2">
                   Get {exitIntentPromoDiscount || "10%"} OFF
                 </h2>
-                <p className="text-white/90 text-sm leading-relaxed">
+                <p className="text-white/90 text-sm leading-relaxed mb-3">
                   {step === "capture"
-                    ? "Enter your phone or email to get your exclusive discount code!"
+                    ? "Enter your phone or email to unlock your exclusive discount."
                     : "Your personal discount code is ready! Use it at checkout."}
                 </p>
+                {/* Countdown badge */}
+                {step === "capture" && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-white/20">
+                    <Clock className="w-3.5 h-3.5" />
+                    Offer expires in <span className="font-mono ml-1">{countdownDisplay}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -182,17 +235,17 @@ export function ExitIntentPopup() {
                 <>
                   <div
                     onClick={handleCopy}
-                    className="flex items-center justify-between gap-3 p-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all"
+                    className="flex items-center justify-between gap-3 p-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all hover:shadow-sm"
                     style={{ borderColor: "#E85D04", background: "#FFF8F4" }}
                   >
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-0.5">Your exclusive code (1-time use, expires in 24h)</p>
+                      <p className="text-xs text-gray-500 font-medium mb-0.5">Your exclusive code (expires in 24h)</p>
                       <p className="text-xl font-black tracking-widest font-mono" style={{ color: "#E85D04" }}>
                         {promoCode}
                       </p>
                     </div>
                     <button
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-bold transition-transform active:scale-95"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-bold transition-transform active:scale-95 shrink-0"
                       style={{ background: copied ? "#22c55e" : "#E85D04" }}
                     >
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -206,7 +259,7 @@ export function ExitIntentPopup() {
                     className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-white text-sm transition-transform active:scale-[0.98]"
                     style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 4px 16px rgba(232,93,4,0.3)" }}
                   >
-                    Shop Now & Save {exitIntentPromoDiscount || "10%"} <ArrowRight className="w-4 h-4" />
+                    Shop Now &amp; Save {exitIntentPromoDiscount || "10%"} <ArrowRight className="w-4 h-4" />
                   </a>
                   <button onClick={handleDismiss} className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors font-medium">
                     Maybe later
