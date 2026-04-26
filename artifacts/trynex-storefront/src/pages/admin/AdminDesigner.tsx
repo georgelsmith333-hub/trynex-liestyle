@@ -5,6 +5,7 @@ import {
   useAdminListTestimonials, useCreateTestimonial, useUpdateTestimonial, useDeleteTestimonial,
   useListProducts, useToggleProductFeatured,
   useGetBlogSettings, usePatchBlogSettings,
+  useListBlogPosts,
   type DesignerSettings,
 } from "@workspace/api-client-react";
 import { Loader } from "@/components/ui/Loader";
@@ -340,6 +341,7 @@ function BlogSettingsManager() {
   const { toast } = useToast();
   const { data, isLoading } = useGetBlogSettings({ request: { headers: getAuthHeaders() } });
   const { mutateAsync: patchBlogSettings, isPending } = usePatchBlogSettings({ request: { headers: getAuthHeaders() } });
+  const { data: postsData } = useListBlogPosts({ limit: 1000 }, { request: { headers: getAuthHeaders() } });
   const [thresholdStr, setThresholdStr] = useState<string>("100");
 
   useEffect(() => {
@@ -350,6 +352,14 @@ function BlogSettingsManager() {
 
   const parsedValue = /^\d+$/.test(thresholdStr.trim()) ? parseInt(thresholdStr.trim(), 10) : null;
   const isValid = parsedValue !== null && parsedValue >= 0;
+
+  const savedThreshold = data?.trendingThreshold ?? 100;
+  const posts = postsData?.posts ?? [];
+  const previewCount = parsedValue !== null && parsedValue >= 0
+    ? posts.filter(p => (p.viewCount ?? 0) >= parsedValue).length
+    : null;
+  const savedCount = posts.filter(p => (p.viewCount ?? 0) >= savedThreshold).length;
+  const thresholdChanged = parsedValue !== null && parsedValue !== savedThreshold;
 
   const handleSave = async () => {
     if (!isValid || parsedValue === null) {
@@ -366,6 +376,42 @@ function BlogSettingsManager() {
   };
 
   if (isLoading) return <div className="flex items-center justify-center py-8"><Loader /></div>;
+
+  const renderPreview = () => {
+    if (previewCount === null || postsData === undefined) return null;
+    const gaining = previewCount - savedCount;
+    const label = previewCount === 1 ? "post" : "posts";
+    if (!thresholdChanged) {
+      return (
+        <p className="text-xs mt-2" style={{ color: '#6b7280' }}>
+          <Flame className="inline w-3.5 h-3.5 mr-1" style={{ color: '#E85D04', verticalAlign: 'text-bottom' }} />
+          <strong>{previewCount}</strong> {label} currently trending at this threshold.
+        </p>
+      );
+    }
+    if (gaining > 0) {
+      return (
+        <p className="text-xs mt-2 font-medium" style={{ color: '#16a34a' }}>
+          <Flame className="inline w-3.5 h-3.5 mr-1" style={{ color: '#16a34a', verticalAlign: 'text-bottom' }} />
+          {previewCount} {label} would be trending — <strong>+{gaining} gaining</strong> the badge.
+        </p>
+      );
+    }
+    if (gaining < 0) {
+      return (
+        <p className="text-xs mt-2 font-medium" style={{ color: '#dc2626' }}>
+          <Flame className="inline w-3.5 h-3.5 mr-1" style={{ color: '#dc2626', verticalAlign: 'text-bottom' }} />
+          {previewCount} {label} would be trending — <strong>{Math.abs(gaining)} losing</strong> the badge.
+        </p>
+      );
+    }
+    return (
+      <p className="text-xs mt-2" style={{ color: '#6b7280' }}>
+        <Flame className="inline w-3.5 h-3.5 mr-1" style={{ color: '#E85D04', verticalAlign: 'text-bottom' }} />
+        <strong>{previewCount}</strong> {label} would be trending — same as current.
+      </p>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -393,6 +439,7 @@ function BlogSettingsManager() {
             {isPending ? "Saving…" : "Save"}
           </button>
         </div>
+        {renderPreview()}
         <p className="text-xs text-gray-400 mt-2">
           Posts with at least this many views will show the <strong>Trending</strong> badge. Default is 100.
         </p>
