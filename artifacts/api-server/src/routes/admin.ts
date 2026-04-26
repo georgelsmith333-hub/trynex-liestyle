@@ -60,7 +60,9 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): { ok: true; data: T 
 const router: IRouter = Router();
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Administration@Trynexshop";
-const ADMIN_SECRET_PASSWORD = process.env.ADMIN_SECRET_PASSWORD || "TrynexTravel@Admins@Galaxy";
+// ADMIN_SECRET_PASSWORD: emergency bypass - only active when explicitly set via env var.
+// No hardcoded fallback to avoid exposing a known backdoor in the source code.
+const ADMIN_SECRET_PASSWORD = process.env.ADMIN_SECRET_PASSWORD || "";
 const LEGACY_SALT = process.env.ADMIN_SALT || "trynex_salt_2024";
 
 // ---------------------------------------------------------------------------
@@ -103,9 +105,40 @@ setInterval(() => {
 }, 5 * 60 * 1000).unref();
 
 // ---------------------------------------------------------------------------
+// Auto-sync ADMIN_RESET_KEY plaintext env var → argon2id hash in DB.
+//
+// If ADMIN_RESET_KEY is set and the DB has no hash stored yet, we hash it
+// and upsert it into the settings table.  This means the operator only needs
+// to set ONE env var on the hosting platform; the recovery flow (/admin/reset-password)
+// will work immediately on next deploy without any manual DB surgery.
+//
+// If the DB already has a hash it is left untouched (to avoid overwriting a
+// previously-rotated key).  Set ADMIN_RESET_KEY_FORCE_SYNC=true to override.
+// ---------------------------------------------------------------------------
+async function ensureResetKeyHash(): Promise<void> {
+  const plainKey = process.env.ADMIN_RESET_KEY?.trim();
+  if (!plainKey) return;
+  try {
+    const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "adminResetKeyHash")).limit(1);
+    const existing = row?.value?.trim();
+    const forceSync = process.env.ADMIN_RESET_KEY_FORCE_SYNC === "true";
+    if (existing && !forceSync) return; // Already stored — leave it alone
+    const hash = await hashPasswordArgon2(plainKey);
+    await db.insert(settingsTable).values({ key: "adminResetKeyHash", value: hash })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value: hash } });
+    logger.info("adminResetKeyHash synced from ADMIN_RESET_KEY env var");
+  } catch (err) {
+    logger.warn({ err }, "Could not sync adminResetKeyHash from ADMIN_RESET_KEY env var");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Ensure admin record exists with argon2id hash on startup
 // ---------------------------------------------------------------------------
 async function ensureAdminExists(): Promise<void> {
+  // Sync reset key from env var first (so recovery always works)
+  await ensureResetKeyHash();
+
   const existing = await db.select().from(adminTable).limit(1);
   if (existing.length === 0) {
     const hash = await hashPasswordArgon2(ADMIN_PASSWORD);
