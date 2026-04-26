@@ -3,6 +3,38 @@ import { db, blogPostsTable } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin, validateToken } from "../middlewares/adminAuth";
 import { logActivity, getAdminId } from "../lib/activityLog";
+import { z } from "zod";
+
+// ---------------------------------------------------------------------------
+// Zod schemas for blog mutation endpoints
+// ---------------------------------------------------------------------------
+const BlogCreateSchema = z.object({
+  title:               z.string().min(1, "title is required").max(300),
+  slug:                z.string().min(1, "slug is required").max(300).regex(/^[a-z0-9-]+$/, "slug must be lowercase-kebab"),
+  content:             z.string().min(1, "content is required"),
+  excerpt:             z.string().max(1000).optional().nullable(),
+  imageUrl:            z.string().url().max(2048).optional().nullable(),
+  author:              z.string().max(100).optional().nullable(),
+  authorBio:           z.string().max(1000).optional().nullable(),
+  authorAvatarUrl:     z.string().url().max(2048).optional().nullable(),
+  category:            z.string().max(100).optional().nullable(),
+  tags:                z.array(z.string().max(60)).max(20).optional(),
+  published:           z.boolean().optional(),
+  featured:            z.boolean().optional(),
+  readingTimeOverride: z.number().int().positive().optional().nullable(),
+});
+
+const BlogUpdateSchema = BlogCreateSchema.partial();
+
+function parseBlogBody<T>(schema: z.ZodSchema<T>, body: unknown):
+  | { ok: true; data: T }
+  | { ok: false; message: string } {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    return { ok: false, message: result.error.errors.map(e => e.message).join("; ") };
+  }
+  return { ok: true, data: result.data };
+}
 
 const router: IRouter = Router();
 
@@ -154,20 +186,22 @@ router.get("/blog/:id/related", async (req, res) => {
 
 router.post("/blog", requireAdmin, async (req, res) => {
   try {
-    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = req.body;
-    if (!title || !slug || !content) {
-      res.status(400).json({ error: "validation_error", message: "title, slug, content are required" });
-      return;
-    }
+    const parsed = parseBlogBody(BlogCreateSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = parsed.data;
     const [post] = await db.insert(blogPostsTable).values({
-      title, slug, excerpt, content, imageUrl,
-      author: author || "TryNex Team",
-      authorBio, authorAvatarUrl,
-      category: category || "General",
-      tags: tags || [],
-      published: published ?? false,
-      featured: featured ?? false,
-      readingTimeOverride: readingTimeOverride ? Number(readingTimeOverride) : undefined,
+      title, slug,
+      excerpt:             excerpt ?? undefined,
+      content,
+      imageUrl:            imageUrl ?? undefined,
+      author:              author ?? "TryNex Team",
+      authorBio:           authorBio ?? undefined,
+      authorAvatarUrl:     authorAvatarUrl ?? undefined,
+      category:            category ?? "General",
+      tags:                tags ?? [],
+      published:           published ?? false,
+      featured:            featured ?? false,
+      readingTimeOverride: readingTimeOverride ?? undefined,
     }).returning();
     logActivity({ action: "create", entity: "blog", entityId: post.id, entityName: post.title, after: post as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(mapPost(post));
@@ -180,10 +214,13 @@ router.post("/blog", requireAdmin, async (req, res) => {
 router.put("/blog/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string, 10);
-    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = req.body;
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "validation_error", message: "Invalid blog post id" }); return; }
+    const parsed = parseBlogBody(BlogUpdateSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { title, slug, excerpt, content, imageUrl, author, authorBio, authorAvatarUrl, category, tags, published, featured, readingTimeOverride } = parsed.data;
     const [beforeSnapshot] = await db.select().from(blogPostsTable).where(eq(blogPostsTable.id, id));
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
     if (slug !== undefined) updateData.slug = slug;
     if (excerpt !== undefined) updateData.excerpt = excerpt;
@@ -196,7 +233,7 @@ router.put("/blog/:id", requireAdmin, async (req, res) => {
     if (tags !== undefined) updateData.tags = tags;
     if (published !== undefined) updateData.published = published;
     if (featured !== undefined) updateData.featured = featured;
-    if (readingTimeOverride !== undefined) updateData.readingTimeOverride = readingTimeOverride ? Number(readingTimeOverride) : null;
+    if (readingTimeOverride !== undefined) updateData.readingTimeOverride = readingTimeOverride ?? null;
 
     const [post] = await db.update(blogPostsTable).set(updateData).where(eq(blogPostsTable.id, id)).returning();
     if (!post) {

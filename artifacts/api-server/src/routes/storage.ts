@@ -142,6 +142,18 @@ router.put("/storage/upload-direct/:objectId", async (req: Request, res: Respons
       return;
     }
 
+    // Compare detected type against the declared Content-Type header.
+    // This prevents a client from uploading a PNG while claiming it is
+    // a JPEG (or any other MIME substitution attack).
+    const rawDeclared = req.headers["content-type"] ?? "";
+    const declaredType = rawDeclared.split(";")[0].trim().toLowerCase();
+    if (declaredType && ALLOWED_TYPES.has(declaredType) && declaredType !== detectedType) {
+      res.status(415).json({
+        error: `Content-Type mismatch: declared "${declaredType}" but file is "${detectedType}". Upload was rejected.`,
+      });
+      return;
+    }
+
     // Save the validated buffer via the storage service
     const { Readable } = await import("stream");
     const readable = Readable.from(bodyBuf);

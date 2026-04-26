@@ -90,13 +90,49 @@ app.use(
       return callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    // X-Requested-With is listed explicitly so browsers allow the
+    // frontend to send it in cross-origin pre-flighted requests.
+    // It is required by the CSRF policy for all cookie-only mutations.
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 
 app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// ---------------------------------------------------------------------------
+// Global CSRF defence for ALL cookie-authenticated mutations.
+//
+// A browser cannot set custom headers (like X-Requested-With) via a plain
+// HTML <form>, <img>, or <script> injection, so requiring it for any
+// cookie-only mutation blocks cross-site request forgery from arbitrary sites.
+//
+// Scope: POST / PUT / PATCH / DELETE requests that carry a session cookie
+//        but NO Authorization: Bearer token (bearer-token callers are already
+//        CSRF-immune because the browser never auto-attaches bearer tokens).
+//
+// The admin middleware (requireAdmin) enforces this same check inside the
+// protected route chain. This global middleware extends the same policy to
+// ALL cookie-authenticated customer routes consistently.
+// ---------------------------------------------------------------------------
+app.use((req: express.Request, res: express.Response, next: express.NextFunction): void => {
+  const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
+  if (!isMutation) { next(); return; }
+
+  const hasBearerToken = /^Bearer\s+\S+/i.test(req.headers.authorization || "");
+  const parsedCookies = (req as any).cookies ?? {};
+  const hasCookie = !!(parsedCookies.admin_token || parsedCookies.customer_token);
+
+  if (hasCookie && !hasBearerToken) {
+    const xrw = req.headers["x-requested-with"];
+    if (!xrw || String(xrw).toLowerCase() !== "xmlhttprequest") {
+      res.status(403).json({ error: "csrf_blocked", message: "Cross-site request blocked (missing X-Requested-With header)" });
+      return;
+    }
+  }
+  next();
+});
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

@@ -7,6 +7,41 @@ import { verifyCustomerToken, extractCustomerToken } from "../lib/customerAuth";
 import { logger } from "../lib/logger";
 import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { z } from "zod";
+
+// ---------------------------------------------------------------------------
+// Zod schemas for order creation
+// ---------------------------------------------------------------------------
+const OrderItemSchema = z.object({
+  productId:    z.union([z.number(), z.string()]).transform(v => Number(v)),
+  quantity:     z.number().int().min(1).max(100),
+  productName:  z.string().max(300).optional(),
+  name:         z.string().max(300).optional(),
+  size:         z.string().max(50).optional().nullable(),
+  color:        z.string().max(50).optional().nullable(),
+  customNote:   z.string().max(5000).optional().nullable(),
+  customImages: z.array(z.string().max(2048)).max(10).optional().nullable(),
+  price:        z.number().nonnegative().optional(),
+  imageUrl:     z.string().max(2048).optional().nullable(),
+});
+
+const OrderCreateSchema = z.object({
+  customerName:  z.string().max(150).optional(),
+  firstName:     z.string().max(75).optional(),
+  lastName:      z.string().max(75).optional(),
+  customerEmail: z.string().email().max(254).optional().nullable(),
+  customerPhone: z.string().min(7).max(25),
+  shippingAddress: z.string().min(1).max(500),
+  shippingCity:    z.string().max(100).optional().nullable(),
+  shippingDistrict: z.string().max(100).optional().nullable(),
+  paymentMethod: z.string().max(50).optional(),
+  items:         z.array(OrderItemSchema).min(1, "Cart must have at least one item"),
+  notes:         z.string().max(2000).optional().nullable(),
+  promoCode:     z.string().max(50).optional().nullable(),
+  utmSource:     z.string().max(100).optional().nullable(),
+  utmMedium:     z.string().max(100).optional().nullable(),
+  utmCampaign:   z.string().max(100).optional().nullable(),
+});
 
 const orderStorageService = new ObjectStorageService();
 
@@ -363,44 +398,33 @@ router.get("/orders/:id", requireAdmin, async (req, res) => {
 
 router.post("/orders", async (req, res) => {
   try {
-    const body = req.body ?? {};
+    // Zod validation — structured 400 with field-level error messages.
+    const zodResult = OrderCreateSchema.safeParse(req.body ?? {});
+    if (!zodResult.success) {
+      res.status(400).json({
+        error: "validation_error",
+        message: zodResult.error.errors.map(e => e.message).join("; "),
+      });
+      return;
+    }
+    const body = zodResult.data;
+
     // Accept either combined customerName OR separate firstName+lastName
     const customerName: string = body.customerName?.trim() ||
       [body.firstName, body.lastName].filter(Boolean).join(" ").trim();
-    const customerEmail: string = body.customerEmail;
+    if (!customerName) {
+      res.status(400).json({ error: "validation_error", message: "Please fill in: Full name" });
+      return;
+    }
+    const customerEmail: string | null | undefined = body.customerEmail;
     const customerPhone: string = body.customerPhone;
     const shippingAddress: string = body.shippingAddress;
-    const shippingCity: string = body.shippingCity;
-    const shippingDistrict: string = body.shippingDistrict;
+    const shippingCity: string | null | undefined = body.shippingCity;
+    const shippingDistrict: string | null | undefined = body.shippingDistrict;
     // Default payment method to COD so missing/empty values don't block orders
     const paymentMethod: string = body.paymentMethod || "cod";
     const { items, notes, promoCode, utmSource, utmMedium, utmCampaign } = body;
     const customerEmailLower = customerEmail ? customerEmail.toLowerCase().trim() : null;
-
-    const missing: string[] = [];
-    if (!customerName) missing.push("Full name");
-    if (!customerPhone) missing.push("Phone number");
-    if (!shippingAddress) missing.push("Street address");
-    if (!items?.length) missing.push("Cart items");
-    if (missing.length > 0) {
-      res.status(400).json({
-        error: "validation_error",
-        message: `Please fill in: ${missing.join(", ")}`,
-      });
-      return;
-    }
-
-    for (const item of items) {
-      const qty = Number(item.quantity);
-      if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
-        res.status(400).json({ error: "validation_error", message: "Quantity must be a positive integer (1-100)" });
-        return;
-      }
-      if (item.customImages && (!Array.isArray(item.customImages) || item.customImages.length > 10)) {
-        res.status(400).json({ error: "validation_error", message: "Maximum 10 custom images per item" });
-        return;
-      }
-    }
 
     // Separate studio design items (productId: 0 + customNote.studioDesign === true)
     // and hamper items (productId: 0 + customNote.hamper) from regular catalog items.
@@ -745,11 +769,11 @@ router.post("/orders", async (req, res) => {
       const [created] = await tx.insert(ordersTable).values({
         orderNumber: preGeneratedOrderNumber,
         customerName,
-        customerEmail,
+        customerEmail: customerEmail ?? "",
         customerPhone,
         shippingAddress,
-        shippingCity,
-        shippingDistrict,
+        shippingCity: shippingCity ?? null,
+        shippingDistrict: shippingDistrict ?? null,
         paymentMethod,
         items: orderItems,
         subtotal: subtotal.toString(),

@@ -719,6 +719,83 @@ router.get("/auth/health", async (_req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// PUT /api/auth/profile
+// Update customer name and/or phone.
+// Body: { name?: string; phone?: string }
+// ---------------------------------------------------------------------------
+const ProfileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters").optional(),
+  phone: z.string().max(20, "Phone too long").optional().nullable(),
+});
+
+router.put("/auth/profile", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "") ?? req.cookies?.customer_token;
+    if (!token) {
+      res.status(401).json({ error: "unauthorized", message: "Not authenticated" });
+      return;
+    }
+    const decoded = verifyCustomerToken(token);
+    if (!decoded) {
+      res.status(401).json({ error: "unauthorized", message: "Invalid token" });
+      return;
+    }
+    const parsed = parseBody(ProfileSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { name, phone } = parsed.data;
+
+    if (!name && phone === undefined) {
+      res.status(400).json({ error: "validation_error", message: "At least one field (name or phone) is required" });
+      return;
+    }
+
+    const updates: {
+      updatedAt: Date;
+      name?: string;
+      phone?: string | null;
+    } = { updatedAt: new Date() };
+
+    if (name !== undefined) {
+      const trimmedName = name.trim().replace(/\s+/g, " ");
+      const nameRegex = /^[\p{L}][\p{L}\s'-]{1,49}$/u;
+      if (trimmedName.length < 2 || /\d/.test(trimmedName) || /@/.test(trimmedName) || !nameRegex.test(trimmedName)) {
+        res.status(400).json({ error: "validation_error", message: "Please enter a valid name (letters only, 2–50 characters)" });
+        return;
+      }
+      updates.name = trimmedName;
+    }
+    if (phone !== undefined) {
+      if (phone && !/^[+\d][\d\s-]{6,18}$/.test(phone.trim())) {
+        res.status(400).json({ error: "validation_error", message: "Invalid phone number" });
+        return;
+      }
+      updates.phone = phone?.trim() || null;
+    }
+
+    await db.update(customersTable).set(updates).where(eq(customersTable.id, decoded.id));
+    const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, decoded.id)).limit(1);
+    if (!customer) {
+      res.status(404).json({ error: "not_found", message: "Customer not found" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        avatar: customer.avatar,
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Profile update failed");
+    res.status(500).json({ error: "internal_error", message: "Could not update profile" });
+  }
+});
+
 router.post("/auth/logout", async (req, res) => {
   res.clearCookie("customer_token");
   res.json({ success: true, message: "Logged out" });

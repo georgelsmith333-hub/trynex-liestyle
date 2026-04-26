@@ -4,6 +4,38 @@ import { eq, sql, and, gt, or, isNull } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
 import { getVirtualPromo, calcVirtualDiscount } from "../lib/spinPromos";
 import { logActivity, getAdminId } from "../lib/activityLog";
+import { z } from "zod";
+
+// ---------------------------------------------------------------------------
+// Zod schemas for promo code mutations
+// ---------------------------------------------------------------------------
+const PromoCreateSchema = z.object({
+  code:            z.string().min(1, "code is required").max(50).regex(/^[A-Z0-9_-]+$/i, "code must be alphanumeric"),
+  discountType:    z.enum(["percentage", "fixed"]).optional(),
+  discountValue:   z.number({ required_error: "discountValue is required" }).positive("discountValue must be positive"),
+  minOrderAmount:  z.number().nonnegative().optional(),
+  maxUses:         z.number().int().nonnegative().optional(),
+  expiresAt:       z.string().datetime({ offset: true }).optional().nullable(),
+});
+
+const PromoUpdateSchema = z.object({
+  active:          z.boolean().optional(),
+  discountType:    z.enum(["percentage", "fixed"]).optional(),
+  discountValue:   z.number().positive().optional(),
+  minOrderAmount:  z.number().nonnegative().optional(),
+  maxUses:         z.number().int().nonnegative().optional(),
+  expiresAt:       z.string().datetime({ offset: true }).optional().nullable(),
+});
+
+function parsePromoBody<T>(schema: z.ZodSchema<T>, body: unknown):
+  | { ok: true; data: T }
+  | { ok: false; message: string } {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    return { ok: false, message: result.error.errors.map(e => e.message).join("; ") };
+  }
+  return { ok: true, data: result.data };
+}
 
 // Simple in-memory IP rate limiter for exit-intent endpoint: 1 code per IP per 10 minutes
 const exitIntentCooldowns = new Map<string, number>();
@@ -34,23 +66,22 @@ router.get("/promo-codes", requireAdmin, async (req, res) => {
 
 router.post("/promo-codes", requireAdmin, async (req, res) => {
   try {
-    const { code, discountType, discountValue, minOrderAmount, maxUses, expiresAt } = req.body;
-    if (!code || !discountValue) {
-      res.status(400).json({ error: "validation_error", message: "code and discountValue required" });
-      return;
-    }
+    const parsed = parsePromoBody(PromoCreateSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
+    const { code, discountType, discountValue, minOrderAmount, maxUses, expiresAt } = parsed.data;
     const [promo] = await db.insert(promoCodesTable).values({
-      code: code.toUpperCase().trim(),
-      discountType: discountType || "percentage",
-      discountValue: String(discountValue),
-      minOrderAmount: minOrderAmount ? String(minOrderAmount) : "0",
-      maxUses: maxUses || 0,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      code:            code.toUpperCase().trim(),
+      discountType:    discountType ?? "percentage",
+      discountValue:   String(discountValue),
+      minOrderAmount:  minOrderAmount != null ? String(minOrderAmount) : "0",
+      maxUses:         maxUses ?? 0,
+      expiresAt:       expiresAt ? new Date(expiresAt) : null,
     }).returning();
     logActivity({ action: "create", entity: "promo", entityId: promo.id, entityName: promo.code, after: promo as unknown as Record<string, unknown>, adminId: getAdminId(req) });
     res.status(201).json(promo);
-  } catch (err: any) {
-    if (err.code === "23505") {
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr.code === "23505") {
       res.status(409).json({ error: "duplicate", message: "Promo code already exists" });
       return;
     }
