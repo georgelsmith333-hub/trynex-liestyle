@@ -19,7 +19,8 @@ import {
   Type, Layers as LayersIcon, Sparkles,
   Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
   Image as ImageIcon, Plus, Check, CloudUpload,
-  Box, Image as Image2D,
+  Box, Image as Image2D, Search, X, ChevronRight,
+  Palette, Package,
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG, FlatZoneSVG,
@@ -163,6 +164,13 @@ export default function DesignStudio() {
     { name: PRODUCTS[0].name, hex: PRODUCTS[0].garmentColor }
   );
   const [activeTab, setActiveTab] = useState<RightTab>("upload");
+
+  /* Product catalog picker */
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [productPickerCategory, setProductPickerCategory] = useState<"all" | DesignProduct["category"]>("all");
+  /* Mobile tool panel (bottom sheet) */
+  const [mobileToolOpen, setMobileToolOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState("M");
   const [quantity, setQuantity] = useState(1);
   const [showPrintZone, setShowPrintZone] = useState(true);
@@ -1372,47 +1380,37 @@ export default function DesignStudio() {
               </div>
             )}
 
-            {/* Product tabs (scrollable on mobile) */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-              {PRODUCTS.map(prod => (
-                <button
-                  key={prod.id}
-                  onClick={() => {
-                    // Save current product's layers + history before switching.
-                    perProductLayersRef.current[selectedProduct.id] = {
-                      layers: layersRef.current,
-                      stack: historyRef.current.stack,
-                      index: historyRef.current.index,
-                    };
-                    // Restore (or start fresh) for the new product.
-                    const saved = perProductLayersRef.current[prod.id];
-                    const newLayers  = saved?.layers ?? [];
-                    const newStack   = saved?.stack   ?? [[]];
-                    const newHistIdx = saved?.index   ?? 0;
-                    historyRef.current = { stack: newStack, index: newHistIdx };
-                    flushSync(() => {
-                      setLayers(newLayers);
-                      setSelectedLayerId(null);
-                      setSelectedProduct(prod);
-                      setSelectedColor({ name: prod.name, hex: prod.garmentColor });
-                      setQuantity(1);
-                      setActiveFace("front");
-                    });
-                    forceHistoryTick(t => t + 1);
-                    if (prod.category === "waterbottle") setViewMode("2d");
-                  }}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
-                  style={{
-                    background: selectedProduct.id === prod.id ? "linear-gradient(135deg,#E85D04,#FB8500)" : "white",
-                    color: selectedProduct.id === prod.id ? "white" : "#374151",
-                    border: selectedProduct.id === prod.id ? "none" : "1.5px solid #e5e7eb",
-                    boxShadow: selectedProduct.id === prod.id ? "0 4px 12px rgba(232,93,4,0.3)" : "0 1px 4px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <span className="text-base leading-none shrink-0" role="img" aria-hidden="true">{prod.icon}</span>
-                  {prod.name}
-                </button>
-              ))}
+            {/* Product selector bar */}
+            <div className="flex items-center gap-2 mb-4">
+              {/* Current product card */}
+              <button
+                onClick={() => { setShowProductPicker(true); setProductSearch(""); setProductPickerCategory("all"); }}
+                className="flex items-center gap-3 flex-1 min-w-0 px-3.5 py-2.5 rounded-2xl transition-all group"
+                style={{
+                  background: "white",
+                  border: "1.5px solid #e5e7eb",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                }}
+              >
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center"
+                  style={{ border: "1px solid #f0efee" }}>
+                  <img
+                    src={displayProduct.frontSrc}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="text-xs font-black text-gray-800 truncate">{selectedProduct.name}</div>
+                  <div className="text-[10px] text-gray-400 font-semibold">{selectedProduct.description}</div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 text-[11px] font-bold text-orange-500 group-hover:text-orange-600">
+                  <Package className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Change</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </button>
             </div>
 
             {/* Zone switcher — hidden in 3D mode.
@@ -1524,22 +1522,36 @@ export default function DesignStudio() {
               </div>
             )}
 
-            {/* Garment color swatches */}
-            <div className="flex gap-1.5 mb-4 flex-wrap">
-              {studioColors.map(c => {
-                const isSelected = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
-                return (
-                  <button key={c.hex} title={c.name}
-                    onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
-                    className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110"
-                    style={{
-                      background: c.hex,
-                      borderColor: isSelected ? "#E85D04" : (c.hex.toUpperCase() === "#FFFFFF" || c.hex === "#F5F5F5" ? "#d1d5db" : c.hex),
-                      boxShadow: isSelected ? "0 0 0 2px rgba(232,93,4,0.3)" : "0 1px 3px rgba(0,0,0,0.10)",
-                    }}
-                  />
-                );
-              })}
+            {/* Garment color swatches + label */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Palette className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  Color: <span className="text-gray-600 normal-case tracking-normal font-bold">{selectedColor.name}</span>
+                </span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {studioColors.map(c => {
+                  const isSelected = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
+                  return (
+                    <button key={c.hex} title={c.name}
+                      onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
+                      className="w-8 h-8 rounded-xl border-2 transition-all hover:scale-110 relative"
+                      style={{
+                        background: c.hex,
+                        borderColor: isSelected ? "#E85D04" : (c.hex.toUpperCase() === "#FFFFFF" || c.hex === "#F5F5F5" || c.hex === "#F5F2EC" || c.hex === "#F4F3F1" ? "#d1d5db" : c.hex),
+                        boxShadow: isSelected ? "0 0 0 3px rgba(232,93,4,0.35), 0 2px 6px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.10)",
+                      }}
+                    >
+                      {isSelected && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5" style={{ color: (0.299 * parseInt(c.hex.slice(1,3),16) + 0.587 * parseInt(c.hex.slice(3,5),16) + 0.114 * parseInt(c.hex.slice(5,7),16)) > 128 ? "#333" : "white" }} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Mockup area */}
@@ -1635,7 +1647,7 @@ export default function DesignStudio() {
                   {...(bindCanvasGestures() as Record<string, unknown>)}
                 >
                   {isFlatZone && activeZoneConfig
-                    ? <FlatZoneSVG zone={activeZoneConfig} showPrintZone={effectiveShowPrintZone} />
+                    ? <FlatZoneSVG zone={activeZoneConfig} showPrintZone={effectiveShowPrintZone} garmentPhotoSrc={displayProduct.frontSrc} />
                     : <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} mugMode={isMugProduct ? mugMode : undefined} />
                   }
 
@@ -2320,6 +2332,182 @@ export default function DesignStudio() {
         }}
         onCancel={() => setLegacyDraftFound(null)}
       />
+
+      {/* ═══════ PRODUCT CATALOG PICKER MODAL ═══════ */}
+      <AnimatePresence>
+        {showProductPicker && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="picker-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+              style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+              onClick={() => setShowProductPicker(false)}
+            />
+            {/* Modal panel */}
+            <motion.div
+              key="picker-panel"
+              initial={{ opacity: 0, y: 40, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.97 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="fixed inset-x-3 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 flex flex-col"
+              style={{
+                maxWidth: 680,
+                maxHeight: "min(90vh, 720px)",
+                width: "100%",
+                background: "white",
+                borderRadius: "24px 24px 0 0",
+                boxShadow: "0 -8px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.06)",
+              }}
+            >
+              {/* Modal header */}
+              <div className="px-5 pt-5 pb-3 shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="font-black text-gray-900 text-lg">Choose a Blank Product</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Select any product to start designing</p>
+                  </div>
+                  <button
+                    onClick={() => setShowProductPicker(false)}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
+                    style={{ background: "#f3f4f6" }}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="relative mb-3">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    placeholder="Search products…"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border border-gray-200 outline-none focus:border-orange-400"
+                    style={{ background: "#f9fafb" }}
+                  />
+                </div>
+
+                {/* Category filter pills */}
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {(["all", "tshirt", "hoodie", "longsleeve", "mug", "cap", "waterbottle"] as const).map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setProductPickerCategory(cat)}
+                      className="shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all"
+                      style={{
+                        background: productPickerCategory === cat ? "linear-gradient(135deg,#E85D04,#FB8500)" : "#f3f4f6",
+                        color: productPickerCategory === cat ? "white" : "#6b7280",
+                        boxShadow: productPickerCategory === cat ? "0 3px 10px rgba(232,93,4,0.3)" : "none",
+                      }}
+                    >
+                      {cat === "all" ? "All Products" : cat === "tshirt" ? "T-Shirts" : cat === "hoodie" ? "Hoodies" : cat === "longsleeve" ? "Long Sleeves" : cat === "mug" ? "Mugs" : cat === "cap" ? "Caps" : "Bottles"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Product grid */}
+              <div className="overflow-y-auto flex-1 px-5 pb-6">
+                {(() => {
+                  const query = productSearch.trim().toLowerCase();
+                  const filtered = PRODUCTS.filter(p => {
+                    const matchesCat = productPickerCategory === "all" || p.category === productPickerCategory;
+                    const matchesSearch = !query || p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query);
+                    return matchesCat && matchesSearch;
+                  });
+
+                  if (filtered.length === 0) return (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p className="font-bold text-gray-600">No products found</p>
+                      <p className="text-sm text-gray-400 mt-1">Try a different search or category</p>
+                    </div>
+                  );
+
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                      {filtered.map(prod => {
+                        const isSelected = selectedProduct.id === prod.id;
+                        return (
+                          <button
+                            key={prod.id}
+                            onClick={() => {
+                              perProductLayersRef.current[selectedProduct.id] = {
+                                layers: layersRef.current,
+                                stack: historyRef.current.stack,
+                                index: historyRef.current.index,
+                              };
+                              const saved = perProductLayersRef.current[prod.id];
+                              const newLayers = saved?.layers ?? [];
+                              const newStack = saved?.stack ?? [[]];
+                              const newHistIdx = saved?.index ?? 0;
+                              historyRef.current = { stack: newStack, index: newHistIdx };
+                              flushSync(() => {
+                                setLayers(newLayers);
+                                setSelectedLayerId(null);
+                                setSelectedProduct(prod);
+                                setSelectedColor({ name: prod.name, hex: prod.garmentColor });
+                                setQuantity(1);
+                                setActiveFace("front");
+                              });
+                              forceHistoryTick(t => t + 1);
+                              if (prod.category === "waterbottle") setViewMode("2d");
+                              setShowProductPicker(false);
+                            }}
+                            className="flex flex-col rounded-2xl overflow-hidden transition-all text-left group"
+                            style={{
+                              border: isSelected ? "2.5px solid #E85D04" : "1.5px solid #e5e7eb",
+                              boxShadow: isSelected ? "0 4px 16px rgba(232,93,4,0.2)" : "0 1px 6px rgba(0,0,0,0.05)",
+                              background: isSelected ? "#fff9f6" : "white",
+                            }}
+                          >
+                            {/* Product photo */}
+                            <div className="w-full aspect-square relative overflow-hidden"
+                              style={{ background: "radial-gradient(ellipse at 50% 40%, #f5f5f3 0%, #e8e5e0 100%)" }}>
+                              <img
+                                src={prod.frontSrc}
+                                alt={prod.name}
+                                className="w-full h-full object-contain transition-transform group-hover:scale-105"
+                                style={{ padding: "8%" }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "";
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                              {prod.badge && (
+                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black text-white"
+                                  style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)" }}>
+                                  {prod.badge}
+                                </div>
+                              )}
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                                  style={{ background: "#E85D04" }}>
+                                  <Check className="w-3.5 h-3.5 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Info */}
+                            <div className="px-3 py-2.5">
+                              <div className="text-xs font-black text-gray-800 leading-tight truncate">{prod.name}</div>
+                              <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{prod.description}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

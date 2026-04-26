@@ -15,6 +15,7 @@ export type ProductType =
   | "white-cap"
   | "black-cap"
   | "white-longsleeve"
+  | "black-longsleeve"
   | "white-waterbottle";
 
 /** All possible design zones — front/back are garment views; sleeve/neck are flat templates. */
@@ -34,6 +35,7 @@ export interface DesignProduct {
   category: "tshirt" | "mug" | "hoodie" | "cap" | "longsleeve" | "waterbottle";
   garmentColor: string;
   description: string;
+  badge?: string;
   viewBox: string;
   aspect: number;
   printZone: PrintZone;
@@ -123,27 +125,39 @@ const BASE = 1000;
 
 export const PRODUCTS: DesignProduct[] = [
   { id: "white-tshirt",     name: "Unisex T-Shirt",    icon: "👕", category: "tshirt",     garmentColor: "#F5F5F3",
-    description: "230GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    description: "230GSM Cotton",   badge: "Best Seller", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: TSHIRT_PZ,
     frontSrc: "/mockups/white-tshirt-front.png", backSrc: "/mockups/white-tshirt-back.png" },
-  { id: "white-mug",        name: "Coffee Mug",        icon: "☕", category: "mug",        garmentColor: "#F5F5F5",
-    description: "11oz Ceramic · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: MUG_SIDE_PZ,
-    frontSrc: "/mockups/white-mug-front.png" },
+  { id: "black-tshirt",     name: "Unisex T-Shirt (Black)", icon: "👕", category: "tshirt", garmentColor: "#1a1a1a",
+    description: "230GSM Cotton",  viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: TSHIRT_PZ,
+    frontSrc: "/mockups/black-tshirt-front.png", backSrc: "/mockups/black-tshirt-back.png" },
+  { id: "white-hoodie",     name: "Unisex Hoodie",     icon: "🧥", category: "hoodie",     garmentColor: "#F2EFE9",
+    description: "320GSM Fleece",   badge: "New", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: HOODIE_PZ,
+    frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
+  { id: "black-hoodie",     name: "Unisex Hoodie (Black)", icon: "🧥", category: "hoodie",  garmentColor: "#1a1a1a",
+    description: "320GSM Fleece",  viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: HOODIE_PZ,
+    frontSrc: "/mockups/black-hoodie-front.png", backSrc: "/mockups/black-hoodie-back.png" },
   { id: "white-longsleeve", name: "Unisex Long Sleeve", icon: "👔", category: "longsleeve", garmentColor: "#F5F5F3",
     description: "240GSM Cotton",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: LONGSLEEVE_PZ,
     frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
-  { id: "white-cap",        name: "Cap",               icon: "🧢", category: "cap",        garmentColor: "#F5F2EC",
-    description: "Cotton Twill · Pick a color",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+  { id: "black-longsleeve", name: "Long Sleeve (Black)", icon: "👔", category: "longsleeve", garmentColor: "#1a1a1a",
+    description: "240GSM Cotton",  viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: LONGSLEEVE_PZ,
+    frontSrc: "/mockups/black-tshirt-front.png", backSrc: "/mockups/black-tshirt-back.png" },
+  { id: "white-mug",        name: "Coffee Mug",        icon: "☕", category: "mug",        garmentColor: "#F5F5F5",
+    description: "11oz Ceramic",   badge: "Popular", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    printZone: MUG_SIDE_PZ,
+    frontSrc: "/mockups/white-mug-front.png" },
+  { id: "white-cap",        name: "Structured Cap",    icon: "🧢", category: "cap",        garmentColor: "#F5F2EC",
+    description: "Cotton Twill",    viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: CAP_PZ,
     frontSrc: "/mockups/white-cap-front.png" },
-  { id: "white-hoodie",     name: "Unisex Hoodie",     icon: "🧥", category: "hoodie",     garmentColor: "#F2EFE9",
-    description: "320GSM Fleece · Pick a color",   viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
-    printZone: HOODIE_PZ,
-    frontSrc: "/mockups/white-hoodie-front.png", backSrc: "/mockups/white-hoodie-back.png" },
   { id: "white-waterbottle", name: "Water Bottle",     icon: "🥤", category: "waterbottle", garmentColor: "#F4F3F1",
-    description: "600ml Stainless · Pick a color", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
+    description: "600ml Stainless", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: WATERBOTTLE_PZ,
     frontSrc: WATERBOTTLE_MOCKUP_URL },
 ];
@@ -277,16 +291,20 @@ export function GarmentSVG({
 }
 
 /* ═══════════════════════════════════════════════════════
-   FLAT ZONE RENDERER — used for sleeve and neck-label zones
-   where no garment photo is needed. Renders a professional
-   flat canvas / artboard view with the print zone outlined.
+   FLAT ZONE RENDERER — used for sleeve and neck-label zones.
+   Shows the real garment photo as a dimmed background for context,
+   with an artboard overlay highlighting the printable area.
+   No more pure-SVG artboard — real product photography is always shown.
 ════════════════════════════════════════════════════════ */
 export function FlatZoneSVG({
   zone,
   showPrintZone,
+  garmentPhotoSrc,
 }: {
   zone: ApparelZone;
   showPrintZone: boolean;
+  /** Real product photo URL (frontSrc from the selected product) shown as context. */
+  garmentPhotoSrc?: string;
 }) {
   const { pz, label, pxDimensions } = zone;
   const cx = pz.x + pz.w / 2;
@@ -297,60 +315,106 @@ export function FlatZoneSVG({
   return (
     <>
       <defs>
-        <pattern id="flat-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="1" fill="rgba(0,0,0,0.06)" />
-        </pattern>
-        <filter id="flat-shadow">
-          <feDropShadow dx="0" dy="3" stdDeviation="8" floodColor="rgba(0,0,0,0.10)" />
+        <filter id="flat-blur-bg">
+          <feGaussianBlur stdDeviation="3" />
+          <feColorMatrix type="matrix"
+            values="0.7 0 0 0 0.08
+                    0 0.7 0 0 0.08
+                    0 0 0.7 0 0.08
+                    0 0 0 0.55 0" />
         </filter>
+        <filter id="flat-artboard-glow">
+          <feDropShadow dx="0" dy="0" stdDeviation="18" floodColor="rgba(255,255,255,0.60)" />
+          <feDropShadow dx="0" dy="6" stdDeviation="12" floodColor="rgba(0,0,0,0.18)" />
+        </filter>
+        <filter id="flat-shadow-sm">
+          <feDropShadow dx="0" dy="3" stdDeviation="6" floodColor="rgba(0,0,0,0.12)" />
+        </filter>
+        <clipPath id="flat-clip-pz">
+          <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx={10} />
+        </clipPath>
       </defs>
 
-      {/* Background */}
-      <rect width={1000} height={1000} fill="#EDEAE5" />
-      <rect width={1000} height={1000} fill="url(#flat-dots)" />
+      {/* Full background — real garment photo (dimmed + blurred for context) */}
+      <rect width={1000} height={1000} fill="#1a1a1a" />
+      {garmentPhotoSrc ? (
+        <image
+          href={garmentPhotoSrc}
+          x={0} y={0} width={1000} height={1000}
+          preserveAspectRatio="xMidYMid meet"
+          filter="url(#flat-blur-bg)"
+          style={{ pointerEvents: "none" }}
+        />
+      ) : (
+        <rect width={1000} height={1000} fill="#1e1e24" />
+      )}
 
-      {/* White artboard */}
-      <rect x={60} y={60} width={880} height={880} rx={12} fill="white" filter="url(#flat-shadow)" />
+      {/* Subtle vignette overlay */}
+      <radialGradient id="flat-vig" cx="50%" cy="50%" r="70%" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1000">
+        <stop offset="0%" stopColor="transparent" />
+        <stop offset="100%" stopColor="rgba(0,0,0,0.55)" />
+      </radialGradient>
+      <rect width={1000} height={1000} fill="url(#flat-vig)" style={{ pointerEvents: "none" }} />
 
-      {/* Zone label above artboard */}
+      {/* Zone label pill (above the artboard) */}
+      <rect x={cx - 90} y={pz.y - 52} width={180} height={32} rx={16}
+        fill="rgba(232,93,4,0.92)" filter="url(#flat-shadow-sm)" />
       <text
-        x={500} y={44}
-        textAnchor="middle" fontSize={22} fontWeight={800}
-        fill="#6b7280"
-        style={{ fontFamily: "system-ui, -apple-system, sans-serif", letterSpacing: "0.04em", textTransform: "uppercase" }}
+        x={cx} y={pz.y - 30}
+        textAnchor="middle" fontSize={14} fontWeight={800}
+        fill="white"
+        style={{ fontFamily: "system-ui, -apple-system, sans-serif", letterSpacing: "0.08em" }}
       >
-        {label.toUpperCase()}
+        {label.toUpperCase()} ZONE
       </text>
 
-      {/* Garment zone diagram — mini silhouette showing where this zone lives */}
+      {/* White artboard behind the print zone */}
+      <rect
+        x={pz.x - 12} y={pz.y - 12} width={pz.w + 24} height={pz.h + 24}
+        rx={14} fill="white" filter="url(#flat-artboard-glow)"
+      />
+      <rect
+        x={pz.x} y={pz.y} width={pz.w} height={pz.h}
+        rx={10} fill="#FAFAF8"
+      />
+
+      {/* Dot grid on artboard */}
+      <defs>
+        <pattern id="flat-dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1.2" fill="rgba(0,0,0,0.07)" />
+        </pattern>
+      </defs>
+      <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx={10} fill="url(#flat-dots)" />
+
+      {/* Zone-specific context icon */}
       {isNeck ? (
-        /* Neck label indicator: collar icon */
-        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
-          <path d="M -38 0 Q -28 -30 0 -30 Q 28 -30 38 0 Q 24 10 0 10 Q -24 10 -38 0 Z"
+        <g transform={`translate(${pz.x + pz.w / 2},${pz.y + 54})`} style={{ pointerEvents: "none" }}>
+          <circle r={28} fill="rgba(232,93,4,0.08)" stroke="rgba(232,93,4,0.25)" strokeWidth={1.5} />
+          <path d="M -14 0 Q -10 -12 0 -12 Q 10 -12 14 0 Q 8 5 0 5 Q -8 5 -14 0 Z"
             fill="none" stroke="#E85D04" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M -12 -30 Q 0 -42 12 -30"
+          <path d="M -5 -12 Q 0 -18 5 -12"
             fill="none" stroke="#E85D04" strokeWidth="2.5" strokeLinecap="round" />
-          <text y={30} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+          <text y={24} textAnchor="middle" fontSize={10} fontWeight={700} fill="#9ca3af"
             style={{ fontFamily: "system-ui" }}>
             inside collar
           </text>
         </g>
       ) : isLeftSleeve ? (
-        /* Left sleeve indicator */
-        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
-          <rect x={-45} y={-28} width={30} height={56} rx={6} fill="none" stroke="#E85D04" strokeWidth={2.5} />
-          <rect x={-15} y={-28} width={60} height={56} rx={4} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
-          <text y={46} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+        <g transform={`translate(${pz.x + pz.w / 2},${pz.y + 54})`} style={{ pointerEvents: "none" }}>
+          <circle r={28} fill="rgba(232,93,4,0.08)" stroke="rgba(232,93,4,0.25)" strokeWidth={1.5} />
+          <rect x={-18} y={-12} width={12} height={24} rx={4} fill="none" stroke="#E85D04" strokeWidth={2.5} />
+          <rect x={-6} y={-12} width={24} height={24} rx={3} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
+          <text y={44} textAnchor="middle" fontSize={10} fontWeight={700} fill="#9ca3af"
             style={{ fontFamily: "system-ui" }}>
             left sleeve
           </text>
         </g>
       ) : (
-        /* Right sleeve indicator */
-        <g transform="translate(500,145)" style={{ pointerEvents: "none" }}>
-          <rect x={15} y={-28} width={30} height={56} rx={6} fill="none" stroke="#E85D04" strokeWidth={2.5} />
-          <rect x={-45} y={-28} width={60} height={56} rx={4} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
-          <text y={46} textAnchor="middle" fontSize={11} fontWeight={700} fill="#9ca3af"
+        <g transform={`translate(${pz.x + pz.w / 2},${pz.y + 54})`} style={{ pointerEvents: "none" }}>
+          <circle r={28} fill="rgba(232,93,4,0.08)" stroke="rgba(232,93,4,0.25)" strokeWidth={1.5} />
+          <rect x={6} y={-12} width={12} height={24} rx={4} fill="none" stroke="#E85D04" strokeWidth={2.5} />
+          <rect x={-18} y={-12} width={24} height={24} rx={3} fill="none" stroke="#9ca3af" strokeWidth={1.5} />
+          <text y={44} textAnchor="middle" fontSize={10} fontWeight={700} fill="#9ca3af"
             style={{ fontFamily: "system-ui" }}>
             right sleeve
           </text>
@@ -360,19 +424,18 @@ export function FlatZoneSVG({
       {/* Print zone border */}
       {showPrintZone && (
         <g style={{ pointerEvents: "none" }}>
-          {/* Subtle fill to indicate printable area */}
           <rect
             x={pz.x} y={pz.y} width={pz.w} height={pz.h}
-            fill="rgba(232,93,4,0.04)"
-            rx={6}
+            fill="rgba(232,93,4,0.03)"
+            rx={10}
           />
           <rect
             x={pz.x} y={pz.y} width={pz.w} height={pz.h}
             fill="none"
-            stroke="rgba(232,93,4,0.65)"
+            stroke="rgba(232,93,4,0.70)"
             strokeWidth={2.5}
             strokeDasharray="9 6"
-            rx={6}
+            rx={10}
           />
           {/* Corner registration marks */}
           {[
@@ -384,28 +447,21 @@ export function FlatZoneSVG({
             const dx = i % 2 === 0 ? 1 : -1;
             const dy = i < 2 ? 1 : -1;
             return (
-              <g key={i} style={{ pointerEvents: "none" }}>
+              <g key={i}>
                 <line x1={cx2 + dx * 6} y1={cy2} x2={cx2 + dx * 22} y2={cy2}
-                  stroke="rgba(232,93,4,0.4)" strokeWidth={1.5} />
+                  stroke="rgba(232,93,4,0.5)" strokeWidth={2} strokeLinecap="round" />
                 <line x1={cx2} y1={cy2 + dy * 6} x2={cx2} y2={cy2 + dy * 22}
-                  stroke="rgba(232,93,4,0.4)" strokeWidth={1.5} />
+                  stroke="rgba(232,93,4,0.5)" strokeWidth={2} strokeLinecap="round" />
               </g>
             );
           })}
-          {/* Zone name */}
-          <text
-            x={cx} y={pz.y - 14}
-            textAnchor="middle" fontSize={16} fontWeight={700}
-            fill="rgba(232,93,4,0.85)"
-            style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-          >
-            Print Area
-          </text>
           {/* Pixel dimensions */}
+          <rect x={cx - 90} y={pz.y + pz.h + 10} width={180} height={22} rx={11}
+            fill="rgba(0,0,0,0.55)" />
           <text
-            x={cx} y={pz.y + pz.h + 26}
-            textAnchor="middle" fontSize={13} fontWeight={600}
-            fill="rgba(107,114,128,0.75)"
+            x={cx} y={pz.y + pz.h + 25}
+            textAnchor="middle" fontSize={12} fontWeight={600}
+            fill="rgba(255,255,255,0.85)"
             style={{ fontFamily: "ui-monospace, monospace" }}
           >
             {pxDimensions}
