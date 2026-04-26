@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { z } from "zod";
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -36,18 +37,31 @@ function detectImageType(buf: Buffer): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Zod schema for upload request body (POST /storage/uploads/request-url)
+// ---------------------------------------------------------------------------
+const UploadRequestSchema = z.object({
+  name:        z.string().min(1, "name is required").max(255, "filename too long"),
+  size:        z.number({ required_error: "size is required" })
+                .int()
+                .min(1, "file cannot be empty")
+                .max(MAX_UPLOAD_BYTES, `file exceeds max ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`),
+  contentType: z.string().min(1, "contentType is required").max(127, "contentType too long")
+                .transform(v => v.toLowerCase().split(";")[0].trim())
+                .refine(v => ALLOWED_TYPES.has(v), {
+                  message: "Unsupported content type. Only JPEG, PNG, GIF, and WebP images are allowed.",
+                }),
+});
+
 function parseUploadBody(body: unknown):
   | { ok: true; data: { name: string; size: number; contentType: string } }
-  | { ok: false } {
-  if (!body || typeof body !== "object") return { ok: false };
-  const b = body as Record<string, unknown>;
-  if (typeof b.name !== "string" || !b.name || b.name.length > 255) return { ok: false };
-  if (typeof b.size !== "number" || !Number.isFinite(b.size) || b.size <= 0 || b.size > MAX_UPLOAD_BYTES) return { ok: false };
-  if (typeof b.contentType !== "string" || !b.contentType || b.contentType.length > 127) return { ok: false };
-  // Validate the declared content-type is in the allowed set
-  const declaredType = String(b.contentType).toLowerCase().split(";")[0].trim();
-  if (!ALLOWED_TYPES.has(declaredType)) return { ok: false };
-  return { ok: true, data: { name: b.name, size: b.size, contentType: declaredType } };
+  | { ok: false; message: string } {
+  const result = UploadRequestSchema.safeParse(body);
+  if (!result.success) {
+    const message = result.error.errors.map(e => e.message).join("; ");
+    return { ok: false, message };
+  }
+  return { ok: true, data: result.data };
 }
 
 const router: IRouter = Router();
@@ -62,7 +76,7 @@ const objectStorageService = new ObjectStorageService();
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = parseUploadBody(req.body);
   if (!parsed.ok) {
-    res.status(400).json({ error: "Missing or invalid required fields. Only JPEG, PNG, GIF, and WebP images are allowed." });
+    res.status(400).json({ error: "validation_error", message: parsed.message });
     return;
   }
 

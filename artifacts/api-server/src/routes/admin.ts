@@ -29,8 +29,8 @@ const LoginTotpSchema = z.object({
 });
 
 const ResetPasswordSchema = z.object({
-  resetKey: z.string().min(1, "resetKey required"),
-  newPassword: z.string().min(8, "newPassword must be at least 8 characters").optional(),
+  resetKey:    z.string().min(1, "resetKey required"),
+  newPassword: z.string().min(12, "newPassword must be at least 12 characters"),
 });
 
 const ChangePasswordSchema = z.object({
@@ -227,18 +227,21 @@ router.post("/admin/login-totp", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/reset-password
-// Master reset — verifies the master reset key (hash stored in settings table,
-// key = 'adminResetKeyHash'). Sets a new password (from body or ADMIN_PASSWORD
-// env fallback), disables 2FA, and revokes ALL active sessions.
+// POST /api/admin/reset-password   (canonical)
+// POST /api/admin/forgot-password  (alias — same handler)
+//
+// Master recovery: verifies the master reset key (argon2id hash stored in
+// settings table key = 'adminResetKeyHash'; env var ADMIN_RESET_KEY_HASH
+// as fallback), sets a new admin password (caller MUST supply newPassword —
+// no fallback to any default), disables 2FA, and revokes ALL active sessions.
 // ---------------------------------------------------------------------------
-router.post("/admin/reset-password", async (req, res) => {
+async function masterResetHandler(req: import("express").Request, res: import("express").Response): Promise<void> {
   try {
     const parsed = parseBody(ResetPasswordSchema, req.body);
     if (!parsed.ok) { res.status(400).json({ error: "validation_error", message: parsed.message }); return; }
     const { resetKey, newPassword } = parsed.data;
 
-    // Read the hash from the settings table (primary) or env var (fallback).
+    // Read the argon2id hash from the settings table (primary) or env var (fallback).
     let storedHash: string | null = null;
     try {
       const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "adminResetKeyHash")).limit(1);
@@ -261,8 +264,8 @@ router.post("/admin/reset-password", async (req, res) => {
       return;
     }
 
-    const passwordToSet = newPassword?.trim() || ADMIN_PASSWORD;
-    const newHash = await hashPasswordArgon2(passwordToSet);
+    // newPassword is required by schema — no fallback to any env var or hardcoded default.
+    const newHash = await hashPasswordArgon2(newPassword.trim());
 
     const existing = await db.select().from(adminTable).where(eq(adminTable.username, "admin")).limit(1);
     if (existing.length > 0) {
@@ -273,22 +276,22 @@ router.post("/admin/reset-password", async (req, res) => {
       await db.insert(adminTable).values({ username: "admin", passwordHash: newHash });
     }
 
-    // Revoke every active session so the attacker who triggered this cannot
-    // continue using a previously hijacked session.
+    // Revoke every active session so any previously hijacked session is invalidated.
     await revokeAllAdminSessions();
 
-    req.log.warn("Admin master reset executed — all sessions revoked");
+    req.log.warn("Admin master reset executed — password changed, 2FA disabled, all sessions revoked");
     res.json({
       success: true,
-      message: newPassword
-        ? "Admin password updated. 2FA disabled. All sessions revoked."
-        : "Admin password reset to default. 2FA disabled. All sessions revoked.",
+      message: "Admin password updated. 2FA disabled. All sessions revoked.",
     });
   } catch (err) {
     req.log.error({ err }, "Password reset failed");
     res.status(500).json({ error: "internal_error", message: "Reset failed" });
   }
-});
+}
+
+router.post("/admin/reset-password", masterResetHandler);
+router.post("/admin/forgot-password", masterResetHandler);
 
 // ---------------------------------------------------------------------------
 // POST /api/admin/logout
