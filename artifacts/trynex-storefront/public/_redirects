@@ -1,13 +1,11 @@
-# Forward every API call to the Render backend. CF Pages will proxy
-# the request server-side, so the browser sees a normal same-origin
-# response. This MUST come before the SPA catch-all so that POST/PUT/
-# DELETE traffic doesn't get rewritten to /index.html.
-/api/*    https://trynex-api.onrender.com/api/:splat    200
+# /api/* is handled by functions/api/[[route]].js (Cloudflare Pages Function).
+# That file proxies all API calls to https://trynex-api.onrender.com — no
+# redirect rule is needed here and _redirects cannot proxy to absolute URLs anyway.
 
-# sitemap.xml and robots.txt are served as static files from /public
-# so Google can always read them even when the Render API is sleeping.
-# Do NOT add proxy rules for these paths here.
+# sitemap.xml and robots.txt are static files served directly from /public.
+# Do NOT add proxy rules for these paths.
 
-# SPA fallback — every non-API path is served by index.html so client
-# routing works on hard refresh.
-/*        /index.html                                   200
+# SPA fallback — every non-file path is served by index.html so client-side
+# routing works on hard refresh. Cloudflare Pages also does this natively for
+# sites without a _redirects file, but this rule makes it explicit.
+/*        /index.html        200

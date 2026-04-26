@@ -2,7 +2,6 @@ import { useRef, useState, useCallback, useEffect, useMemo, lazy, Suspense } fro
 import { flushSync } from "react-dom";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useCartActions, type OriginalAsset } from "@/context/CartContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -13,13 +12,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGesture } from "@use-gesture/react";
 import {
   Upload, RotateCcw, Trash2, ShoppingCart,
-  ZoomIn, ZoomOut, RotateCw, Move, Ruler,
+  ZoomIn, ZoomOut, RotateCw,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
   Scissors, Info, Eye, EyeOff, Loader2, Wand2,
   Type, Layers as LayersIcon, Sparkles,
   Undo2, Redo2, Lock, Unlock, ChevronUp, ChevronDown,
-  Image as ImageIcon, Plus, Check, CloudUpload,
-  Box, Image as Image2D,
+  Image as ImageIcon, Check, CloudUpload,
+  Box, Image as Image2D, SlidersHorizontal,
+  Package, Palette, Star,
 } from "lucide-react";
 import {
   PRODUCTS, type DesignProduct, GarmentSVG,
@@ -27,7 +27,6 @@ import {
 } from "./design-studio/mockups";
 import { composeLayers, composeGarmentMockup, composeDesignTexture, hasWebGL2, type ComposerLayer } from "./design-studio/composer";
 
-// Lazy-load the 3D bundle so first-paint stays light.
 const ProductViewer3D = lazy(() => import("./design-studio/ProductViewer3D"));
 
 /* ═══════════════════════════════════════════════════════
@@ -135,11 +134,10 @@ const TEMPLATES: Template[] = [
    MAIN PAGE
 ════════════════════════════════════════════════════════ */
 
-type RightTab = "upload" | "text" | "layers" | "templates";
+type LeftTab  = "products" | "colors" | "stickers" | "templates";
+type RightTab = "layers"   | "adjust";
 
 const DRAFT_STORAGE_KEY = "trynex-design-draft-v1";
-// Bumped to v2 when garment coordinate space changed from per-product viewBoxes
-// to a unified 1000x1000 space (photographic mockups). Old drafts are dropped.
 const DRAFT_VERSION = 2;
 type SaveStatus = "idle" | "saving" | "saved";
 interface DraftPayload {
@@ -161,13 +159,13 @@ export default function DesignStudio() {
   const [selectedColor, setSelectedColor] = useState<{ name: string; hex: string }>(
     { name: PRODUCTS[0].name, hex: PRODUCTS[0].garmentColor }
   );
-  const [activeTab, setActiveTab] = useState<RightTab>("upload");
+  const [leftTab,  setLeftTab]  = useState<LeftTab>("products");
+  const [rightTab, setRightTab] = useState<RightTab>("layers");
   const [selectedSize, setSelectedSize] = useState("M");
   const [quantity, setQuantity] = useState(1);
   const [showPrintZone, setShowPrintZone] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
-  // null = loading, true = configured (remove.bg API key set), false = not configured (will use in-browser fallback)
   const [removeBgServerConfigured, setRemoveBgServerConfigured] = useState<boolean | null>(null);
   useEffect(() => {
     fetch(getApiUrl("/api/remove-bg/status"))
@@ -176,54 +174,33 @@ export default function DesignStudio() {
       .catch(() => setRemoveBgServerConfigured(false));
   }, []);
 
-  /* View mode + active face */
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [activeFace, setActiveFace] = useState<Face>("front");
   const supports3D = useMemo(() => hasWebGL2(), []);
 
-  // Mug-only: 2D editor exposes a 3-way print-mode selector
-  // (Side 1 / Side 2 / Wrap) instead of the apparel "Front / Back" tabs.
-  // Side 1 → existing front face data, Side 2 → existing back face data,
-  // Wrap   → a virtual "back" face used as a continuous 360° body design.
   type MugMode = "side1" | "side2" | "wrap";
   const [mugMode, setMugMode] = useState<MugMode>("side1");
 
   const isMugProduct = selectedProduct.category === "mug";
 
-  // Tee/longsleeve/hoodie support a back face. Mug also gets back face data
-  // for Side 2 / Wrap, but the *apparel* Front/Back UI must stay hidden for it.
   const supportsBack = useMemo(
     () => ["tshirt", "longsleeve", "hoodie", "mug"].includes(selectedProduct.category),
     [selectedProduct.category]
   );
 
-  // Apparel Front/Back tab UI: only for tee/longsleeve/hoodie (not mug)
   const showFaceTabs = useMemo(
     () => ["tshirt", "longsleeve", "hoodie"].includes(selectedProduct.category),
     [selectedProduct.category]
   );
 
-  // Sync mugMode → activeFace so the existing face-aware layer system works.
-  // Mapping:
-  //   side1 → "front"  (front print panel)
-  //   side2 → "back"   (back print panel)
-  //   wrap  → "back"   (uses the back face slot too, but the renderer treats
-  //                     wrap differently: when mugMode === "wrap" the design
-  //                     spans the full 360° body via UV-repeat in MugBody).
-  // Distinguishing Side 2 vs Wrap is handled below via `isWrapMode` so the
-  // 3D preview can switch between a localized panel and a continuous body wrap.
   useEffect(() => {
     if (!isMugProduct) return;
     setActiveFace(mugMode === "side1" ? "front" : "back");
   }, [mugMode, isMugProduct]);
 
-  // Exposed flag the 3D mug preview reads to decide between "panel" decal
-  // (Side 2) and "full body wrap" (Wrap full body) when rendering.
   const isWrapMode = isMugProduct && mugMode === "wrap";
-  // Reset face to "front" when switching to a single-face product
   useEffect(() => { if (!supportsBack) setActiveFace("front"); }, [supportsBack]);
 
-  /* Layers + history */
   const [layers, setLayers] = useState<Layer[]>([]);
   const layersRef = useRef<Layer[]>([]);
   useEffect(() => { layersRef.current = layers; }, [layers]);
@@ -253,17 +230,14 @@ export default function DesignStudio() {
   const canUndo = historyRef.current.index > 0;
   const canRedo = historyRef.current.index < historyRef.current.stack.length - 1;
 
-  /* Snap guides */
   const [snapGuides, setSnapGuides] = useState<{ v: boolean; h: boolean }>({ v: false, h: false });
 
-  /* ── Draft persistence (localStorage) ──────────────── */
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [hasDraft, setHasDraft] = useState(false);
   const [legacyDraftFound, setLegacyDraftFound] = useState<{ version: number } | null>(null);
   const draftRestoredRef = useRef(false);
   const urlInitRef = useRef(false);
 
-  // Restore draft on mount (runs once)
   useEffect(() => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
@@ -272,7 +246,6 @@ export default function DesignStudio() {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw) as Partial<DraftPayload>;
-        // Defensive shape validation — malformed/foreign data should be ignored, not crash the page.
         const isValidLayer = (l: any): l is Layer =>
           l && typeof l === "object"
           && typeof l.id === "string"
@@ -284,7 +257,6 @@ export default function DesignStudio() {
             ? typeof l.text === "string" && typeof l.fontSize === "number"
             : typeof l.src === "string" && typeof l.naturalW === "number" && typeof l.naturalH === "number");
         const validLayers = Array.isArray(data?.layers) ? (data!.layers as any[]).filter(isValidLayer) as Layer[] : [];
-        // For older-format drafts, prompt the user before discarding (data not lost silently)
         if (data && typeof data.version === "number" && data.version !== DRAFT_VERSION) {
           setLegacyDraftFound({ version: data.version });
         }
@@ -311,10 +283,7 @@ export default function DesignStudio() {
           }
         }
       }
-    } catch {
-      // Corrupt JSON or storage access failure — ignore and start fresh.
-    }
-    // URL params override draft settings (URL is the source of truth when shared)
+    } catch { }
     try {
       const sp = new URLSearchParams(window.location.search);
       const urlProduct = sp.get("product");
@@ -325,69 +294,43 @@ export default function DesignStudio() {
           setSelectedColor({ name: found.name, hex: found.garmentColor });
         }
       }
-      const urlTab = sp.get("tab");
-      if (urlTab && ["upload", "text", "layers", "templates"].includes(urlTab)) {
-        setActiveTab(urlTab as typeof activeTab);
-      }
       if (sp.get("view") === "back") setActiveFace("back");
       const urlSize = sp.get("size");
       if (urlSize && ["XS", "S", "M", "L", "XL", "XXL", "XXXL"].includes(urlSize)) {
         setSelectedSize(urlSize);
       }
-    } catch {
-      // Ignore URL parsing errors
-    }
+    } catch { }
     draftRestoredRef.current = true;
     urlInitRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save draft when layers / product / color / size change (debounced)
   useEffect(() => {
     if (!draftRestoredRef.current) return;
-
     if (layers.length === 0) {
-      // Nothing meaningful to save. We DO NOT touch the persisted draft key
-      // when there is an unresolved legacy draft awaiting the user's
-      // decision — otherwise the saved work would be deleted silently
-      // before the confirm dialog is answered.
-      if (legacyDraftFound) {
-        setSaveStatus("idle");
-        return;
-      }
+      if (legacyDraftFound) { setSaveStatus("idle"); return; }
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
-      setHasDraft(false);
-      setSaveStatus("idle");
-      return;
+      setHasDraft(false); setSaveStatus("idle"); return;
     }
     setSaveStatus("saving");
     const handle = window.setTimeout(() => {
       try {
         const payload: DraftPayload = {
-          version: DRAFT_VERSION,
-          layers,
-          productId: selectedProduct.id,
-          color: selectedColor,
-          size: selectedSize,
-          savedAt: Date.now(),
+          version: DRAFT_VERSION, layers,
+          productId: selectedProduct.id, color: selectedColor,
+          size: selectedSize, savedAt: Date.now(),
         };
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
-        setHasDraft(true);
-        setSaveStatus("saved");
-      } catch {
-        // Quota exceeded or serialization failure — leave status as-is silently.
-        setSaveStatus("idle");
-      }
+        setHasDraft(true); setSaveStatus("saved");
+      } catch { setSaveStatus("idle"); }
     }, 500);
     return () => window.clearTimeout(handle);
   }, [layers, selectedProduct, selectedColor, selectedSize, legacyDraftFound]);
 
-  // Sync shareable URL params whenever key state changes (after init)
   useEffect(() => {
     if (!urlInitRef.current) return;
     const params = new URLSearchParams();
     if (selectedProduct.id !== PRODUCTS[0].id) params.set("product", selectedProduct.id);
-    if (activeTab !== "upload") params.set("tab", activeTab);
     if (activeFace !== "front") params.set("view", activeFace);
     if (selectedSize !== "M") params.set("size", selectedSize);
     const q = params.toString();
@@ -395,16 +338,14 @@ export default function DesignStudio() {
     if (newUrl !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", newUrl);
     }
-  }, [selectedProduct.id, activeTab, activeFace, selectedSize]);
+  }, [selectedProduct.id, activeFace, selectedSize]);
 
   const clearDraft = useCallback(() => {
     try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
-    setLayers([]);
-    setSelectedLayerId(null);
+    setLayers([]); setSelectedLayerId(null);
     historyRef.current = { stack: [[]], index: 0 };
     forceHistoryTick(t => t + 1);
-    setHasDraft(false);
-    setSaveStatus("idle");
+    setHasDraft(false); setSaveStatus("idle");
     toast({ title: "Draft cleared", description: "Your saved design has been removed." });
   }, [toast]);
 
@@ -412,11 +353,6 @@ export default function DesignStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputAddRef = useRef<HTMLInputElement>(null);
 
-  // Print zone is face-aware: products may have a different rectangle for the back panel.
-  // Front and back share the same print zone per garment, so flipping
-  // faces preserves a design's apparent size and position. The
-  // `printZoneBack` field is kept on the type for backward compatibility
-  // but is no longer set by any product — the fallback always wins.
   const pz = useMemo(
     () => (activeFace === "back" && selectedProduct.printZoneBack) ? selectedProduct.printZoneBack : selectedProduct.printZone,
     [activeFace, selectedProduct]
@@ -427,21 +363,13 @@ export default function DesignStudio() {
   const activeFaceRef = useRef(activeFace);
   useEffect(() => { activeFaceRef.current = activeFace; }, [activeFace]);
 
-  /* Per-product design isolation — layers/history are stored separately for
-     each product so switching between T-Shirt and Hoodie doesn't mix them up. */
   const perProductLayersRef = useRef<Record<string, { layers: Layer[]; stack: Layer[][]; index: number }>>({});
 
   const isMug = selectedProduct.category === "mug";
   const isCap = selectedProduct.category === "cap";
   const isWaterBottle = selectedProduct.category === "waterbottle";
-  // Water bottle has no 3D GLB model — fall back to 2D flat preview only.
   const effectiveSupports3D = supports3D && !isWaterBottle;
 
-  /* ── Cap dark-color mockup override ─────────────────
-     The cap has no transparent-bg cutout PNG, so the
-     multiply-tint approach can't be used. Instead, we
-     swap the product's frontSrc to the black-cap PNG
-     when a dark color is selected. */
   const displayProduct = useMemo(() => {
     if (selectedProduct.category === "cap") {
       const h = selectedColor.hex.replace("#", "");
@@ -455,7 +383,6 @@ export default function DesignStudio() {
     return selectedProduct;
   }, [selectedProduct, selectedColor.hex]);
 
-  /* ── Per-product price (used in UI + cart serialisation) ── */
   const studioPrice = useMemo(
     () => isMug || isWaterBottle
       ? (settings.studioMugPrice || 799)
@@ -468,18 +395,14 @@ export default function DesignStudio() {
     [layers, selectedLayerId]
   );
 
-  // Layers belonging to the current face (other-face layers stay in state, just hidden in this view).
   const currentFaceLayers = useMemo(
     () => layers.filter(l => (l.face ?? "front") === activeFace),
     [layers, activeFace]
   );
   const otherFaceCount = layers.length - currentFaceLayers.length;
 
-  // Auto-hide the print-zone outline once a layer exists on the active face,
-  // unless the user has explicitly toggled it on. The outline is only useful as a guide.
   const effectiveShowPrintZone = showPrintZone && currentFaceLayers.length === 0;
 
-  /* ── Coord helpers ─────────────────────────────────── */
   const clientToSVG = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -491,14 +414,12 @@ export default function DesignStudio() {
     return { x: r.x, y: r.y };
   }, []);
 
-  /* ── Layer mutation helpers ────────────────────────── */
   const updateLayer = useCallback((id: string, mut: (l: Layer) => Layer, commit: boolean) => {
     const next = layers.map(l => (l.id === id ? mut(l) : l));
     if (commit) commitLayers(next); else setLayers(next);
   }, [layers, commitLayers]);
 
   const addLayer = useCallback((layer: Layer) => {
-    // Stamp the layer with the face the user is currently viewing.
     const stamped: Layer = { ...layer, face: layer.face ?? activeFace };
     const next = [...layers, stamped];
     commitLayers(next);
@@ -521,8 +442,6 @@ export default function DesignStudio() {
     commitLayers(next);
   }, [layers, commitLayers]);
 
-  /* ── File upload — bulletproof: handles same-file re-pick, decode failures,
-        oversized images (>10MB), unreadable files, and races. ───────────── */
   const handleFileUpload = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast({ title: "Invalid file", description: "Please upload a JPG, PNG, or WebP image.", variant: "destructive" });
@@ -551,16 +470,10 @@ export default function DesignStudio() {
         toast({ title: "Image unreadable", description: "Try a different file (JPG/PNG/WebP).", variant: "destructive" });
         return;
       }
-
-      // Smart auto-placement: scale the image to fit within the print zone
-      // respecting both width and height, with a comfortable 85% fill.
       const currentPz = pzRef.current;
       const aspect = img.naturalWidth / Math.max(img.naturalHeight, 1);
-      // At scale=1 the image fills the print zone WIDTH. Clamp so it also
-      // fits within the print zone HEIGHT (tall images get scaled down).
       const maxScaleForHeight = (currentPz.h * aspect) / currentPz.w;
       const initialScale = Math.min(0.85, maxScaleForHeight);
-
       const layer: ImageLayer = {
         id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
         type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
@@ -568,14 +481,10 @@ export default function DesignStudio() {
         transform: { x: 0, y: 0, scale: initialScale, rotation: 0, opacity: 1 },
         face: activeFaceRef.current,
       };
-
-      // flushSync forces React to flush state updates synchronously so the
-      // image appears immediately — critical on mobile where async callbacks
-      // may otherwise defer rendering until the next user interaction.
       flushSync(() => {
         commitLayers([...layersRef.current, layer]);
         setSelectedLayerId(layer.id);
-        setActiveTab("layers");
+        setRightTab("adjust");
       });
       toast({ title: "✓ Image added", description: "Drag to reposition · Pinch or scroll to resize." });
     };
@@ -588,20 +497,9 @@ export default function DesignStudio() {
     if (file) handleFileUpload(file);
   };
 
-  /* ── Background removal ────────────────────────────────────────────
-   * Strategy (server-first, browser-fallback):
-   *   1. POST to /api/remove-bg (uses remove.bg API key from admin settings).
-   *      Fast, high quality.  Returns structured error codes.
-   *   2. If server returns 503 "no_api_key" → fall back to in-browser ONNX
-   *      model (@imgly/background-removal, ~30 MB, cached in IndexedDB).
-   *      Free, runs locally, slower on first run.
-   * Distinct toasts for: no key, quota, rate-limit, too large, success.
-   ─────────────────────────────────────────────────────────────────── */
   const handleRemoveBg = async () => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
     setIsRemoving(true);
-
-    /* Helper — apply a new data-URL to the selected image layer */
     const applyResult = async (dataUrl: string) => {
       const img = new Image();
       await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = dataUrl; });
@@ -609,8 +507,6 @@ export default function DesignStudio() {
         ? { ...l, src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight }
         : l, true);
     };
-
-    /* ── Step 1: Try server (remove.bg API) ── */
     try {
       toast({ title: "Removing background…", description: "Processing via server…" });
       const r = await fetch(getApiUrl("/api/remove-bg"), {
@@ -619,50 +515,34 @@ export default function DesignStudio() {
         body: JSON.stringify({ image: selectedLayer.src }),
       });
       const json = await r.json().catch(() => ({}));
-
       if (r.ok) {
         await applyResult(json.result);
         toast({ title: "✨ Background removed", description: "Clean cutout ready." });
         setIsRemoving(false);
         return;
       }
-
-      /* Specific error codes — decide whether to fall through to browser or stop */
       if (json.error === "rate_limited") {
         toast({ title: "Too many requests", description: "You've reached the removal limit. Please wait an hour and try again.", variant: "destructive" });
         setIsRemoving(false);
         return;
       }
       if (json.error === "image_too_large") {
-        toast({ title: "Image too large", description: "Please reduce the image below 10 MB. Try HD-Upscale after resizing.", variant: "destructive" });
+        toast({ title: "Image too large", description: "Please reduce the image below 10 MB.", variant: "destructive" });
         setIsRemoving(false);
         return;
       }
       if (json.error === "no_api_key") {
-        toast({
-          title: "Background removal isn't configured",
-          description: "Admin needs to add a remove.bg API key in Settings → Design Studio. Trying in-browser AI as fallback…",
-        });
-        /* Fall through to browser fallback */
+        toast({ title: "Background removal isn't configured", description: "Admin needs to add a remove.bg API key. Trying in-browser AI as fallback…" });
       } else if (json.error === "quota_exceeded") {
-        toast({ title: "Remove.bg quota exceeded", description: "The monthly quota is exhausted. Switching to in-browser processing…" });
-        /* Fall through to browser fallback */
+        toast({ title: "Remove.bg quota exceeded", description: "Switching to in-browser processing…" });
       } else {
-        /* Unexpected server error — still try browser as a courtesy */
         console.warn("[bg-removal] server error, trying browser fallback", r.status, json);
       }
-      /* All handled or unexpected errors → fall through to browser below */
     } catch (networkErr) {
-      /* Network-level failure (server unreachable) — try browser */
       console.warn("[bg-removal] server unreachable, trying browser", networkErr);
     }
-
-    /* ── Step 2: In-browser ONNX fallback (@imgly/background-removal) ── */
     try {
-      toast({
-        title: "Switching to in-browser AI…",
-        description: "First run downloads a ~30 MB model — stays cached after.",
-      });
+      toast({ title: "Switching to in-browser AI…", description: "First run downloads a ~30 MB model — stays cached after." });
       const { removeBackground } = await import("@imgly/background-removal");
       const blob = await removeBackground(selectedLayer.src, {
         publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
@@ -678,7 +558,7 @@ export default function DesignStudio() {
       toast({ title: "✨ Background removed", description: "Processed in-browser — transparent PNG ready." });
     } catch (browserErr) {
       console.error("[bg-removal] browser fallback failed", browserErr);
-      const isNetworkErr = browserErr instanceof TypeError && browserErr.message.includes("fetch");
+      const isNetworkErr = browserErr instanceof TypeError && (browserErr as TypeError).message.includes("fetch");
       toast({
         title: "Background removal unavailable",
         description: isNetworkErr
@@ -691,9 +571,6 @@ export default function DesignStudio() {
     }
   };
 
-  /* ── HD Upscale — 2× resolution with bicubic + unsharp-mask sharpening.
-        Runs in-browser using canvas; no server cost. Helps low-res photos
-        print sharper at large sizes. */
   const [isUpscaling, setIsUpscaling] = useState(false);
   const handleUpscale = async () => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
@@ -703,33 +580,25 @@ export default function DesignStudio() {
       img.crossOrigin = "anonymous";
       await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = selectedLayer.src; });
       try { await img.decode?.(); } catch {}
-
-      // Cap output at 4096 to stay browser-safe
       const maxOut = 4096;
       const scale = Math.min(2, maxOut / Math.max(img.naturalWidth, img.naturalHeight));
       const w = Math.round(img.naturalWidth * scale);
       const h = Math.round(img.naturalHeight * scale);
-
-      // Two-pass bicubic-ish upscale via intermediate canvas (browser implementation
-      // varies, but enabling imageSmoothingQuality:"high" gives bicubic on most engines)
       const c1 = document.createElement("canvas");
       c1.width = w; c1.height = h;
       const ctx1 = c1.getContext("2d")!;
       ctx1.imageSmoothingEnabled = true;
       ctx1.imageSmoothingQuality = "high";
       ctx1.drawImage(img, 0, 0, w, h);
-
-      // Unsharp mask: blur copy, subtract from original to find edges, add back to sharpen
       const c2 = document.createElement("canvas");
       c2.width = w; c2.height = h;
       const ctx2 = c2.getContext("2d")!;
       (ctx2 as any).filter = "blur(1.2px)";
       ctx2.drawImage(c1, 0, 0);
       (ctx2 as any).filter = "none";
-
       const orig = ctx1.getImageData(0, 0, w, h);
       const blur = ctx2.getImageData(0, 0, w, h);
-      const amount = 0.6; // sharpening strength
+      const amount = 0.6;
       for (let i = 0; i < orig.data.length; i += 4) {
         for (let k = 0; k < 3; k++) {
           const o = orig.data[i + k], b = blur.data[i + k];
@@ -753,26 +622,13 @@ export default function DesignStudio() {
     }
   };
 
-  /* ── Multi-pointer interaction (drag + pinch + rotate) ──
-   *
-   * Built on @use-gesture/react. The library handles the cross-browser
-   * mess (pointer capture, touch-cancel, stylus/finger combos, lifted
-   * fingers mid-pinch, fast double-taps, mouse wheel as pinch on
-   * desktop) so we only have to express the intent: "drag moves the
-   * layer; pinch scales+rotates+pans it."
-   *
-   * The one piece of bespoke logic kept is the per-pointer-down hit
-   * test on `event.target` — that's how we know which layer the user
-   * grabbed. Without it, dragging the white background would grab
-   * whatever layer was selected last, which feels broken.
-   */
   const gestureRef = useRef<
     | { mode: "drag"; layerId: string; startSvg: { x: number; y: number }; startT: Transform }
     | { mode: "pinch"; layerId: string; startMid: { x: number; y: number }; startT: Transform }
     | null
   >(null);
 
-  const SNAP_THRESHOLD = 6; // svg units
+  const SNAP_THRESHOLD = 6;
 
   const bindCanvasGestures = useGesture(
     {
@@ -784,14 +640,8 @@ export default function DesignStudio() {
           if (!layer || layer.locked) { gestureRef.current = null; return; }
           setSelectedLayerId(layerId);
           selectedLayerIdRef.current = layerId;
-          gestureRef.current = {
-            mode: "drag",
-            layerId,
-            startSvg: clientToSVG(cx, cy),
-            startT: { ...layer.transform },
-          };
+          gestureRef.current = { mode: "drag", layerId, startSvg: clientToSVG(cx, cy), startT: { ...layer.transform } };
         } else {
-          // Tapped empty canvas → deselect
           setSelectedLayerId(null);
           selectedLayerIdRef.current = null;
           gestureRef.current = null;
@@ -812,9 +662,7 @@ export default function DesignStudio() {
         setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, x: nx, y: ny } } : l));
       },
       onDragEnd: () => {
-        if (gestureRef.current?.mode === "drag") {
-          commitLayers(layersRef.current);
-        }
+        if (gestureRef.current?.mode === "drag") commitLayers(layersRef.current);
         if (gestureRef.current?.mode === "drag") gestureRef.current = null;
         setSnapGuides({ v: false, h: false });
       },
@@ -829,12 +677,7 @@ export default function DesignStudio() {
           setSelectedLayerId(targetId);
           selectedLayerIdRef.current = targetId;
         }
-        gestureRef.current = {
-          mode: "pinch",
-          layerId: targetId,
-          startMid: clientToSVG(ox, oy),
-          startT: { ...layer.transform },
-        };
+        gestureRef.current = { mode: "pinch", layerId: targetId, startMid: clientToSVG(ox, oy), startT: { ...layer.transform } };
       },
       onPinch: ({ origin: [ox, oy], offset: [scaleOffset, angleOffset] }) => {
         const g = gestureRef.current;
@@ -847,21 +690,16 @@ export default function DesignStudio() {
         setLayers(prev => prev.map(l => l.id === g.layerId ? { ...l, transform: { ...l.transform, scale, rotation, x, y } } : l));
       },
       onPinchEnd: () => {
-        if (gestureRef.current?.mode === "pinch") {
-          commitLayers(layersRef.current);
-          gestureRef.current = null;
-        }
+        if (gestureRef.current?.mode === "pinch") { commitLayers(layersRef.current); gestureRef.current = null; }
       },
     },
     {
       drag: { filterTaps: true, pointer: { touch: true }, threshold: 1 },
-      // offset is multiplicative for scale (starts at 1) and additive degrees for angle (starts at 0)
       pinch: { scaleBounds: { min: 0.1, max: 5 }, rubberband: true, from: () => [1, 0] },
       eventOptions: { passive: false },
     }
   );
 
-  /* ── Keyboard shortcuts: undo/redo, delete ─────────── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
@@ -877,7 +715,6 @@ export default function DesignStudio() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, selectedLayerId, removeLayer]);
 
-  /* ── Compute layer SVG geometry ────────────────────── */
   const layerGeom = (l: Layer) => {
     const cx = pz.x + pz.w / 2 + l.transform.x;
     const cy = pz.y + pz.h / 2 + l.transform.y;
@@ -887,13 +724,11 @@ export default function DesignStudio() {
       const h = w / aspect;
       return { cx, cy, w, h, x: cx - w / 2, y: cy - h / 2 };
     }
-    // text — approximate bounding box from font metrics
     const w = (l.text.length * l.fontSize * 0.55) * l.transform.scale;
     const h = l.fontSize * 1.2 * l.transform.scale;
     return { cx, cy, w, h, x: cx - w / 2, y: cy - h / 2 };
   };
 
-  /* ── Add to cart ───────────────────────────────────── */
   const handleAddToCart = useCallback(async () => {
     if (layers.length === 0) {
       toast({ title: "No design", description: "Add an image or text layer first.", variant: "destructive" });
@@ -907,11 +742,6 @@ export default function DesignStudio() {
       const backLayers  = layers.filter(l => (l.face ?? "front") === "back")  as unknown as ComposerLayer[];
       const imageCache  = new Map<string, HTMLImageElement>();
 
-      // 0. Upload ORIGINAL full-resolution image layers to object storage
-      //    so the admin can download print-ready files later. We do this
-      //    BEFORE compositing so the admin gets the customer's actual
-      //    uploaded photos at full resolution, not the downscaled mockup.
-      //    Failures here are non-fatal: cart still works without uploads.
       const originalAssets: OriginalAsset[] = [];
       const originalAssetUrls: string[] = [];
       const imageLayers = layers.filter(l => l.type === "image" && l.visible);
@@ -919,180 +749,104 @@ export default function DesignStudio() {
         try {
           const imgLayer = layer as ImageLayer;
           const src = imgLayer.src;
-          if (!src.startsWith("data:")) continue; // skip already-uploaded
+          if (!src.startsWith("data:")) continue;
           const blob = await (await fetch(src)).blob();
           const mime = blob.type || "image/png";
           const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
-          // Sanitize layer name for use as a filename
           const safeName = (imgLayer.name || "design").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
           const filename = `${safeName}-${Date.now()}.${ext}`;
           const reqRes = await fetch(getApiUrl("/api/storage/uploads/request-url"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: filename,
-              size: blob.size,
-              contentType: mime,
-            }),
+            body: JSON.stringify({ name: filename, size: blob.size, contentType: mime }),
           });
           if (!reqRes.ok) continue;
           const { uploadURL, objectPath } = await reqRes.json();
-          const putRes = await fetch(uploadURL, {
-            method: "PUT",
-            headers: { "Content-Type": mime },
-            body: blob,
-          });
+          const putRes = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": mime }, body: blob });
           if (putRes.ok && objectPath) {
-            const asset: OriginalAsset = {
-              objectPath,
-              filename,
-              mime,
-              bytes: blob.size,
-              width: imgLayer.naturalW,
-              height: imgLayer.naturalH,
-            };
+            const asset: OriginalAsset = { objectPath, filename, mime, bytes: blob.size, width: imgLayer.naturalW, height: imgLayer.naturalH };
             originalAssets.push(asset);
             originalAssetUrls.push(objectPath);
           }
         } catch (uploadErr) {
           console.warn("[upload-original]", uploadErr);
-          /* swallow — cart should still work even if cloud upload is down */
         }
       }
 
-      // 1. Full garment + design composite → cart thumbnail (imageUrl)
-      //    Uses the white-cutout PNG (or cap dark PNG override) so tinting
-      //    matches the 2D editor exactly.
       const garmentBase = BASE_BY_CATEGORY[selectedProduct.category];
       const garmentSrc  = garmentBase?.front ?? displayProduct.frontSrc;
       const mockupCanvas = document.createElement("canvas");
       await composeGarmentMockup({
-        canvas: mockupCanvas,
-        garmentSrc,
-        garmentColor: selectedColor.hex,
-        printZone: frontPZ,
-        layers: frontLayers,
-        outSize: 400,
-        imageCache,
+        canvas: mockupCanvas, garmentSrc, garmentColor: selectedColor.hex,
+        printZone: frontPZ, layers: frontLayers, outSize: 400, imageCache,
       });
       const mockupUrl = mockupCanvas.toDataURL("image/webp", 0.8);
 
-      // 2. Design-only UV texture (transparent bg) — used by CartViewer3D.
-      //    Mug uses wide 2048×768 to match the studio live preview (full 360° wrap band).
-      //    Garments use square 1024×1024 for front/back panel UVs.
       const frontTexCanvas = document.createElement("canvas");
       if (isMug) {
         await composeLayers({
-          canvas: frontTexCanvas,
-          baseHeight: selectedProduct.baseHeight,
-          printZone: frontPZ,
-          layers: frontLayers,
-          garmentColor: null,
-          outW: 2048,
-          outH: 768,
-          imageCache,
-          clipToPrintZone: true,
-          blendMode: "multiply",
+          canvas: frontTexCanvas, baseHeight: selectedProduct.baseHeight,
+          printZone: frontPZ, layers: frontLayers, garmentColor: null,
+          outW: 2048, outH: 768, imageCache, clipToPrintZone: true, blendMode: "multiply",
         });
       } else {
         await composeDesignTexture({
-          canvas: frontTexCanvas,
-          printZone: frontPZ,
-          layers: frontLayers,
-          outSize: 1024,
-          imageCache,
+          canvas: frontTexCanvas, printZone: frontPZ, layers: frontLayers, outSize: 1024, imageCache,
         });
       }
       const frontTexUrl = frontTexCanvas.toDataURL("image/webp", 0.85);
 
-      // 3. Back-face design texture (garments only — mug has no back face)
       let backTexUrl: string | undefined;
       if (!isMug && backLayers.length > 0) {
         const backTexCanvas = document.createElement("canvas");
-        await composeDesignTexture({
-          canvas: backTexCanvas,
-          printZone: backPZ,
-          layers: backLayers,
-          outSize: 1024,
-          imageCache,
-        });
+        await composeDesignTexture({ canvas: backTexCanvas, printZone: backPZ, layers: backLayers, outSize: 1024, imageCache });
         backTexUrl = backTexCanvas.toDataURL("image/webp", 0.85);
       }
 
-      const displayPrice = studioPrice;
-
-      // Save full session for cart re-edit — MUST match the studio's
-      // DraftPayload format exactly (version, color (not selectedColor),
-      // size (not selectedSize)) so the restore effect accepts it.
       const sessionId = Date.now().toString(36);
       try {
         localStorage.setItem(`studio_session_${sessionId}`, JSON.stringify({
-          version: DRAFT_VERSION,
-          layers,
-          productId: selectedProduct.id,
-          color: selectedColor,
-          size: selectedSize,
-          savedAt: Date.now(),
+          version: DRAFT_VERSION, layers, productId: selectedProduct.id,
+          color: selectedColor, size: selectedSize, savedAt: Date.now(),
         }));
-      } catch { /* quota exceeded — re-edit won't be available but cart works fine */ }
+      } catch { }
 
       addToCart({
-        productId: 0,
-        name: `Custom ${selectedProduct.name}`,
-        price: displayPrice,
-        quantity,
+        productId: 0, name: `Custom ${selectedProduct.name}`, price: studioPrice, quantity,
         size: isMug || isCap || isWaterBottle ? undefined : selectedSize,
-        color: selectedColor.name,
-        imageUrl: mockupUrl,
+        color: selectedColor.name, imageUrl: mockupUrl,
         customImages: backTexUrl ? [frontTexUrl, backTexUrl] : [frontTexUrl],
-        originalAssetUrls,
-        originalAssets,
+        originalAssetUrls, originalAssets,
         customNote: JSON.stringify({
-          studioDesign: true,
-          sessionId,
-          product: selectedProduct.name,
-          category: selectedProduct.category,
-          color: selectedColor.name,
-          colorHex: selectedColor.hex,
-          size: selectedSize,
-          layerCount: layers.length,
-          frontLayerCount: frontLayers.length,
-          backLayerCount: backLayers.length,
-          // Garment provenance — used by useCartItemPreview fallback composer
-          mockupSrc: garmentSrc,
-          printZone: frontPZ,
-          printZoneBack: selectedProduct.printZoneBack ?? null,
-          // Print-ready originals — admin downloads these to fulfill the order.
-          // originalAssets has full metadata (filename, mime, bytes, dimensions).
-          // originalAssetUrls is kept for backward compatibility.
-          originalAssets,
-          originalAssetUrls,
+          studioDesign: true, sessionId,
+          product: selectedProduct.name, category: selectedProduct.category,
+          color: selectedColor.name, colorHex: selectedColor.hex, size: selectedSize,
+          layerCount: layers.length, frontLayerCount: frontLayers.length, backLayerCount: backLayers.length,
+          mockupSrc: garmentSrc, printZone: frontPZ, printZoneBack: selectedProduct.printZoneBack ?? null,
+          originalAssets, originalAssetUrls,
         }),
       });
 
       toast({ title: "✓ Added to cart!", description: `Custom ${selectedProduct.name} (${selectedColor.name}) is ready.` });
-      // Draft is now saved per-session — clear main draft key so a fresh visit starts clean.
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
-      setHasDraft(false);
-      setSaveStatus("idle");
+      setHasDraft(false); setSaveStatus("idle");
       setTimeout(() => navigate("/cart"), 800);
     } finally {
       setIsAddingToCart(false);
     }
   }, [layers, selectedProduct, displayProduct, selectedColor, selectedSize, quantity, isMug, isCap, isWaterBottle, studioPrice, pz, addToCart, toast, navigate, settings]);
 
-  /* ── Studio color palette — per product category ───── */
   const parseColors = (raw: string) => {
     try { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr as { name: string; hex: string }[]; } catch {}
     return null;
   };
   const DEFAULT_TSHIRT_COLORS: { name: string; hex: string }[] = [
-    { name: "White", hex: "#F8F7F4" }, { name: "Black", hex: "#1a1a1a" },
-    { name: "Navy", hex: "#1e3a5f" }, { name: "Maroon", hex: "#7f1d1d" },
-    { name: "Olive", hex: "#4a5240" }, { name: "Sky Blue", hex: "#0ea5e9" },
-    { name: "Grey", hex: "#6b7280" }, { name: "Red", hex: "#dc2626" },
-    { name: "Orange", hex: "#E85D04" }, { name: "Yellow", hex: "#eab308" },
-    { name: "Green", hex: "#16a34a" }, { name: "Purple", hex: "#7c3aed" },
+    { name: "White",    hex: "#F8F7F4" }, { name: "Black",    hex: "#1a1a1a" },
+    { name: "Navy",     hex: "#1e3a5f" }, { name: "Maroon",   hex: "#7f1d1d" },
+    { name: "Olive",    hex: "#4a5240" }, { name: "Sky Blue", hex: "#0ea5e9" },
+    { name: "Grey",     hex: "#6b7280" }, { name: "Red",      hex: "#dc2626" },
+    { name: "Orange",   hex: "#E85D04" }, { name: "Yellow",   hex: "#eab308" },
+    { name: "Green",    hex: "#16a34a" }, { name: "Purple",   hex: "#7c3aed" },
   ];
   const DEFAULT_MUG_COLORS: { name: string; hex: string }[] = [
     { name: "White", hex: "#F5F5F5" }, { name: "Black", hex: "#1C1917" },
@@ -1101,10 +855,10 @@ export default function DesignStudio() {
     { name: "White", hex: "#F5F2EC" }, { name: "Black", hex: "#1a1a1a" },
   ];
   const DEFAULT_WATERBOTTLE_COLORS: { name: string; hex: string }[] = [
-    { name: "White", hex: "#F4F3F1" }, { name: "Black", hex: "#1C1917" },
-    { name: "Navy", hex: "#1e3a5f" }, { name: "Forest", hex: "#166534" },
-    { name: "Sky Blue", hex: "#0ea5e9" }, { name: "Red", hex: "#dc2626" },
-    { name: "Pink", hex: "#f472b6" }, { name: "Teal", hex: "#0f766e" },
+    { name: "White",    hex: "#F4F3F1" }, { name: "Black",  hex: "#1C1917" },
+    { name: "Navy",     hex: "#1e3a5f" }, { name: "Forest", hex: "#166534" },
+    { name: "Sky Blue", hex: "#0ea5e9" }, { name: "Red",    hex: "#dc2626" },
+    { name: "Pink",     hex: "#f472b6" }, { name: "Teal",   hex: "#0f766e" },
   ];
   const studioColors = isMug
     ? (parseColors(settings.studioMugColors) ?? DEFAULT_MUG_COLORS)
@@ -1112,1120 +866,1098 @@ export default function DesignStudio() {
     : isWaterBottle ? DEFAULT_WATERBOTTLE_COLORS
     : (parseColors(settings.studioTshirtColors) ?? DEFAULT_TSHIRT_COLORS);
 
-  /* ── Selected layer: corner handles for resize ─────── */
   const handleResizeDown = useCallback((e: React.PointerEvent<SVGCircleElement>) => {
     e.stopPropagation();
     if (!selectedLayer || selectedLayer.locked) return;
     (e.target as Element).setPointerCapture(e.pointerId);
     const startPt = clientToSVG(e.clientX, e.clientY);
     const startT = { ...selectedLayer.transform };
-    const cx = pz.x + pz.w / 2 + startT.x;
-    const cy = pz.y + pz.h / 2 + startT.y;
-    const startDist = Math.hypot(startPt.x - cx, startPt.y - cy) || 1;
+    const geom = layerGeom(selectedLayer);
+    const cx = geom.cx, cy = geom.cy;
 
-    const onMove = (me: PointerEvent) => {
-      const pt = clientToSVG(me.clientX, me.clientY);
-      const newDist = Math.hypot(pt.x - cx, pt.y - cy);
-      const next = Math.max(0.1, Math.min(5, startT.scale * (newDist / startDist)));
+    const onMove = (ev: PointerEvent) => {
+      const cur = clientToSVG(ev.clientX, ev.clientY);
+      const dx = cur.x - cx, dy = cur.y - cy;
+      const origDx = startPt.x - cx, origDy = startPt.y - cy;
+      const origDist = Math.sqrt(origDx * origDx + origDy * origDy);
+      const curDist  = Math.sqrt(dx * dx + dy * dy);
+      if (origDist < 1) return;
+      const scaleFactor = curDist / origDist;
+      const newScale = Math.max(0.1, Math.min(5, startT.scale * scaleFactor));
+      const origAngle = Math.atan2(origDy, origDx) * 180 / Math.PI;
+      const curAngle  = Math.atan2(dy, dx) * 180 / Math.PI;
+      const newRot = startT.rotation + (curAngle - origAngle);
       setLayers(prev => prev.map(l => l.id === selectedLayer.id
-        ? { ...l, transform: { ...l.transform, scale: next } } : l));
+        ? { ...l, transform: { ...l.transform, scale: newScale, rotation: newRot } }
+        : l));
     };
     const onUp = () => {
+      commitLayers(layersRef.current);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      // commit
-      setLayers(curr => { commitLayers(curr); return curr; });
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [selectedLayer, clientToSVG, pz, commitLayers]);
+  }, [selectedLayer, clientToSVG, layerGeom, commitLayers]);
 
-  /* ── Renderable layer geometry list (memo) ─────────── */
-  const layersRender = layers.map(l => ({ layer: l, geom: layerGeom(l) }));
+  const layersRender = useMemo(() => layers.map(l => ({ layer: l, geom: layerGeom(l) })), [layers, pz]);
   const selGeom = selectedLayer ? layerGeom(selectedLayer) : null;
-  // Rotated handle positions for the selected layer
+
   const rotatedCorners = useMemo(() => {
     if (!selectedLayer || !selGeom) return [];
     const { cx, cy, x, y, w, h } = selGeom;
-    const rad = (selectedLayer.transform.rotation * Math.PI) / 180;
+    const rot = (selectedLayer.transform.rotation * Math.PI) / 180;
     const corners = [
-      { key: "nw", x, y },
-      { key: "ne", x: x + w, y },
-      { key: "sw", x, y: y + h },
-      { key: "se", x: x + w, y: y + h },
+      { x: x,     y: y     },
+      { x: x + w, y: y     },
+      { x: x + w, y: y + h },
+      { x: x,     y: y + h },
     ];
-    return corners.map(c => {
-      const dx = c.x - cx; const dy = c.y - cy;
+    return corners.map((c, i) => {
+      const dx = c.x - cx, dy = c.y - cy;
       return {
-        key: c.key,
-        x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
-        y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+        key: i,
+        x: cx + dx * Math.cos(rot) - dy * Math.sin(rot),
+        y: cy + dx * Math.sin(rot) + dy * Math.cos(rot),
       };
     });
   }, [selectedLayer, selGeom]);
 
+  /* ── Product switch helper ─────────────────────────── */
+  const handleProductChange = useCallback((prod: DesignProduct) => {
+    perProductLayersRef.current[selectedProduct.id] = {
+      layers: layersRef.current,
+      stack: historyRef.current.stack,
+      index: historyRef.current.index,
+    };
+    const saved = perProductLayersRef.current[prod.id];
+    const newLayers  = saved?.layers ?? [];
+    const newStack   = saved?.stack   ?? [[]];
+    const newHistIdx = saved?.index   ?? 0;
+    historyRef.current = { stack: newStack, index: newHistIdx };
+    flushSync(() => {
+      setLayers(newLayers);
+      setSelectedLayerId(null);
+      setSelectedProduct(prod);
+      setSelectedColor({ name: prod.name, hex: prod.garmentColor });
+      setQuantity(1);
+      setActiveFace("front");
+    });
+    forceHistoryTick(t => t + 1);
+    if (prod.category === "waterbottle") setViewMode("2d");
+  }, [selectedProduct.id]);
+
+  /* ── Add text layer helper ─────────────────────────── */
+  const addTextLayer = useCallback(() => {
+    const layer: TextLayer = {
+      id: uid(), name: "New text", type: "text", visible: true, locked: false,
+      transform: { ...ZERO_TRANSFORM },
+      text: "Your text", fontFamily: FONT_FAMILIES[0].value,
+      fontWeight: 700, fontStyle: "normal", fontSize: 40, color: "#111111",
+    };
+    addLayer(layer);
+    setRightTab("adjust");
+  }, [addLayer]);
+
+  /* ── Add sticker helper ────────────────────────────── */
+  const addStickerLayer = useCallback((s: (typeof STICKERS)[0]) => {
+    const img = new Image();
+    const finish = (w: number, h: number) => {
+      addLayer({
+        id: uid(), name: s.name, type: "image",
+        visible: true, locked: false,
+        transform: { ...ZERO_TRANSFORM, scale: 0.4 },
+        src: s.dataUrl, naturalW: w, naturalH: h,
+      });
+      setRightTab("adjust");
+    };
+    img.onload  = () => finish(img.naturalWidth || 100, img.naturalHeight || 100);
+    img.onerror = () => {
+      finish(100, 100);
+      toast({ title: "Sticker added", description: "Couldn't render a preview, but the shape was placed." });
+    };
+    img.src = s.dataUrl;
+  }, [addLayer, toast]);
+
+  /* ── Apply template helper ─────────────────────────── */
+  const applyTemplate = useCallback((t: Template) => {
+    const newLayers = t.create().map(l => ({ ...l, face: activeFaceRef.current }));
+    commitLayers([...layersRef.current, ...newLayers]);
+    if (newLayers.length > 0) setSelectedLayerId(newLayers[newLayers.length - 1].id);
+    setRightTab("adjust");
+    toast({ title: `✓ "${t.name}" applied`, description: "Customize it in the Adjust panel." });
+  }, [commitLayers, toast]);
+
+  /* ─────────────────────────────────────────────────────
+     JSX
+  ───────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F5F3F0" }}>
+    <div className="flex flex-col" style={{ height: "100dvh", overflow: "hidden", background: "#FAF8F5" }}>
       <SEOHead
         title="Design Studio — TryNex Lifestyle"
-        description="Design your own custom apparel and accessories. Upload artwork or add text, position it live, and add to cart instantly."
-        canonical="/design-studio"
-      />
-      <Navbar />
-
-      {/*
-        Spacer reserves vertical space for the fixed AnnouncementBar + Navbar
-        so the sticky page header below can use `top` without also stacking a
-        margin (avoids double-offset on mobile when the announcement bar is
-        visible).
-      */}
-      <div
-        aria-hidden
-        style={{ height: "calc(var(--announcement-height, 0px) + 4.25rem)" }}
+        description="Create custom printed products with your own designs. Add text, images, and stickers."
+        canonical="/customize"
       />
 
-      {/* Page header */}
-      <div
-        className="border-b border-gray-200 sticky z-30"
-        style={{
-          background: "white",
-          top: "calc(var(--announcement-height, 0px) + 4.25rem)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-shrink">
-            <h1 className="font-display font-black text-base sm:text-xl text-gray-900 truncate">Design Studio</h1>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">
-              <span className="hidden sm:inline">Designing: </span>
-              <strong className="text-gray-700">{selectedProduct.name}</strong>
-              <span className="text-gray-400"> · {activeFace === "front" ? "Front" : "Back"}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            {/* Saved indicator */}
-            {(saveStatus !== "idle" || hasDraft) && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
-                style={{ background: saveStatus === "saving" ? "#f3f4f6" : "#ecfdf5", color: saveStatus === "saving" ? "#6b7280" : "#047857" }}
-                data-testid="draft-status">
-                {saveStatus === "saving"
-                  ? <><CloudUpload className="w-3 h-3 animate-pulse" /> Saving…</>
-                  : <><Check className="w-3 h-3" /> Saved</>}
-              </div>
-            )}
-            {layers.length > 0 && (
-              <button
-                onClick={clearDraft}
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-gray-500 hover:text-red-600 transition-colors"
-                style={{ background: "#f3f4f6" }}
-                title="Clear all layers and draft"
-                data-testid="clear-draft"
-              >
-                <Trash2 className="w-3 h-3" /> Clear All
-              </button>
-            )}
-            {/* Undo / Redo — hidden on mobile to save space */}
-            <button onClick={undo} disabled={!canUndo}
-              className="hidden sm:flex p-2 rounded-xl text-gray-600 disabled:opacity-30"
-              style={{ background: "#f3f4f6" }} title="Undo (Ctrl+Z)">
-              <Undo2 className="w-4 h-4" />
-            </button>
-            <button onClick={redo} disabled={!canRedo}
-              className="hidden sm:flex p-2 rounded-xl text-gray-600 disabled:opacity-30"
-              style={{ background: "#f3f4f6" }} title="Redo (Ctrl+Y)">
-              <Redo2 className="w-4 h-4" />
-            </button>
-            {/* 2D / 3D toggle — hidden on mobile (shown below product tabs instead) */}
-            {effectiveSupports3D && (
-              <div className="hidden sm:flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }} data-testid="view-mode-toggle">
-                <button
-                  onClick={() => setViewMode("2d")}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
-                  style={{ background: viewMode === "2d" ? "#fff4ee" : "white", color: viewMode === "2d" ? "#E85D04" : "#6b7280" }}
-                  title="2D editor"
-                  data-testid="view-mode-2d"
-                >
-                  <Image2D className="w-3.5 h-3.5" /> 2D
-                </button>
-                <button
-                  onClick={() => setViewMode("3d")}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors"
-                  style={{ background: viewMode === "3d" ? "#fff4ee" : "white", color: viewMode === "3d" ? "#E85D04" : "#6b7280", borderLeft: "1px solid #e5e7eb" }}
-                  title="Realtime 3D preview"
-                  data-testid="view-mode-3d"
-                >
-                  <Box className="w-3.5 h-3.5" /> 3D
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => setShowPrintZone(v => !v)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
-              style={{ background: showPrintZone ? "#fff4ee" : "#f3f4f6", color: showPrintZone ? "#E85D04" : "#6b7280" }}
-            >
-              {showPrintZone ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              Print Zone
-            </button>
-            {/* Add to Cart — compact on mobile (icon only + short label) */}
-            <motion.button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.35)" }}
-            >
-              {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-              <span className="hidden sm:inline">Add to Cart</span>
-              <span className="sm:hidden">Cart</span>
-            </motion.button>
-          </div>
-        </div>
+      {/* Navbar */}
+      <div className="flex-shrink-0">
+        <Navbar />
       </div>
 
-      <div className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      {/* ══ STUDIO WORKSPACE ══ */}
+      <div className="flex-1 flex overflow-hidden">
 
-          {/* ═══════ LEFT: MOCKUP CANVAS ═══════ */}
-          <div className="flex-1 min-w-0">
-            {/* Mobile 2D/3D toggle — shown only on small screens above mockup */}
-            {effectiveSupports3D && (
-              <div className="flex sm:hidden items-center justify-between mb-3">
-                <div className="flex items-center rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb", background: "white" }}>
-                  <button
-                    onClick={() => setViewMode("2d")}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-colors"
-                    style={{ background: viewMode === "2d" ? "#fff4ee" : "white", color: viewMode === "2d" ? "#E85D04" : "#6b7280" }}
-                  >
-                    <Image2D className="w-3.5 h-3.5" /> 2D
-                  </button>
-                  <button
-                    onClick={() => setViewMode("3d")}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-colors"
-                    style={{ background: viewMode === "3d" ? "#fff4ee" : "white", color: viewMode === "3d" ? "#E85D04" : "#6b7280", borderLeft: "1px solid #e5e7eb" }}
-                  >
-                    <Box className="w-3.5 h-3.5" /> 3D
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={undo} disabled={!canUndo}
-                    className="p-2 rounded-xl text-gray-500 disabled:opacity-30"
-                    style={{ background: "#f3f4f6" }} title="Undo">
-                    <Undo2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={redo} disabled={!canRedo}
-                    className="p-2 rounded-xl text-gray-500 disabled:opacity-30"
-                    style={{ background: "#f3f4f6" }} title="Redo">
-                    <Redo2 className="w-3.5 h-3.5" />
-                  </button>
+        {/* ══════ LEFT SIDEBAR ══════ */}
+        <aside className="hidden lg:flex flex-col border-r"
+          style={{ width: 264, minWidth: 264, background: "white", borderColor: "#E8E4DF" }}>
+
+          {/* Sidebar header */}
+          <div className="px-4 py-3 border-b" style={{ borderColor: "#E8E4DF" }}>
+            <h2 className="text-sm font-black text-gray-900">Design Studio</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">Customize your product</p>
+          </div>
+
+          {/* Left tab strip */}
+          <div className="grid grid-cols-4 border-b" style={{ borderColor: "#E8E4DF" }}>
+            {([
+              { id: "products"  as LeftTab, icon: Package,  label: "Products" },
+              { id: "colors"    as LeftTab, icon: Palette,  label: "Colors"   },
+              { id: "stickers"  as LeftTab, icon: Star,     label: "Stickers" },
+              { id: "templates" as LeftTab, icon: Sparkles, label: "Tpls"     },
+            ]).map(({ id, icon: Icon, label }) => (
+              <button key={id} onClick={() => setLeftTab(id)}
+                className="flex flex-col items-center gap-1 py-2.5 text-[9px] font-black uppercase tracking-wider transition-colors"
+                style={{
+                  color: leftTab === id ? "#E85D04" : "#9ca3af",
+                  borderBottom: leftTab === id ? "2px solid #E85D04" : "2px solid transparent",
+                  marginBottom: -1,
+                }}>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Left tab content */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* ── PRODUCTS ── */}
+            {leftTab === "products" && (
+              <div className="p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5">Choose Product</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRODUCTS.map(prod => {
+                    const isSel = selectedProduct.id === prod.id;
+                    return (
+                      <button key={prod.id} onClick={() => handleProductChange(prod)}
+                        className="relative text-left rounded-xl overflow-hidden border-2 transition-all hover:shadow-md"
+                        style={{
+                          borderColor: isSel ? "#E85D04" : "#F0EDE8",
+                          background: isSel ? "#FFF8F4" : "white",
+                          boxShadow: isSel ? "0 0 0 1px rgba(232,93,4,0.15)" : undefined,
+                        }}>
+                        {isSel && (
+                          <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ background: "#E85D04" }}>
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="p-2 pb-1">
+                          <div className="aspect-square rounded-lg overflow-hidden flex items-center justify-center"
+                            style={{ background: "#F7F4F0" }}>
+                            <img src={prod.frontSrc} alt={prod.name}
+                              className="w-full h-full object-contain p-1.5"
+                              style={{ mixBlendMode: "multiply" }} />
+                          </div>
+                        </div>
+                        <div className="px-2 pb-2">
+                          <p className="text-[11px] font-black text-gray-800 truncate">{prod.icon} {prod.name}</p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">৳{(isMug || prod.category === "waterbottle" ? settings.studioMugPrice || 799 : settings.studioTshirtPrice || 1099).toLocaleString()}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Product tabs (scrollable on mobile) */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-              {PRODUCTS.map(prod => (
-                <button
-                  key={prod.id}
-                  onClick={() => {
-                    // Save current product's layers + history before switching.
-                    perProductLayersRef.current[selectedProduct.id] = {
-                      layers: layersRef.current,
-                      stack: historyRef.current.stack,
-                      index: historyRef.current.index,
-                    };
-                    // Restore (or start fresh) for the new product.
-                    const saved = perProductLayersRef.current[prod.id];
-                    const newLayers  = saved?.layers ?? [];
-                    const newStack   = saved?.stack   ?? [[]];
-                    const newHistIdx = saved?.index   ?? 0;
-                    historyRef.current = { stack: newStack, index: newHistIdx };
-                    flushSync(() => {
-                      setLayers(newLayers);
-                      setSelectedLayerId(null);
-                      setSelectedProduct(prod);
-                      setSelectedColor({ name: prod.name, hex: prod.garmentColor });
-                      setQuantity(1);
-                      setActiveFace("front");
-                    });
-                    forceHistoryTick(t => t + 1);
-                    if (prod.category === "waterbottle") setViewMode("2d");
-                  }}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
-                  style={{
-                    background: selectedProduct.id === prod.id ? "linear-gradient(135deg,#E85D04,#FB8500)" : "white",
-                    color: selectedProduct.id === prod.id ? "white" : "#374151",
-                    border: selectedProduct.id === prod.id ? "none" : "1.5px solid #e5e7eb",
-                    boxShadow: selectedProduct.id === prod.id ? "0 4px 12px rgba(232,93,4,0.3)" : "0 1px 4px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <span className="text-base leading-none shrink-0" role="img" aria-hidden="true">{prod.icon}</span>
-                  {prod.name}
-                </button>
-              ))}
-            </div>
+            {/* ── COLORS ── */}
+            {leftTab === "colors" && (
+              <div className="p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5">Garment Color</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {studioColors.map(c => {
+                    const isSel = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
+                    const isLight = parseInt(c.hex.replace("#","").slice(0,2),16) > 230 && parseInt(c.hex.replace("#","").slice(2,4),16) > 230;
+                    return (
+                      <button key={c.hex} onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
+                        className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-xl border-2 transition-all hover:scale-[1.04]"
+                        style={{
+                          borderColor: isSel ? "#E85D04" : "transparent",
+                          background: isSel ? "#FFF8F4" : "#F9F8F6",
+                        }}>
+                        <div className="w-9 h-9 rounded-full border-2 transition-all"
+                          style={{
+                            background: c.hex,
+                            borderColor: isLight ? "#d1d5db" : c.hex,
+                            boxShadow: isSel ? "0 0 0 3px rgba(232,93,4,0.25)" : "0 1px 4px rgba(0,0,0,0.1)",
+                          }} />
+                        <span className="text-[10px] font-bold text-gray-700 text-center leading-tight">{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-            {/* Face switcher — hidden in 3D mode (the orbit camera lets the
-                user see every angle, so a Front/Back tab is redundant + confusing).
-                Apparel: shows "Front / Back" tabs.
-                Mug:     shows "Side 1 / Side 2 / Wrap (full body)" — never Front/Back. */}
-            {showFaceTabs && viewMode === "2d" && (
-              <div className="flex gap-1.5 mb-3" data-testid="face-switcher">
-                {(["front", "back"] as const).map(f => (
-                  <button key={f}
-                    onClick={() => setActiveFace(f)}
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      background: activeFace === f ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
-                      color: activeFace === f ? "white" : "#374151",
-                      border: activeFace === f ? "none" : "1.5px solid #e5e7eb",
-                      boxShadow: activeFace === f ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
-                    }}
-                    data-testid={`face-${f}`}
-                  >
-                    {f === "front" ? "Front" : "Back"}
+            {/* ── STICKERS ── */}
+            {leftTab === "stickers" && (
+              <div className="p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tap to Add</p>
+                <p className="text-[10px] text-gray-400 mb-3">{STICKERS.length} vector shapes available</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {STICKERS.map(s => (
+                    <button key={s.id} data-testid={`sticker-${s.id}`} title={s.name}
+                      onClick={() => addStickerLayer(s)}
+                      className="aspect-square rounded-xl flex items-center justify-center p-2 border transition-all hover:border-orange-300 hover:bg-orange-50 hover:scale-110"
+                      style={{ background: "white", borderColor: "#E8E4DF" }}>
+                      <img src={s.dataUrl} alt={s.name} className="w-full h-full object-contain pointer-events-none" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── TEMPLATES ── */}
+            {leftTab === "templates" && (
+              <div className="p-3 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Text Templates</p>
+                <p className="text-[10px] text-gray-400 mb-3">Tap to add editable text layers</p>
+                {TEMPLATES.map(t => (
+                  <button key={t.id} onClick={() => applyTemplate(t)}
+                    className="w-full p-3 rounded-xl border text-left transition-all hover:border-orange-300 hover:bg-orange-50 group"
+                    style={{ background: "#F9F8F6", borderColor: "#E8E4DF" }}>
+                    <p className="text-sm font-black text-gray-800 whitespace-pre group-hover:text-orange-600 transition-colors">{t.preview}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">{t.name}</p>
                   </button>
                 ))}
-                {otherFaceCount > 0 && (
-                  <span className="px-3 py-2 text-[11px] font-bold text-gray-500" style={{ background: "#f3f4f6", borderRadius: 12 }}>
-                    {otherFaceCount} layer{otherFaceCount !== 1 ? "s" : ""} on the {activeFace === "front" ? "back" : "front"}
-                  </span>
-                )}
-                {/* Quick action: copy whatever is on the front to the back so the
-                    user doesn't have to rebuild the design twice. Only shown
-                    while viewing the back face and only when the back is empty
-                    AND the front has at least one layer. */}
-                {activeFace === "back" && currentFaceLayers.length === 0 && (() => {
-                  const frontLayers = layers.filter(l => (l.face ?? "front") === "front");
-                  if (frontLayers.length === 0) return null;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cloned = frontLayers.map(l => ({
-                          ...l,
-                          id: `${l.id}-back-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                          face: "back" as const,
-                        }));
+                <div className="mt-3 p-3 rounded-xl text-[10px] text-gray-500 flex items-start gap-2"
+                  style={{ background: "#fff8f4", border: "1px solid #fdd5b4" }}>
+                  <Info className="w-3 h-3 shrink-0 mt-0.5 text-orange-400" />
+                  Tap a template to add it, then adjust it from the right panel.
+                </div>
+              </div>
+            )}
+
+          </div>
+        </aside>
+
+        {/* ══════ CENTER: CANVAS ══════ */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ background: "#F0EDE8" }}>
+
+          {/* Canvas toolbar */}
+          <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b bg-white gap-2 overflow-x-auto"
+            style={{ borderColor: "#E8E4DF" }}>
+
+            {/* Left: Product (mobile) + Face/Mug tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin flex-shrink-0">
+
+              {/* Mobile product selector */}
+              <div className="flex lg:hidden gap-1 shrink-0">
+                {PRODUCTS.map(p => (
+                  <button key={p.id} onClick={() => handleProductChange(p)} title={p.name}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all shrink-0"
+                    style={{
+                      background: selectedProduct.id === p.id ? "linear-gradient(135deg,#E85D04,#FB8500)" : "#F3F4F6",
+                      boxShadow: selectedProduct.id === p.id ? "0 2px 6px rgba(232,93,4,0.35)" : undefined,
+                    }}>
+                    {p.icon}
+                  </button>
+                ))}
+              </div>
+
+              {/* Divider mobile */}
+              <div className="lg:hidden w-px h-5 bg-gray-200 mx-0.5 shrink-0" />
+
+              {/* Face tabs — apparel */}
+              {showFaceTabs && viewMode === "2d" && (
+                <div className="flex items-center gap-1 shrink-0" data-testid="face-switcher">
+                  {(["front", "back"] as const).map(f => (
+                    <button key={f} onClick={() => setActiveFace(f)}
+                      data-testid={`face-${f}`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                      style={{
+                        background: activeFace === f ? "#1f2937" : "#F3F4F6",
+                        color: activeFace === f ? "white" : "#6b7280",
+                      }}>
+                      {f === "front" ? "Front" : "Back"}
+                    </button>
+                  ))}
+                  {activeFace === "back" && currentFaceLayers.length === 0 && (() => {
+                    const frontL = layers.filter(l => (l.face ?? "front") === "front");
+                    if (!frontL.length) return null;
+                    return (
+                      <button onClick={() => {
+                        const cloned = frontL.map(l => ({ ...l, id: `${l.id}-b-${uid()}`, face: "back" as const }));
                         commitLayers([...layers, ...cloned]);
                       }}
-                      className="px-3 py-2 text-[11px] font-bold rounded-xl transition-all"
-                      style={{
-                        background: "linear-gradient(135deg,#E85D04,#F48C06)",
-                        color: "white",
-                        boxShadow: "0 4px 12px rgba(232,93,4,0.25)",
-                      }}
-                      data-testid="mirror-front-to-back"
-                    >
-                      ↻ Apply front design to back
-                    </button>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Mug-only print mode selector — replaces apparel Front/Back tabs.
-                Side 1 / Side 2 → independent print panels (front + back faces);
-                Wrap            → continuous artwork around the entire mug body.
-                Hidden in 3D mode (use orbit camera instead). */}
-            {isMugProduct && viewMode === "2d" && (
-              <div className="flex gap-1.5 mb-3" data-testid="mug-mode-switcher">
-                {([
-                  { v: "side1", label: "Side 1" },
-                  { v: "side2", label: "Side 2" },
-                  { v: "wrap",  label: "Wrap (full body)" },
-                ] as const).map(({ v, label }) => (
-                  <button key={v}
-                    onClick={() => setMugMode(v)}
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      background: mugMode === v ? "linear-gradient(135deg,#1f2937,#374151)" : "white",
-                      color: mugMode === v ? "white" : "#374151",
-                      border: mugMode === v ? "none" : "1.5px solid #e5e7eb",
-                      boxShadow: mugMode === v ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
-                    }}
-                    data-testid={`mug-mode-${v}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Garment color swatches */}
-            <div className="flex gap-1.5 mb-4 flex-wrap">
-              {studioColors.map(c => {
-                const isSelected = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
-                return (
-                  <button key={c.hex} title={c.name}
-                    onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
-                    className="w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110"
-                    style={{
-                      background: c.hex,
-                      borderColor: isSelected ? "#E85D04" : (c.hex.toUpperCase() === "#FFFFFF" || c.hex === "#F5F5F5" ? "#d1d5db" : c.hex),
-                      boxShadow: isSelected ? "0 0 0 2px rgba(232,93,4,0.3)" : "0 1px 3px rgba(0,0,0,0.10)",
-                    }}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Mockup area */}
-            <div
-              className="relative rounded-3xl overflow-hidden select-none"
-              style={{
-                background: "radial-gradient(ellipse at 50% 40%, #F2F0ED 0%, #E8E5E1 50%, #DDDAD5 100%)",
-                border: "1px solid #d8d5d0",
-                boxShadow: "inset 0 2px 20px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.08)",
-                isolation: "isolate",
-              }}
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              onDragEnter={(e) => e.preventDefault()}
-            >
-              <div
-                className="relative w-full"
-                style={{ aspectRatio: `${selectedProduct.aspect}`, touchAction: "none" }}
-              >
-                {viewMode === "3d" && effectiveSupports3D ? (
-                  <div className="absolute inset-0" data-testid="viewer-3d">
-                    <Suspense fallback={
-                      <div className="w-full h-full flex items-center justify-center text-gray-500">
-                        <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading 3D preview…
-                      </div>
-                    }>
-                      <ProductViewer3D
-                        product={displayProduct}
-                        garmentColor={selectedColor.hex}
-                        front={{
-                          layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
-                          printZone: selectedProduct.printZone,
-                          baseHeight: selectedProduct.baseHeight,
-                        }}
-                        back={supportsBack ? {
-                          layers: layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[],
-                          printZone: selectedProduct.printZoneBack ?? selectedProduct.printZone,
-                          baseHeight: selectedProduct.baseHeight,
-                        } : undefined}
-                        activeFace={activeFace}
-                      />
-                    </Suspense>
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[11px] font-bold text-white pointer-events-none"
-                      style={{ background: "rgba(0,0,0,0.6)" }}>
-                      Drag to rotate · Scroll to zoom
-                    </div>
-                    {layers.length === 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center px-6 py-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.88)", border: "2px dashed rgba(232,93,4,0.35)" }}>
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ background: "linear-gradient(135deg,#fff4ee,#ffe8d4)" }}>
-                            <Upload className="w-5 h-5 text-orange-500" />
-                          </div>
-                          <p className="font-black text-gray-800 text-sm mb-0.5">No design yet</p>
-                          <p className="text-xs text-gray-500">Switch to 2D to add layers →</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                <>
-                {/* Floating face label inside the canvas — gives a clear, premium
-                    "you are looking at the FRONT" indicator and animates between
-                    faces. Doesn't affect interaction (pointer-events: none). */}
-                {supportsBack && (
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeFace}
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.18 }}
-                      className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest pointer-events-none z-10"
-                      style={{ background: "rgba(17,24,39,0.88)", color: "white", letterSpacing: "0.12em" }}
-                    >
-                      {activeFace}
-                    </motion.div>
-                  </AnimatePresence>
-                )}
-                <AnimatePresence mode="wait" initial={false}>
-                <motion.svg
-                  key={`${selectedProduct.id}-${activeFace}`}
-                  ref={svgRef}
-                  viewBox={selectedProduct.viewBox}
-                  className="absolute inset-0 w-full h-full"
-                  style={{ touchAction: "none", userSelect: "none" }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease: "easeInOut" }}
-                  {...(bindCanvasGestures() as Record<string, unknown>)}
-                >
-                  <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
-
-                  {/* Layers (clipped to print zone) */}
-                  <defs>
-                    <clipPath id="design-clip">
-                      <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx="4" />
-                    </clipPath>
-                  </defs>
-                  <g clipPath="url(#design-clip)">
-                    {layersRender
-                      .filter(({ layer }) => (layer.face ?? "front") === activeFace)
-                      .map(({ layer: l, geom: g }) => {
-                      if (!l.visible) return null;
-                      if (l.type === "image") {
-                        return (
-                          <image key={l.id}
-                            data-layer-id={l.id}
-                            href={l.src}
-                            x={g.x} y={g.y} width={g.w} height={g.h}
-                            opacity={l.transform.opacity}
-                            transform={`rotate(${l.transform.rotation}, ${g.cx}, ${g.cy})`}
-                            preserveAspectRatio="none"
-                            style={{ cursor: l.locked ? "not-allowed" : "grab" }}
-                          />
-                        );
-                      }
-                      // text — multiply blend so ink looks printed on fabric
-                      return (
-                        <text key={l.id}
-                          data-layer-id={l.id}
-                          x={g.cx} y={g.cy}
-                          fill={l.color}
-                          fontFamily={l.fontFamily}
-                          fontWeight={l.fontWeight}
-                          fontStyle={l.fontStyle}
-                          fontSize={l.fontSize * l.transform.scale}
-                          opacity={l.transform.opacity}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          transform={`rotate(${l.transform.rotation}, ${g.cx}, ${g.cy})`}
-                          style={{ cursor: l.locked ? "not-allowed" : "grab", userSelect: "none", mixBlendMode: "multiply" }}
-                        >{l.text}</text>
-                      );
-                    })}
-                  </g>
-
-                  {/* Selection outline + handles */}
-                  {selectedLayer && selGeom && (
-                    <g pointerEvents="none">
-                      <rect x={selGeom.x} y={selGeom.y} width={selGeom.w} height={selGeom.h}
-                        fill="none" stroke="#E85D04" strokeWidth="1.5" strokeDasharray="4 3"
-                        transform={`rotate(${selectedLayer.transform.rotation}, ${selGeom.cx}, ${selGeom.cy})`} />
-                    </g>
+                        data-testid="mirror-front-to-back"
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-black text-white shrink-0"
+                        style={{ background: "linear-gradient(135deg,#E85D04,#F48C06)" }}>
+                        ↻ Mirror front
+                      </button>
+                    );
+                  })()}
+                  {otherFaceCount > 0 && (
+                    <span className="px-2 py-1.5 text-[10px] font-bold text-gray-500 rounded-lg shrink-0"
+                      style={{ background: "#F3F4F6" }}>
+                      +{otherFaceCount} on {activeFace === "front" ? "back" : "front"}
+                    </span>
                   )}
-                  {selectedLayer && rotatedCorners.map(h => (
-                    <circle key={h.key} cx={h.x} cy={h.y} r={7}
-                      fill="white" stroke="#E85D04" strokeWidth="2"
-                      style={{ cursor: "nwse-resize", touchAction: "none", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.2))" }}
-                      onPointerDown={handleResizeDown}
-                    />
-                  ))}
-
-                  {/* Snap guides */}
-                  {snapGuides.v && (
-                    <line x1={pz.x + pz.w / 2} y1={pz.y - 8} x2={pz.x + pz.w / 2} y2={pz.y + pz.h + 8}
-                      stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
-                  )}
-                  {snapGuides.h && (
-                    <line x1={pz.x - 8} y1={pz.y + pz.h / 2} x2={pz.x + pz.w + 8} y2={pz.y + pz.h / 2}
-                      stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
-                  )}
-                </motion.svg>
-                </AnimatePresence>
-
-                {/* Empty state — drop zone (drag on desktop, tap on mobile) */}
-                {layers.length === 0 && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                    onDrop={handleDrop}
-                    onDragOver={(e) => e.preventDefault()}
-                    onClick={() => fileInputRef.current?.click()}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-                    aria-label="Upload image"
-                  >
-                    <motion.div
-                      className="text-center px-8 py-8 rounded-2xl transition-all"
-                      whileHover={{ scale: 1.03 }}
-                      style={{ background: "rgba(255,255,255,0.92)", border: "2px dashed rgba(232,93,4,0.35)" }}
-                    >
-                      <div
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-                        style={{ background: "linear-gradient(135deg,#fff4ee,#ffe8d4)" }}
-                      >
-                        <Upload className="w-7 h-7 text-orange-500" />
-                      </div>
-                      <p className="font-black text-gray-800 text-base mb-1">Tap to upload</p>
-                      <p className="text-xs text-gray-500">or drag & drop your image here</p>
-                    </motion.div>
-                  </div>
-                )}
-
-                {/* Fabric label */}
-                <div className="absolute top-4 left-4">
-                  <span className="px-3 py-1.5 rounded-xl text-xs font-black"
-                    style={{ background: "rgba(255,255,255,0.96)", color: "#374151", boxShadow: "0 2px 8px rgba(0,0,0,0.10)" }}>
-                    {selectedProduct.description}
-                  </span>
                 </div>
-                </>
-                )}
+              )}
 
-                {/* Processing overlay — shows in-viewport whenever remove-bg or upscale is running.
-                    Absolute over the canvas so users never need to scroll to see it. */}
-                {(isRemoving || isUpscaling) && (
-                  <div
-                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20"
-                    style={{ background: "rgba(255,255,255,0.82)", backdropFilter: "blur(2px)" }}
-                  >
-                    <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-                    <p className="text-xs font-bold text-gray-700">
-                      {isRemoving ? "Removing background…" : "Upscaling image…"}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Interaction hint */}
-              {layers.length > 0 && (
-                <div className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 flex items-center gap-2 border-t border-gray-100"
-                  style={{ background: "white" }}>
-                  <Move className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                  Drag to move · Pinch to scale & rotate · Center snaps when aligned
+              {/* Mug mode tabs */}
+              {isMugProduct && viewMode === "2d" && (
+                <div className="flex items-center gap-1 shrink-0" data-testid="mug-mode-switcher">
+                  {([
+                    { v: "side1" as MugMode, l: "Side 1" },
+                    { v: "side2" as MugMode, l: "Side 2" },
+                    { v: "wrap"  as MugMode, l: "Full Wrap" },
+                  ]).map(({ v, l }) => (
+                    <button key={v} onClick={() => setMugMode(v)}
+                      data-testid={`mug-mode-${v}`}
+                      className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                      style={{
+                        background: mugMode === v ? "#1f2937" : "#F3F4F6",
+                        color: mugMode === v ? "white" : "#6b7280",
+                      }}>
+                      {l}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Save status */}
+              {(saveStatus !== "idle" || hasDraft) && (
+                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+                  style={{
+                    background: saveStatus === "saved" ? "#ECFDF5" : "#F3F4F6",
+                    color: saveStatus === "saved" ? "#047857" : "#6b7280",
+                  }}
+                  data-testid="draft-status">
+                  {saveStatus === "saving"
+                    ? <><CloudUpload className="w-3 h-3 animate-pulse" /> Saving</>
+                    : <><Check className="w-3 h-3" /> Saved</>}
+                </div>
+              )}
+
+              {/* Undo / Redo */}
+              <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)"
+                className="p-1.5 rounded-lg text-gray-500 disabled:opacity-30 hover:bg-gray-100 transition-colors">
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)"
+                className="p-1.5 rounded-lg text-gray-500 disabled:opacity-30 hover:bg-gray-100 transition-colors">
+                <Redo2 className="w-4 h-4" />
+              </button>
+
+              {/* 2D / 3D toggle */}
+              {effectiveSupports3D && (
+                <div className="hidden sm:flex rounded-lg overflow-hidden border border-gray-200" data-testid="view-mode-toggle">
+                  <button onClick={() => setViewMode("2d")} title="2D editor"
+                    data-testid="view-mode-2d"
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors"
+                    style={{ background: viewMode === "2d" ? "#FFF4EE" : "white", color: viewMode === "2d" ? "#E85D04" : "#6b7280" }}>
+                    <Image2D className="w-3 h-3" /> 2D
+                  </button>
+                  <button onClick={() => setViewMode("3d")} title="3D preview"
+                    data-testid="view-mode-3d"
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors border-l border-gray-200"
+                    style={{ background: viewMode === "3d" ? "#FFF4EE" : "white", color: viewMode === "3d" ? "#E85D04" : "#6b7280" }}>
+                    <Box className="w-3 h-3" /> 3D
+                  </button>
+                </div>
+              )}
+
+              {/* Print zone toggle */}
+              <button onClick={() => setShowPrintZone(v => !v)} title="Toggle print area"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+                style={{
+                  background: showPrintZone ? "#FFF4EE" : "#F3F4F6",
+                  color: showPrintZone ? "#E85D04" : "#6b7280",
+                }}>
+                {showPrintZone ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                <span className="hidden md:inline">Print Area</span>
+              </button>
+
+              {/* Clear all */}
+              {layers.length > 0 && (
+                <button onClick={clearDraft} title="Clear all layers"
+                  data-testid="clear-draft"
+                  className="hidden sm:flex p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Add to Cart shortcut */}
+              <motion.button onClick={handleAddToCart} disabled={isAddingToCart}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.3)" }}>
+                {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+                <span className="hidden md:inline">Add to Cart</span>
+              </motion.button>
+            </div>
           </div>
 
-          {/* ═══════ RIGHT: TABBED PANEL ═══════ */}
-          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+          {/* Canvas area */}
+          <div className="flex-1 flex items-center justify-center p-4 sm:p-6 overflow-hidden"
+            onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+            <div className="relative flex items-center justify-center w-full h-full">
+              <div className="relative select-none"
+                style={{
+                  width: "min(100%, min(calc(100vh - 260px), 520px))",
+                  aspectRatio: String(selectedProduct.aspect),
+                }}>
 
-            {/* Persistent hidden file inputs — always mounted so empty-state tap works
-                regardless of which tab is active. fileInputRef is shared by:
-                  • the "Tap to upload" empty-state overlay (all tabs)
-                  • the "Upload Image" button in the Upload tab
-                fileInputAddRef is used by the Layers tab "Image" add button. */}
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-              className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
+                {/* Canvas card */}
+                <div className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden"
+                  style={{
+                    background: "radial-gradient(ellipse at 50% 40%, #F5F2EE 0%, #ECE8E2 60%, #E0DDD8 100%)",
+                    boxShadow: "0 8px 48px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
+                  }}>
 
-            {/* Tab strip */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #e9e5e0" }}>
-              <div className="flex border-b border-gray-100">
-                {[
-                  { id: "upload" as const,    label: "Upload",    icon: Upload },
-                  { id: "text" as const,      label: "Text",      icon: Type },
-                  { id: "layers" as const,    label: "Layers",    icon: LayersIcon },
-                  { id: "templates" as const, label: "Templates", icon: Sparkles },
-                ].map(({ id, label, icon: Icon }) => (
-                  <button key={id} onClick={() => setActiveTab(id)}
-                    className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] font-bold transition-colors"
-                    style={{
-                      color: activeTab === id ? "#E85D04" : "#6b7280",
-                      borderBottom: activeTab === id ? "2px solid #E85D04" : "2px solid transparent",
-                      marginBottom: "-1px",
-                    }}
-                  >
-                    <Icon className="w-4 h-4" />{label}
-                  </button>
-                ))}
-              </div>
-
-              <AnimatePresence mode="wait">
-                {/* ── UPLOAD TAB ── */}
-                {activeTab === "upload" && (
-                  <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
-                      style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.3)" }}
-                    >
-                      <Upload className="w-4 h-4" /> Upload Image
-                    </button>
-                    <p className="text-[11px] text-gray-500 text-center">JPG, PNG, or WebP · Max 10MB</p>
-
-                    {selectedLayer?.type === "image" && (
-                      <>
-                        <div className="rounded-xl border border-gray-100 p-2">
-                          <img src={selectedLayer.src} alt="Preview" className="w-full h-20 object-contain rounded-lg"
-                            style={{ background: "repeating-conic-gradient(#ccc 0% 25%,#f0f0f0 0% 50%) 0 0/16px 16px" }} />
+                  {viewMode === "3d" && effectiveSupports3D ? (
+                    <div className="absolute inset-0" data-testid="viewer-3d">
+                      <Suspense fallback={
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                          <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading 3D preview…
                         </div>
-                        <div>
-                          <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
-                            style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
-                            title={removeBgServerConfigured === false ? "No remove.bg API key — will use in-browser AI (slower)" : undefined}
-                          >
-                            {isRemoving
-                              ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background...</>
-                              : <><Scissors className="w-4 h-4" /> Remove Background</>}
-                          </button>
-                          {removeBgServerConfigured === false && !isRemoving && (
-                            <p className="text-[10px] text-amber-600 mt-1 text-center leading-tight">
-                              Uses in-browser AI — admin can enable cloud processing in{" "}
-                              <a href="/admin/settings" className="underline font-semibold">Settings</a>
-                            </p>
-                          )}
-                        </div>
-                        <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg,#FEF3C7,#FDE68A)", color: "#92400E", border: "1px solid #FCD34D" }}
-                        >
-                          {isUpscaling
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Upscaling…</>
-                            : <><Wand2 className="w-4 h-4" /> Upscale to HD (2×)</>}
-                        </button>
-                      </>
-                    )}
-
-                    {/* Garment size picker (apparel only) */}
-                    {!isMug && !isCap && !isWaterBottle && (
-                      <div className="pt-3 border-t border-gray-100">
-                        <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Garment Size</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {SIZE_CHART.map(s => (
-                            <button key={s.size} onClick={() => setSelectedSize(s.size)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
-                              style={{
-                                background: selectedSize === s.size ? "linear-gradient(135deg,#E85D04,#FB8500)" : "#f3f4f6",
-                                color: selectedSize === s.size ? "white" : "#374151",
-                                boxShadow: selectedSize === s.size ? "0 2px 8px rgba(232,93,4,0.3)" : "none",
-                              }}
-                            >{s.size}</button>
-                          ))}
-                        </div>
-                        <details className="mt-3">
-                          <summary className="text-[11px] font-bold text-gray-500 cursor-pointer flex items-center gap-1">
-                            <Ruler className="w-3 h-3" /> Size guide
-                          </summary>
-                          <div className="mt-2 rounded-lg overflow-hidden border border-gray-100">
-                            <table className="w-full text-[11px]">
-                              <thead><tr style={{ background: "#f9fafb" }}>
-                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Size</th>
-                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Chest</th>
-                                <th className="px-2 py-1.5 text-left font-black text-gray-600">Length</th>
-                              </tr></thead>
-                              <tbody>
-                                {SIZE_CHART.map((row, i) => (
-                                  <tr key={row.size} className="border-t border-gray-50"
-                                    style={{ background: selectedSize === row.size ? "#fff4ee" : i % 2 === 0 ? "white" : "#fafafa" }}>
-                                    <td className="px-2 py-1.5 font-black" style={{ color: selectedSize === row.size ? "#E85D04" : "#111" }}>{row.size}</td>
-                                    <td className="px-2 py-1.5 text-gray-600">{row.chest}"</td>
-                                    <td className="px-2 py-1.5 text-gray-600">{row.length}"</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </details>
+                      }>
+                        <ProductViewer3D
+                          product={displayProduct}
+                          garmentColor={selectedColor.hex}
+                          front={{
+                            layers: layers.filter(l => (l.face ?? "front") === "front") as unknown as ComposerLayer[],
+                            printZone: selectedProduct.printZone,
+                            baseHeight: selectedProduct.baseHeight,
+                          }}
+                          back={supportsBack ? {
+                            layers: layers.filter(l => (l.face ?? "front") === "back") as unknown as ComposerLayer[],
+                            printZone: selectedProduct.printZoneBack ?? selectedProduct.printZone,
+                            baseHeight: selectedProduct.baseHeight,
+                          } : undefined}
+                          activeFace={activeFace}
+                        />
+                      </Suspense>
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[11px] font-bold text-white pointer-events-none"
+                        style={{ background: "rgba(0,0,0,0.6)" }}>
+                        Drag to rotate · Scroll to zoom
                       </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* ── TEXT TAB ── */}
-                {activeTab === "text" && (
-                  <motion.div key="text" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
-                    <button
-                      onClick={() => {
-                        const layer: TextLayer = {
-                          id: uid(), name: "New text", type: "text", visible: true, locked: false,
-                          transform: { ...ZERO_TRANSFORM },
-                          text: "Your text", fontFamily: FONT_FAMILIES[0].value,
-                          fontWeight: 700, fontStyle: "normal", fontSize: 40, color: "#111111",
-                        };
-                        addLayer(layer);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
-                      style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 4px 12px rgba(232,93,4,0.3)" }}
-                    >
-                      <Plus className="w-4 h-4" /> Add Text Layer
-                    </button>
-
-                    {selectedLayer?.type === "text" ? (
-                      <>
-                        <div>
-                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Text</label>
-                          <input value={selectedLayer.text}
-                            onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, text: e.target.value, name: e.target.value || "Text" } : l, false)}
-                            onBlur={() => commitLayers(layers)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-gray-200 focus:border-orange-400 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Font</label>
-                          <select value={selectedLayer.fontFamily}
-                            onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontFamily: e.target.value } : l, true)}
-                            className="w-full px-3 py-2 rounded-lg text-sm border border-gray-200 outline-none"
-                          >
-                            {FONT_FAMILIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Size</label>
-                            <input type="number" min={8} max={200} value={selectedLayer.fontSize}
-                              onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontSize: Math.max(8, Math.min(200, parseInt(e.target.value) || 12)) } : l, false)}
-                              onBlur={() => commitLayers(layers)}
-                              className="w-full px-2 py-1.5 rounded-lg text-sm border border-gray-200 outline-none" />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Color</label>
-                            <input type="color" value={selectedLayer.color}
-                              onChange={(e) => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, color: e.target.value } : l, false)}
-                              onBlur={() => commitLayers(layers)}
-                              className="w-full h-9 rounded-lg border border-gray-200 cursor-pointer" />
+                      {layers.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="text-center px-6 py-5 rounded-2xl"
+                            style={{ background: "rgba(255,255,255,0.88)", border: "2px dashed rgba(232,93,4,0.3)" }}>
+                            <Upload className="w-6 h-6 text-orange-400 mx-auto mb-2" />
+                            <p className="font-black text-gray-800 text-sm">No design yet</p>
+                            <p className="text-xs text-gray-500">Switch to 2D to add layers</p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontWeight: l.fontWeight >= 800 ? 400 : 800 } : l, true)}
-                            className="flex-1 py-2 rounded-lg text-sm font-black border"
-                            style={{
-                              background: selectedLayer.fontWeight >= 800 ? "#fff4ee" : "white",
-                              color: selectedLayer.fontWeight >= 800 ? "#E85D04" : "#374151",
-                              borderColor: selectedLayer.fontWeight >= 800 ? "#fdd5b4" : "#e5e7eb",
-                            }}
-                          >B</button>
-                          <button
-                            onClick={() => updateLayer(selectedLayer.id, l => l.type === "text" ? { ...l, fontStyle: l.fontStyle === "italic" ? "normal" : "italic" } : l, true)}
-                            className="flex-1 py-2 rounded-lg text-sm italic font-bold border"
-                            style={{
-                              background: selectedLayer.fontStyle === "italic" ? "#fff4ee" : "white",
-                              color: selectedLayer.fontStyle === "italic" ? "#E85D04" : "#374151",
-                              borderColor: selectedLayer.fontStyle === "italic" ? "#fdd5b4" : "#e5e7eb",
-                            }}
-                          >I</button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-xs text-gray-500 p-3 rounded-xl text-center" style={{ background: "#f9fafb" }}>
-                        Add a text layer or select one to edit it.
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* ── LAYERS TAB ── */}
-                {activeTab === "layers" && (
-                  <motion.div key="layers" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
-                    {/* Add buttons */}
-                    <div className="flex gap-2">
-                      <input ref={fileInputAddRef} type="file" accept="image/jpeg,image/png,image/webp"
-                        className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
-                      <button onClick={() => fileInputAddRef.current?.click()}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border"
-                        style={{ background: "white", color: "#374151", borderColor: "#e5e7eb" }}>
-                        <ImageIcon className="w-3.5 h-3.5" /> Image
-                      </button>
-                      <button onClick={() => setActiveTab("text")}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border"
-                        style={{ background: "white", color: "#374151", borderColor: "#e5e7eb" }}>
-                        <Type className="w-3.5 h-3.5" /> Text
-                      </button>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      {/* Face label badge */}
+                      {supportsBack && (
+                        <AnimatePresence mode="wait">
+                          <motion.div key={activeFace}
+                            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}
+                            className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest z-10 pointer-events-none"
+                            style={{ background: "rgba(17,24,39,0.7)", color: "white", letterSpacing: "0.1em" }}>
+                            {activeFace}
+                          </motion.div>
+                        </AnimatePresence>
+                      )}
 
-                    {/* Layer list (top of stack first) */}
-                    {layers.length === 0 ? (
-                      <div className="text-xs text-gray-500 p-4 rounded-xl text-center" style={{ background: "#f9fafb" }}>
-                        No layers yet. Add an image or text to start.
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {[...layers].reverse().map((l) => {
-                          const isSel = selectedLayerId === l.id;
-                          return (
-                            <div key={l.id}
-                              onClick={() => setSelectedLayerId(l.id)}
-                              className="flex items-center gap-2 p-2 rounded-lg cursor-pointer border"
-                              style={{
-                                background: isSel ? "#fff4ee" : "white",
-                                borderColor: isSel ? "#fdd5b4" : "#eee",
-                              }}
-                            >
-                              <button onClick={(e) => { e.stopPropagation();
-                                updateLayer(l.id, x => ({ ...x, visible: !x.visible }), true);
-                              }} className="text-gray-400 hover:text-gray-700" title="Show/hide">
-                                {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      {/* SVG canvas */}
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.svg
+                          key={`${selectedProduct.id}-${activeFace}`}
+                          ref={svgRef}
+                          viewBox={selectedProduct.viewBox}
+                          className="absolute inset-0 w-full h-full"
+                          style={{ touchAction: "none", userSelect: "none" }}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          transition={{ duration: 0.18, ease: "easeInOut" }}
+                          {...(bindCanvasGestures() as Record<string, unknown>)}
+                        >
+                          <GarmentSVG product={displayProduct} color={selectedColor.hex} showPrintZone={effectiveShowPrintZone} face={activeFace} />
+
+                          <defs>
+                            <clipPath id="design-clip">
+                              <rect x={pz.x} y={pz.y} width={pz.w} height={pz.h} rx="4" />
+                            </clipPath>
+                          </defs>
+
+                          <g clipPath="url(#design-clip)">
+                            {layersRender
+                              .filter(({ layer }) => (layer.face ?? "front") === activeFace)
+                              .map(({ layer: l, geom: g }) => {
+                                if (!l.visible) return null;
+                                if (l.type === "image") {
+                                  return (
+                                    <image key={l.id} data-layer-id={l.id} href={l.src}
+                                      x={g.x} y={g.y} width={g.w} height={g.h}
+                                      opacity={l.transform.opacity}
+                                      transform={`rotate(${l.transform.rotation},${g.cx},${g.cy})`}
+                                      preserveAspectRatio="none"
+                                      style={{ cursor: l.locked ? "not-allowed" : "grab" }} />
+                                  );
+                                }
+                                return (
+                                  <text key={l.id} data-layer-id={l.id}
+                                    x={g.cx} y={g.cy} fill={l.color}
+                                    fontFamily={l.fontFamily} fontWeight={l.fontWeight} fontStyle={l.fontStyle}
+                                    fontSize={l.fontSize * l.transform.scale} opacity={l.transform.opacity}
+                                    textAnchor="middle" dominantBaseline="middle"
+                                    transform={`rotate(${l.transform.rotation},${g.cx},${g.cy})`}
+                                    style={{ cursor: l.locked ? "not-allowed" : "grab", userSelect: "none", mixBlendMode: "multiply" }}>
+                                    {l.text}
+                                  </text>
+                                );
+                              })}
+                          </g>
+
+                          {/* Selection outline */}
+                          {selectedLayer && selGeom && (
+                            <g pointerEvents="none">
+                              <rect x={selGeom.x} y={selGeom.y} width={selGeom.w} height={selGeom.h}
+                                fill="none" stroke="#E85D04" strokeWidth="1.5" strokeDasharray="4 3"
+                                transform={`rotate(${selectedLayer.transform.rotation},${selGeom.cx},${selGeom.cy})`} />
+                            </g>
+                          )}
+                          {/* Resize handles */}
+                          {selectedLayer && rotatedCorners.map(h => (
+                            <circle key={h.key} cx={h.x} cy={h.y} r={7}
+                              fill="white" stroke="#E85D04" strokeWidth="2"
+                              style={{ cursor: "nwse-resize", touchAction: "none", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.2))" }}
+                              onPointerDown={handleResizeDown} />
+                          ))}
+
+                          {/* Snap guides */}
+                          {snapGuides.v && (
+                            <line x1={pz.x + pz.w / 2} y1={pz.y - 8} x2={pz.x + pz.w / 2} y2={pz.y + pz.h + 8}
+                              stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
+                          )}
+                          {snapGuides.h && (
+                            <line x1={pz.x - 8} y1={pz.y + pz.h / 2} x2={pz.x + pz.w + 8} y2={pz.y + pz.h / 2}
+                              stroke="#E85D04" strokeWidth="1" strokeDasharray="2 3" />
+                          )}
+                        </motion.svg>
+                      </AnimatePresence>
+
+                      {/* Empty state drop zone */}
+                      {currentFaceLayers.length === 0 && (
+                        <div
+                          className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                          onClick={() => fileInputRef.current?.click()}
+                          onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+                          role="button" tabIndex={0}
+                          onKeyDown={e => e.key === "Enter" && fileInputRef.current?.click()}
+                          aria-label="Upload image">
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="text-center px-8 py-6 rounded-2xl"
+                            style={{ background: "rgba(255,255,255,0.88)", border: "2px dashed rgba(232,93,4,0.3)" }}>
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                              style={{ background: "linear-gradient(135deg,#FFF4EE,#FFE8D4)" }}>
+                              <Upload className="w-6 h-6 text-orange-500" />
+                            </div>
+                            <p className="font-black text-gray-800 mb-1">Upload your design</p>
+                            <p className="text-sm text-gray-500 mb-1">Drag & drop or tap to browse</p>
+                            <p className="text-xs text-gray-400">JPG, PNG, WebP · Max 10MB</p>
+                            <div className="flex items-center justify-center gap-3 mt-3">
+                              <button
+                                onClick={e => { e.stopPropagation(); addTextLayer(); }}
+                                className="text-xs font-bold text-orange-500 hover:underline">
+                                + Add text
                               </button>
-                              {l.type === "image" ? (
-                                <img src={l.src} alt="" className="w-7 h-7 rounded object-cover bg-gray-100 shrink-0" />
-                              ) : (
-                                <div className="w-7 h-7 rounded flex items-center justify-center shrink-0"
-                                  style={{ background: "#f3f4f6", color: l.color, fontWeight: 800, fontSize: 10 }}>T</div>
-                              )}
-                              <span className="text-xs font-bold text-gray-700 truncate flex-1">{l.name}</span>
-                              <button onClick={(e) => { e.stopPropagation(); moveLayer(l.id, 1); }} className="text-gray-400 hover:text-gray-700" title="Bring forward">
-                                <ChevronUp className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); moveLayer(l.id, -1); }} className="text-gray-400 hover:text-gray-700" title="Send backward">
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation();
-                                updateLayer(l.id, x => ({ ...x, locked: !x.locked }), true);
-                              }} className="text-gray-400 hover:text-gray-700" title="Lock/unlock">
-                                {l.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); removeLayer(l.id); }} className="text-red-400 hover:text-red-600" title="Delete">
-                                <Trash2 className="w-3.5 h-3.5" />
+                              <span className="text-gray-300">·</span>
+                              <button
+                                onClick={e => { e.stopPropagation(); setLeftTab("stickers"); }}
+                                className="text-xs font-bold text-orange-500 hover:underline">
+                                Browse stickers
                               </button>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                          </motion.div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                    {/* AI Tools for image layers — shown prominently in the Layers tab */}
-                    {selectedLayer?.type === 'image' && (
-                      <div className='pt-3 border-t border-gray-100 space-y-2'>
-                        <div className='text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2'>✨ AI Image Tools</div>
-                        <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
-                          className='w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]'
-                          style={{ background: 'linear-gradient(135deg,#fff4ee,#ffe4cc)', color: '#E85D04', border: '1.5px solid #fdd5b4', boxShadow: '0 2px 8px rgba(232,93,4,0.15)' }}
-                        >
-                          {isRemoving
-                            ? <><Loader2 className='w-4 h-4 animate-spin' /> Removing background...</>
-                            : <><Scissors className='w-4 h-4' /> Remove Background</>}
+          {/* Mobile bottom: color swatches + add to cart */}
+          <div className="lg:hidden flex-shrink-0 bg-white border-t px-4 py-3" style={{ borderColor: "#E8E4DF" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-0.5">
+                {studioColors.slice(0, 10).map(c => {
+                  const isSel = selectedColor.hex.toLowerCase() === c.hex.toLowerCase();
+                  const isLight = parseInt(c.hex.replace("#","").slice(0,2),16) > 230;
+                  return (
+                    <button key={c.hex} title={c.name} onClick={() => setSelectedColor({ name: c.name, hex: c.hex })}
+                      className="w-7 h-7 rounded-full border-2 shrink-0 transition-transform hover:scale-110"
+                      style={{
+                        background: c.hex,
+                        borderColor: isSel ? "#E85D04" : isLight ? "#d1d5db" : c.hex,
+                        boxShadow: isSel ? "0 0 0 2px rgba(232,93,4,0.3)" : undefined,
+                      }} />
+                  );
+                })}
+              </div>
+              <motion.button onClick={handleAddToCart} disabled={isAddingToCart}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white shrink-0 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)" }}>
+                {isAddingToCart ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+                Add ৳{studioPrice.toLocaleString()}
+              </motion.button>
+            </div>
+          </div>
+        </main>
+
+        {/* ══════ RIGHT PANEL ══════ */}
+        <aside className="hidden lg:flex flex-col border-l"
+          style={{ width: 288, minWidth: 288, background: "white", borderColor: "#E8E4DF" }}>
+
+          {/* Quick add row */}
+          <div className="flex gap-2 p-3 border-b" style={{ borderColor: "#E8E4DF" }}>
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all hover:border-orange-300 hover:bg-orange-50 text-gray-700"
+              style={{ borderColor: "#E8E4DF" }}>
+              <Upload className="w-3.5 h-3.5 text-orange-500" /> Upload Image
+            </button>
+            <button onClick={addTextLayer}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all hover:border-orange-300 hover:bg-orange-50 text-gray-700"
+              style={{ borderColor: "#E8E4DF" }}>
+              <Type className="w-3.5 h-3.5 text-orange-500" /> Add Text
+            </button>
+          </div>
+
+          {/* Right tab strip */}
+          <div className="grid grid-cols-2 border-b" style={{ borderColor: "#E8E4DF" }}>
+            {([
+              { id: "layers" as RightTab, icon: LayersIcon, label: "Layers" },
+              { id: "adjust" as RightTab, icon: SlidersHorizontal, label: "Adjust" },
+            ]).map(({ id, icon: Icon, label }) => (
+              <button key={id} onClick={() => setRightTab(id)}
+                className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold transition-colors"
+                style={{
+                  color: rightTab === id ? "#E85D04" : "#9ca3af",
+                  borderBottom: rightTab === id ? "2px solid #E85D04" : "2px solid transparent",
+                  marginBottom: -1,
+                }}>
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Right tab content */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* ── LAYERS TAB ── */}
+            {rightTab === "layers" && (
+              <div className="p-3 space-y-1.5">
+                {layers.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <LayersIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <p className="text-xs font-bold">No layers yet</p>
+                    <p className="text-[10px] mt-1">Upload an image or add text</p>
+                  </div>
+                ) : (
+                  [...layers].reverse().map(l => {
+                    const isSel = selectedLayerId === l.id;
+                    return (
+                      <div key={l.id}
+                        onClick={() => { setSelectedLayerId(l.id); setRightTab("adjust"); }}
+                        className="flex items-center gap-2 p-2 rounded-xl cursor-pointer border-2 transition-all hover:border-orange-200"
+                        style={{
+                          background: isSel ? "#FFF8F4" : "white",
+                          borderColor: isSel ? "#FDD5B4" : "#F0EDE8",
+                        }}>
+                        <button onClick={e => { e.stopPropagation(); updateLayer(l.id, x => ({ ...x, visible: !x.visible }), true); }}
+                          className="text-gray-400 hover:text-gray-700 flex-shrink-0">
+                          {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                         </button>
-                        <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
-                          className='w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]'
-                          style={{ background: 'linear-gradient(135deg,#FEF3C7,#FDE68A)', color: '#92400E', border: '1.5px solid #FCD34D', boxShadow: '0 2px 8px rgba(146,64,14,0.15)' }}
-                        >
-                          {isUpscaling
-                            ? <><Loader2 className='w-4 h-4 animate-spin' /> Upscaling…</>
-                            : <><Wand2 className='w-4 h-4' /> Upscale to HD (2×)</>}
-                        </button>
+                        {l.type === "image" ? (
+                          <img src={l.src} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+                            style={{ background: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%) 0 0 / 8px 8px" }} />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-black"
+                            style={{ background: "#F3F4F6", color: (l as TextLayer).color }}>T</div>
+                        )}
+                        <span className="text-[11px] font-bold text-gray-700 truncate flex-1">{l.name}</span>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <button onClick={e => { e.stopPropagation(); moveLayer(l.id, 1); }}
+                            className="p-1 text-gray-300 hover:text-gray-600 transition-colors" title="Bring forward">
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); moveLayer(l.id, -1); }}
+                            className="p-1 text-gray-300 hover:text-gray-600 transition-colors" title="Send backward">
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); updateLayer(l.id, x => ({ ...x, locked: !x.locked }), true); }}
+                            className="p-1 text-gray-300 hover:text-gray-600 transition-colors" title="Lock/unlock">
+                            {l.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); removeLayer(l.id); }}
+                            className="p-1 text-red-400 hover:text-red-600 transition-colors" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    )}
-                    {/* Adjust selected layer */}
-                    {selectedLayer && (
-                      <div className="pt-3 border-t border-gray-100 space-y-3">
-                        <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">Adjust “{selectedLayer.name}”</div>
-                        {/* Scale */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-[11px] font-bold text-gray-500">Scale</label>
-                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.scale * 100)}%</span>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* ── ADJUST TAB ── */}
+            {rightTab === "adjust" && (
+              <div className="p-3">
+                {!selectedLayer ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                    <p className="text-xs font-bold">Nothing selected</p>
+                    <p className="text-[10px] mt-1">Click a layer to adjust it</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+
+                    {/* Layer preview */}
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: "#F9F8F6" }}>
+                      {selectedLayer.type === "image" ? (
+                        <img src={(selectedLayer as ImageLayer).src} alt=""
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                          style={{ background: "repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%) 0 0 / 8px 8px" }} />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-xl font-black"
+                          style={{ background: "white", color: (selectedLayer as TextLayer).color }}>T</div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black text-gray-800 truncate">{selectedLayer.name}</p>
+                        <p className="text-[10px] text-gray-400">{selectedLayer.type === "image" ? "Image layer" : "Text layer"}</p>
+                      </div>
+                    </div>
+
+                    {/* Text controls */}
+                    {selectedLayer.type === "text" && (() => {
+                      const tl = selectedLayer as TextLayer;
+                      return (
+                        <div className="space-y-3 p-3 rounded-xl" style={{ background: "#F9F8F6" }}>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Text Content</p>
+                          <input value={tl.text}
+                            onChange={e => updateLayer(tl.id, l => l.type === "text" ? { ...l, text: e.target.value, name: e.target.value || "Text" } : l, false)}
+                            onBlur={() => commitLayers(layers)}
+                            className="w-full px-3 py-2 rounded-lg text-sm border outline-none"
+                            style={{ borderColor: "#E8E4DF" }} />
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Font</label>
+                              <select value={tl.fontFamily}
+                                onChange={e => updateLayer(tl.id, l => l.type === "text" ? { ...l, fontFamily: e.target.value } : l, true)}
+                                className="w-full px-2 py-1.5 rounded-lg text-xs border outline-none"
+                                style={{ borderColor: "#E8E4DF" }}>
+                                {FONT_FAMILIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Size</label>
+                              <input type="number" min={8} max={200} value={tl.fontSize}
+                                onChange={e => updateLayer(tl.id, l => l.type === "text" ? { ...l, fontSize: Math.max(8, Math.min(200, parseInt(e.target.value) || 12)) } : l, false)}
+                                onBlur={() => commitLayers(layers)}
+                                className="w-full px-2 py-1.5 rounded-lg text-xs border outline-none"
+                                style={{ borderColor: "#E8E4DF" }} />
+                            </div>
                           </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Color</label>
+                              <input type="color" value={tl.color}
+                                onChange={e => updateLayer(tl.id, l => l.type === "text" ? { ...l, color: e.target.value } : l, false)}
+                                onBlur={() => commitLayers(layers)}
+                                className="w-full h-9 rounded-lg border cursor-pointer"
+                                style={{ borderColor: "#E8E4DF" }} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Style</label>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => updateLayer(tl.id, l => l.type === "text" ? { ...l, fontWeight: l.fontWeight >= 800 ? 400 : 800 } : l, true)}
+                                  className="flex-1 py-1.5 rounded-lg text-xs font-black border transition-all"
+                                  style={{
+                                    background: tl.fontWeight >= 800 ? "#FFF4EE" : "white",
+                                    color: tl.fontWeight >= 800 ? "#E85D04" : "#374151",
+                                    borderColor: tl.fontWeight >= 800 ? "#FDD5B4" : "#E8E4DF",
+                                  }}>B</button>
+                                <button onClick={() => updateLayer(tl.id, l => l.type === "text" ? { ...l, fontStyle: l.fontStyle === "italic" ? "normal" : "italic" } : l, true)}
+                                  className="flex-1 py-1.5 rounded-lg text-xs italic font-bold border transition-all"
+                                  style={{
+                                    background: tl.fontStyle === "italic" ? "#FFF4EE" : "white",
+                                    color: tl.fontStyle === "italic" ? "#E85D04" : "#374151",
+                                    borderColor: tl.fontStyle === "italic" ? "#FDD5B4" : "#E8E4DF",
+                                  }}>I</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Transform controls */}
+                    <div className="space-y-3.5 p-3 rounded-xl" style={{ background: "#F9F8F6" }}>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Transform</p>
+
+                      {/* Scale */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[10px] font-bold text-gray-500">Scale</label>
+                          <span className="text-[10px] font-bold text-gray-600">{Math.round(selectedLayer.transform.scale * 100)}%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.max(0.1, l.transform.scale - 0.05) } }), true)}
+                            className="p-1 text-gray-400 hover:text-orange-500"><ZoomOut className="w-3.5 h-3.5" /></button>
                           <input type="range" min="10" max="300" step="5"
                             value={Math.round(selectedLayer.transform.scale * 100)}
                             onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: parseInt(e.target.value) / 100 } }), false)}
                             onPointerUp={() => commitLayers(layers)}
-                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
-                          <div className="flex justify-between mt-1">
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.max(0.1, l.transform.scale - 0.05) } }), true)}
-                              className="text-gray-400 hover:text-orange-500"><ZoomOut className="w-4 h-4" /></button>
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.min(5, l.transform.scale + 0.05) } }), true)}
-                              className="text-gray-400 hover:text-orange-500"><ZoomIn className="w-4 h-4" /></button>
+                            className="flex-1 h-1.5 rounded-full appearance-none" style={{ accentColor: "#E85D04" }} />
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, scale: Math.min(5, l.transform.scale + 0.05) } }), true)}
+                            className="p-1 text-gray-400 hover:text-orange-500"><ZoomIn className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </div>
+
+                      {/* Rotation */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[10px] font-bold text-gray-500">Rotation</label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-gray-600">{Math.round(selectedLayer.transform.rotation)}°</span>
+                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: 0 } }), true)}
+                              className="text-[9px] text-orange-500 font-bold hover:underline">Reset</button>
                           </div>
                         </div>
-                        {/* Rotation */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-[11px] font-bold text-gray-500">Rotation</label>
-                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.rotation)}°</span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation - 5 } }), true)}
+                            className="p-1 text-gray-400 hover:text-orange-500"><RotateCcw className="w-3.5 h-3.5" /></button>
                           <input type="range" min="-180" max="180" step="1"
                             value={selectedLayer.transform.rotation}
                             onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: parseInt(e.target.value) } }), false)}
                             onPointerUp={() => commitLayers(layers)}
-                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
-                          <div className="flex justify-between mt-1">
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation - 5 } }), true)}
-                              className="text-gray-400 hover:text-orange-500"><RotateCcw className="w-4 h-4" /></button>
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: 0 } }), true)}
-                              className="text-xs font-bold text-gray-400 hover:text-orange-500">Reset</button>
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation + 5 } }), true)}
-                              className="text-gray-400 hover:text-orange-500"><RotateCw className="w-4 h-4" /></button>
-                          </div>
+                            className="flex-1 h-1.5 rounded-full appearance-none" style={{ accentColor: "#E85D04" }} />
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, rotation: l.transform.rotation + 5 } }), true)}
+                            className="p-1 text-gray-400 hover:text-orange-500"><RotateCw className="w-3.5 h-3.5" /></button>
                         </div>
-                        {/* Opacity */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-[11px] font-bold text-gray-500">Opacity</label>
-                            <span className="text-[11px] font-bold text-gray-600">{Math.round(selectedLayer.transform.opacity * 100)}%</span>
-                          </div>
-                          <input type="range" min="10" max="100" step="5"
-                            value={Math.round(selectedLayer.transform.opacity * 100)}
-                            onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, opacity: parseInt(e.target.value) / 100 } }), false)}
-                            onPointerUp={() => commitLayers(layers)}
-                            className="w-full h-1.5 rounded-full appearance-none bg-gray-100" style={{ accentColor: "#E85D04" }} />
+                      </div>
+
+                      {/* Opacity */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[10px] font-bold text-gray-500">Opacity</label>
+                          <span className="text-[10px] font-bold text-gray-600">{Math.round(selectedLayer.transform.opacity * 100)}%</span>
                         </div>
-                        {/* Position */}
-                        <div>
-                          <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Position</label>
-                          <div className="grid grid-cols-3 gap-1 w-28 mx-auto">
-                            <div />
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y - 4 } }), true)}
-                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowUp className="w-4 h-4" /></button>
-                            <div />
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x - 4 } }), true)}
-                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></button>
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...ZERO_TRANSFORM } }), true)}
-                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><RotateCcw className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x + 4 } }), true)}
-                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowRight className="w-4 h-4" /></button>
-                            <div />
-                            <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y + 4 } }), true)}
-                              className="p-2 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center"><ArrowDown className="w-4 h-4" /></button>
-                            <div />
-                          </div>
+                        <input type="range" min="10" max="100" step="5"
+                          value={Math.round(selectedLayer.transform.opacity * 100)}
+                          onChange={e => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, opacity: parseInt(e.target.value) / 100 } }), false)}
+                          onPointerUp={() => commitLayers(layers)}
+                          className="w-full h-1.5 rounded-full appearance-none" style={{ accentColor: "#E85D04" }} />
+                      </div>
+
+                      {/* Position nudge */}
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 mb-1.5">Position</p>
+                        <div className="grid grid-cols-3 gap-1 w-28 mx-auto">
+                          <div />
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y - 4 } }), true)}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center">
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <div />
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x - 4 } }), true)}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center">
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...ZERO_TRANSFORM, scale: l.transform.scale, rotation: l.transform.rotation, opacity: l.transform.opacity } }), true)}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center" title="Center">
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, x: l.transform.x + 4 } }), true)}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                          <div />
+                          <button onClick={() => updateLayer(selectedLayer.id, l => ({ ...l, transform: { ...l.transform, y: l.transform.y + 4 } }), true)}
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-orange-500 hover:bg-orange-50 flex items-center justify-center">
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                          <div />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* AI tools (image only) */}
+                    {selectedLayer.type === "image" && (
+                      <div className="space-y-2 p-3 rounded-xl" style={{ background: "#F9F8F6" }}>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">✨ AI Tools</p>
+                        {removeBgServerConfigured === false && (
+                          <p className="text-[10px] text-amber-600 leading-tight">
+                            In-browser AI fallback active — admin can enable cloud processing in{" "}
+                            <a href="/admin/settings" className="underline font-semibold">Settings</a>
+                          </p>
+                        )}
+                        <button onClick={handleRemoveBg} disabled={isRemoving || isUpscaling}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]"
+                          style={{ background: "linear-gradient(135deg,#FFF4EE,#FFE4CC)", color: "#E85D04", border: "1.5px solid #FDD5B4" }}>
+                          {isRemoving
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing…</>
+                            : <><Scissors className="w-4 h-4" /> Remove Background</>}
+                        </button>
+                        <button onClick={handleUpscale} disabled={isRemoving || isUpscaling}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all hover:scale-[1.01]"
+                          style={{ background: "linear-gradient(135deg,#FEF3C7,#FDE68A)", color: "#92400E", border: "1.5px solid #FCD34D" }}>
+                          {isUpscaling
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Upscaling…</>
+                            : <><Wand2 className="w-4 h-4" /> Upscale 2× HD</>}
+                        </button>
                       </div>
                     )}
-                  </motion.div>
-                )}
-
-                {/* ── TEMPLATES TAB ── */}
-                {activeTab === "templates" && (
-                  <motion.div key="templates" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4">
-                    <p className="text-[11px] text-gray-500 mb-3">Pick a starter — adds editable text layers you can tweak.</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {TEMPLATES.map(t => (
-                        <button key={t.id}
-                          onClick={() => {
-                            const newLayers = t.create();
-                            commitLayers([...layers, ...newLayers]);
-                            setSelectedLayerId(newLayers[newLayers.length - 1].id);
-                            setActiveTab("layers");
-                          }}
-                          className="aspect-square rounded-xl flex flex-col items-center justify-center p-3 text-center border transition-all hover:border-orange-300 hover:shadow-sm"
-                          style={{ background: "#fafaf8", borderColor: "#eee" }}
-                        >
-                          <div className="text-base font-black text-gray-800 leading-tight whitespace-pre">{t.preview}</div>
-                          <div className="text-[10px] mt-2 text-gray-500 font-semibold">{t.name}</div>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Stickers subsection */}
-                    <div className="mt-5 pt-4 border-t border-gray-100" data-testid="sticker-section">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500">Stickers</h3>
-                        <span className="text-[10px] text-gray-400 font-semibold">{STICKERS.length} shapes</span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 mb-3">Tap to drop a vector sticker — drag, pinch & rotate just like an image.</p>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {STICKERS.map(s => (
-                          <button key={s.id}
-                            data-testid={`sticker-${s.id}`}
-                            title={s.name}
-                            onClick={() => {
-                              const img = new Image();
-                              const finish = (w: number, h: number) => {
-                                addLayer({
-                                  id: uid(),
-                                  name: s.name,
-                                  type: "image",
-                                  visible: true,
-                                  locked: false,
-                                  transform: { ...ZERO_TRANSFORM, scale: 0.4 },
-                                  src: s.dataUrl,
-                                  naturalW: w,
-                                  naturalH: h,
-                                });
-                                setActiveTab("layers");
-                              };
-                              img.onload = () => finish(img.naturalWidth || 100, img.naturalHeight || 100);
-                              // Defensive fallback: if the data URL fails to decode for any reason,
-                              // still drop a layer at the SVG's known 100×100 viewBox dimensions
-                              // and let the user know the preview thumbnail may be missing.
-                              img.onerror = () => {
-                                finish(100, 100);
-                                toast({
-                                  title: "Sticker added",
-                                  description: "Couldn't render a preview, but the shape was placed.",
-                                });
-                              };
-                              img.src = s.dataUrl;
-                            }}
-                            className="aspect-square rounded-lg flex items-center justify-center p-1.5 border transition-all hover:border-orange-300 hover:shadow-sm hover:bg-orange-50/30"
-                            style={{ background: "white", borderColor: "#eee" }}
-                          >
-                            <img src={s.dataUrl} alt={s.name} className="w-full h-full object-contain pointer-events-none" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 p-3 rounded-xl text-xs text-gray-500 flex items-start gap-2"
-                      style={{ background: "#fff4ee", border: "1px solid #fdd5b4" }}>
-                      <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-orange-500" />
-                      <span>Tap a template or sticker, then customize from the Layers tab.</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Quantity + price summary */}
-            <div
-              className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
-              style={{ background: "white", border: "1px solid #e9e5e0" }}
-            >
-              <div className="min-w-0">
-                <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">
-                  {quantity > 1 ? `${quantity} × ৳${studioPrice.toLocaleString()}` : `৳${studioPrice.toLocaleString()} each`}
-                </div>
-                <div className="text-sm font-black text-gray-900">
-                  Subtotal: <span className="text-orange-500">৳{(quantity * studioPrice).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
-                  style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
-                  aria-label="Decrease quantity"
-                >−</button>
-                <span className="text-sm font-black text-gray-800 w-6 text-center">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(q => Math.min(50, q + 1))}
-                  disabled={quantity >= 50}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
-                  style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
-                  aria-label="Increase quantity"
-                >+</button>
-              </div>
-            </div>
-
-            {/* Add to cart */}
-            <motion.button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              whileTap={{ scale: 0.97 }}
-              className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2.5 disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 8px 24px rgba(232,93,4,0.35)" }}
-            >
-              {isAddingToCart
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Adding to Cart...</>
-                : <><ShoppingCart className="w-5 h-5" /> Add Custom {selectedProduct.name} to Cart</>}
-            </motion.button>
-
-            {(() => {
-              const subtotal = quantity * studioPrice;
-              const freeShip = subtotal >= 1500;
-              return (
-                <div className="text-center text-xs space-y-0.5">
-                  {!isMug && !isCap && !isWaterBottle && (
-                    <div className="text-gray-500">
-                      Size: <strong className="text-gray-700">{selectedSize}</strong>
-                    </div>
-                  )}
-                  <div className={freeShip ? "text-green-600 font-bold" : "text-gray-400"}>
-                    {freeShip
-                      ? "✓ Free shipping included!"
-                      : `Add ৳${(1500 - subtotal).toLocaleString()} more for free shipping`}
                   </div>
-                </div>
-              );
-            })()}
+                )}
+              </div>
+            )}
           </div>
 
-        </div>
+          {/* ── Cart footer ── */}
+          <div className="flex-shrink-0 border-t p-4 space-y-3" style={{ borderColor: "#E8E4DF" }}>
+
+            {/* Size picker (apparel only) */}
+            {!isMug && !isCap && !isWaterBottle && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Size</label>
+                  <details className="group">
+                    <summary className="text-[10px] text-orange-500 font-bold cursor-pointer list-none hover:underline">
+                      Size guide ▾
+                    </summary>
+                    <div className="absolute right-3 mt-1 z-50 rounded-xl overflow-hidden border border-gray-100 shadow-lg bg-white"
+                      style={{ width: 200 }}>
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr style={{ background: "#F9F8F6" }}>
+                            <th className="px-2 py-1.5 text-left font-black text-gray-600">Size</th>
+                            <th className="px-2 py-1.5 text-left font-black text-gray-600">Chest"</th>
+                            <th className="px-2 py-1.5 text-left font-black text-gray-600">Length"</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {SIZE_CHART.map((row, i) => (
+                            <tr key={row.size} className="border-t border-gray-50"
+                              style={{ background: selectedSize === row.size ? "#FFF8F4" : i % 2 === 0 ? "white" : "#FAFAF8" }}>
+                              <td className="px-2 py-1 font-black" style={{ color: selectedSize === row.size ? "#E85D04" : "#111" }}>{row.size}</td>
+                              <td className="px-2 py-1 text-gray-600">{row.chest}</td>
+                              <td className="px-2 py-1 text-gray-600">{row.length}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {SIZE_CHART.map(s => (
+                    <button key={s.size} onClick={() => setSelectedSize(s.size)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all"
+                      style={{
+                        background: selectedSize === s.size ? "linear-gradient(135deg,#E85D04,#FB8500)" : "#F3F4F6",
+                        color: selectedSize === s.size ? "white" : "#374151",
+                        boxShadow: selectedSize === s.size ? "0 2px 8px rgba(232,93,4,0.3)" : undefined,
+                      }}>
+                      {s.size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quantity */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-gray-600">Quantity</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                  style={{ background: "#F3F4F6", border: "1px solid #E8E4DF" }}>−</button>
+                <span className="text-sm font-black text-gray-900 w-6 text-center">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(50, q + 1))} disabled={quantity >= 50}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-gray-700 disabled:opacity-40 transition-colors hover:bg-orange-50 hover:text-orange-600"
+                  style={{ background: "#F3F4F6", border: "1px solid #E8E4DF" }}>+</button>
+              </div>
+            </div>
+
+            {/* Price summary */}
+            <div className="flex items-center justify-between py-2 border-t" style={{ borderColor: "#E8E4DF" }}>
+              <span className="text-sm font-bold text-gray-500">
+                {quantity > 1 ? `${quantity} × ৳${studioPrice.toLocaleString()}` : "Price"}
+              </span>
+              <span className="text-lg font-black" style={{ color: "#E85D04" }}>
+                ৳{(studioPrice * quantity).toLocaleString()}
+              </span>
+            </div>
+
+            {/* Free shipping indicator */}
+            {(() => {
+              const subtotal = studioPrice * quantity;
+              const freeShip = subtotal >= 1500;
+              return (
+                <p className={`text-[10px] text-center font-bold ${freeShip ? "text-green-600" : "text-gray-400"}`}>
+                  {freeShip
+                    ? "✓ Free shipping included!"
+                    : `৳${(1500 - subtotal).toLocaleString()} more for free shipping`}
+                </p>
+              );
+            })()}
+
+            {/* Add to Cart */}
+            <motion.button onClick={handleAddToCart} disabled={isAddingToCart}
+              whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-base text-white disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 6px 24px rgba(232,93,4,0.32)" }}>
+              {isAddingToCart
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> Adding to Cart…</>
+                : <><ShoppingCart className="w-5 h-5" /> Add to Cart</>}
+            </motion.button>
+
+            {layers.length === 0 && (
+              <p className="text-[10px] text-gray-400 text-center">Add a design first to enable Add to Cart</p>
+            )}
+          </div>
+        </aside>
+
       </div>
 
-      <Footer />
+      {/* Hidden file inputs */}
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
+      <input ref={fileInputAddRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
 
+      {/* Legacy draft dialog */}
       <ConfirmDialog
         open={!!legacyDraftFound}
         title="Older design draft found"
