@@ -49,7 +49,7 @@ export default function AdminBlog() {
   const { data: blogData, isLoading } = useListBlogPosts({ limit: "100" }, reqOpts);
   const posts = blogData?.posts ?? [];
 
-  const { data: categoriesData } = useBlogCategories();
+  const { data: categoriesData, refetch: refetchCategories } = useBlogCategories();
   const categories = categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"];
 
   const createMutation = useCreateBlogPost();
@@ -126,7 +126,21 @@ export default function AdminBlog() {
         : "Category removed";
       toast({ title: msg });
     },
-    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+    onError: (err: Error) => {
+      const isReassignMissing =
+        err.message.toLowerCase().includes("does not exist") ||
+        err.message.toLowerCase().includes("reassign target");
+      if (isReassignMissing) {
+        toast({
+          title: "Reassign target no longer exists",
+          description: "The category you chose to reassign posts to has been deleted by another admin. Please close this dialog and try again — the list will be refreshed.",
+          variant: "destructive",
+        });
+        refetchCategories();
+      } else {
+        toast({ title: err.message, variant: "destructive" });
+      }
+    },
   });
 
   const reorderCategoriesMutation = useMutation({
@@ -819,7 +833,7 @@ export default function AdminBlog() {
                           })()}
                         </div>
                         <button
-                          onClick={() => { setCatDeleteConfirm(cat); setCatReassignTo(""); }}
+                          onClick={async () => { await refetchCategories(); setCatDeleteConfirm(cat); setCatReassignTo(""); }}
                           disabled={deleteCategoryMutation.isPending}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
                           title="Remove category"
