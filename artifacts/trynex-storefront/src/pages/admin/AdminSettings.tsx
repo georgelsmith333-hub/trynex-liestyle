@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
-import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag, CheckCircle2, XCircle } from "lucide-react";
+import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 const inputClass = "w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all placeholder:text-gray-400";
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
@@ -198,7 +198,37 @@ export default function AdminSettings() {
       return;
     }
     try {
-      await updateSettings({ data: { ...data, studioTshirtColors: tshirtColorsJson, studioMugColors: mugColorsJson } });
+      // Auto-reset spin wheel for all visitors when the admin turns it on after it was off.
+      // react-hook-form sends checkbox values as booleans even when the generic type is string.
+      const isWheelNowOn = !!(data.spinWheelEnabled as unknown);
+      const turningWheelOn = isWheelNowOn && settings?.spinWheelEnabled === false;
+
+      // Sanitize numeric fields: replace NaN (from empty number inputs) with safe defaults.
+      const safeData = { ...data };
+      const numericDefaults: Record<string, string> = {
+        spinWheelDelay: "4",
+        spinWheelCooldownHours: "24",
+        freeShippingThreshold: "1500",
+        shippingCost: "100",
+        scarcityThreshold: "10",
+        studioTshirtPrice: "1099",
+        studioMugPrice: "799",
+      };
+      for (const [key, fallback] of Object.entries(numericDefaults)) {
+        const val = safeData[key];
+        if (val === undefined || val === null || val === "" || Number.isNaN(Number(val))) {
+          safeData[key] = fallback;
+        }
+      }
+
+      const payload: Record<string, string> = {
+        ...(safeData as Record<string, string>),
+        studioTshirtColors: tshirtColorsJson,
+        studioMugColors: mugColorsJson,
+      };
+      if (turningWheelOn) payload.spinWheelResetAt = String(Date.now());
+
+      await updateSettings({ data: payload });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({ title: "✓ Settings saved successfully!" });
       // Refresh remove.bg configured status so the badge reflects any newly-saved key immediately
@@ -507,12 +537,39 @@ export default function AdminSettings() {
             <input type="number" {...register("spinWheelDelay", { valueAsNumber: true })} className={inputClass} style={inputStyle} placeholder="4" min="1" max="30" />
             <p className="text-xs text-gray-400 mt-1">How many seconds after the home page loads before the popup appears.</p>
           </Field>
+          <Field label="Cooldown Period (hours)" full={false}>
+            <input type="number" {...register("spinWheelCooldownHours", { valueAsNumber: true })} className={inputClass} style={inputStyle} placeholder="24" min="1" max="720" />
+            <p className="text-xs text-gray-400 mt-1">How long before the same visitor sees the wheel again. Default 24 h. Set lower (e.g. 1) for testing.</p>
+          </Field>
           <Field label="Headline" full={false}>
             <input {...register("spinWheelTitle")} className={inputClass} style={inputStyle} placeholder="Spin & Win an Offer!" />
           </Field>
           <Field label="Subtitle" full>
             <input {...register("spinWheelSubtitle")} className={inputClass} style={inputStyle} placeholder="One free spin — no purchase needed." />
           </Field>
+          <div className="md:col-span-2 pt-1">
+            <label className="block text-[11px] font-black uppercase tracking-widest text-gray-400 mb-2">Reset Wheel for All Visitors</label>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await updateSettings({ data: { spinWheelResetAt: String(Date.now()) } });
+                  queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+                  toast({ title: "✓ Spin wheel reset — all visitors will see it again." });
+                } catch {
+                  toast({ title: "Failed to reset spin wheel", variant: "destructive" });
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm border transition-all hover:border-orange-400 hover:text-orange-600"
+              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151' }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset wheel — show it to everyone again
+            </button>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Clears the &ldquo;already shown&rdquo; flag for every browser that has previously dismissed the popup. Useful after a new promotion.
+            </p>
+          </div>
         </SectionCard>
 
         <SectionCard icon={Search} title="SEO Defaults & Auto-SEO" iconColor="#16a34a">

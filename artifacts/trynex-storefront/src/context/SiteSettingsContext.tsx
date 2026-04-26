@@ -81,6 +81,8 @@ interface SiteSettings {
   spinWheelDelay: number;
   spinWheelTitle: string;
   spinWheelSubtitle: string;
+  spinWheelResetAt: number;
+  spinWheelCooldownHours: number;
   seoDefaultTitle: string;
   seoDefaultDescription: string;
   seoDefaultKeywords: string;
@@ -185,6 +187,8 @@ const defaults: SiteSettings = {
   spinWheelDelay: Number(c("spinWheelDelay")) || 4,
   spinWheelTitle: c("spinWheelTitle") || "Spin & Win an Offer!",
   spinWheelSubtitle: c("spinWheelSubtitle") || "One free spin — no purchase needed.",
+  spinWheelResetAt: Number(c("spinWheelResetAt")) || 0,
+  spinWheelCooldownHours: Number(c("spinWheelCooldownHours")) || 24,
   seoDefaultTitle: c("seoDefaultTitle") || "TryNex Lifestyle — Custom Apparel & Gifts in Bangladesh",
   seoDefaultDescription: c("seoDefaultDescription") || "Design and order custom T-shirts, hoodies, mugs, caps, and gift hampers in Bangladesh. Premium quality, nationwide delivery, cash on delivery.",
   seoDefaultKeywords: c("seoDefaultKeywords") || "custom t-shirt bangladesh, personalized mug, gift hamper, custom hoodie, design studio, trynex",

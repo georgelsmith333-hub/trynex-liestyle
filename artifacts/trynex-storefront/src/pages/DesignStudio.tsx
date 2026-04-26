@@ -1475,7 +1475,11 @@ export default function DesignStudio() {
                 background: "radial-gradient(ellipse at 50% 40%, #F2F0ED 0%, #E8E5E1 50%, #DDDAD5 100%)",
                 border: "1px solid #d8d5d0",
                 boxShadow: "inset 0 2px 20px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.08)",
+                isolation: "isolate",
               }}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={(e) => e.preventDefault()}
             >
               <div
                 className="relative w-full"
@@ -1665,6 +1669,20 @@ export default function DesignStudio() {
                 </div>
                 </>
                 )}
+
+                {/* Processing overlay — shows in-viewport whenever remove-bg or upscale is running.
+                    Absolute over the canvas so users never need to scroll to see it. */}
+                {(isRemoving || isUpscaling) && (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20"
+                    style={{ background: "rgba(255,255,255,0.82)", backdropFilter: "blur(2px)" }}
+                  >
+                    <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                    <p className="text-xs font-bold text-gray-700">
+                      {isRemoving ? "Removing background…" : "Upscaling image…"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Interaction hint */}
@@ -1679,7 +1697,15 @@ export default function DesignStudio() {
           </div>
 
           {/* ═══════ RIGHT: TABBED PANEL ═══════ */}
-          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4">
+          <div className="lg:w-[340px] shrink-0 flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+
+            {/* Persistent hidden file inputs — always mounted so empty-state tap works
+                regardless of which tab is active. fileInputRef is shared by:
+                  • the "Tap to upload" empty-state overlay (all tabs)
+                  • the "Upload Image" button in the Upload tab
+                fileInputAddRef is used by the Layers tab "Image" add button. */}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+              className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
 
             {/* Tab strip */}
             <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #e9e5e0" }}>
@@ -1707,8 +1733,6 @@ export default function DesignStudio() {
                 {/* ── UPLOAD TAB ── */}
                 {activeTab === "upload" && (
                   <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-4 space-y-3">
-                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-                      className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileUpload(f); e.target.value = ""; } }} />
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"

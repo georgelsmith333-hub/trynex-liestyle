@@ -44,6 +44,7 @@ const SETTINGS_KEYS = [
   "salePageTitle", "salePageSubtitle", "salePageBadge",
   // Spin-the-Wheel settings
   "spinWheelEnabled", "spinWheelDelay", "spinWheelTitle", "spinWheelSubtitle",
+  "spinWheelResetAt", "spinWheelCooldownHours",
   // SEO defaults
   "seoDefaultTitle", "seoDefaultDescription", "seoDefaultKeywords", "seoOgImage", "seoTwitterHandle",
   // Hero typewriter phrases (newline-separated string; blank = use frontend defaults)
@@ -148,6 +149,8 @@ async function buildSettings(map: Record<string, string | null>) {
     spinWheelDelay: parseInt(map["spinWheelDelay"] ?? "4", 10),
     spinWheelTitle: map["spinWheelTitle"] ?? "Spin & Win an Offer!",
     spinWheelSubtitle: map["spinWheelSubtitle"] ?? "One free spin — no purchase needed.",
+    spinWheelResetAt: parseInt(map["spinWheelResetAt"] ?? "0", 10),
+    spinWheelCooldownHours: parseInt(map["spinWheelCooldownHours"] ?? "24", 10),
     // SEO defaults (used as fallback when page has no override)
     seoDefaultTitle: map["seoDefaultTitle"] ?? "TryNex Lifestyle — Custom Apparel & Gifts in Bangladesh",
     seoDefaultDescription: map["seoDefaultDescription"] ?? "Design and order custom T-shirts, hoodies, mugs, caps, and gift hampers in Bangladesh. Premium quality, nationwide delivery, cash on delivery.",
