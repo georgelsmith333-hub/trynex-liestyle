@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { Search, Calendar, Clock, ArrowRight, BookOpen, Star } from "lucide-react";
+import { Search, Calendar, Clock, ArrowRight, BookOpen, Star, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { getApiUrl } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ interface BlogPost {
   published: boolean;
   featured: boolean;
   readingTime: number;
+  viewCount: number;
   createdAt: string;
 }
 
@@ -106,6 +107,12 @@ function HeroPost({ post }: { post: BlogPost }) {
               <Clock className="w-3.5 h-3.5" />
               {post.readingTime} min read
             </span>
+            {post.viewCount > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5" />
+                {post.viewCount.toLocaleString()} views
+              </span>
+            )}
             <span className="hidden sm:flex items-center gap-1.5 ml-auto text-white/80 font-bold group-hover:gap-2.5 transition-all">
               Read Article <ArrowRight className="w-4 h-4" />
             </span>
@@ -171,6 +178,12 @@ function PostCard({ post, idx }: { post: BlogPost; idx: number }) {
                   <Clock className="w-3.5 h-3.5" />
                   {post.readingTime} min
                 </span>
+                {post.viewCount > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" />
+                    {post.viewCount.toLocaleString()}
+                  </span>
+                )}
               </div>
               <span className="flex items-center gap-1 text-xs font-bold text-orange-500 group-hover:gap-2 transition-all">
                 Read <ArrowRight className="w-3.5 h-3.5" />

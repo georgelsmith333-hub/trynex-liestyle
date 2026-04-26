@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -55,6 +55,14 @@ export default function AdminBlog() {
   const createMutation = useCreateBlogPost();
   const updateMutation = useUpdateBlogPost();
   const deleteMutation = useDeleteBlogPost();
+
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "most-viewed">("newest");
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortBy === "most-viewed") return (b.viewCount ?? 0) - (a.viewCount ?? 0);
+    if (sortBy === "oldest") return new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime();
+    return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+  });
 
   const [editing, setEditing] = useState<Partial<BlogPost> | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -250,7 +258,17 @@ export default function AdminBlog() {
           <h1 className="text-3xl font-black font-display tracking-tighter text-gray-900">Blog Posts</h1>
           <p className="text-gray-400 text-sm mt-1 font-medium">{posts.length} total posts</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            className="px-3 py-2.5 rounded-xl text-sm font-bold border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            aria-label="Sort posts"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="most-viewed">Most viewed</option>
+          </select>
           <button
             onClick={() => setIsCatManagerOpen(true)}
             className="flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all hover:scale-105 bg-gray-50 border border-gray-200 text-gray-700"
@@ -286,7 +304,7 @@ export default function AdminBlog() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {posts.map((post, idx) => (
+          {sortedPosts.map((post, idx) => (
             <motion.div
               key={post.id}
               initial={{ opacity: 0, y: 20 }}
@@ -324,10 +342,14 @@ export default function AdminBlog() {
                 {post.excerpt && (
                   <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed">{post.excerpt}</p>
                 )}
-                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
+                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4 flex-wrap">
                   <Calendar className="w-3 h-3" />
                   {post.createdAt ? new Date(post.createdAt).toLocaleDateString("en-BD", { dateStyle: "medium" }) : ""}
                   {post.readingTime && <span className="ml-1">· {post.readingTime} min read</span>}
+                  <span className="flex items-center gap-1 ml-auto font-semibold text-gray-500">
+                    <BarChart2 className="w-3 h-3" />
+                    {(post.viewCount ?? 0).toLocaleString()} views
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button

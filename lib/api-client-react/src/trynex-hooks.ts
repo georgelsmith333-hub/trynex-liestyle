@@ -218,6 +218,7 @@ export interface BlogPost {
   featured: boolean;
   readingTime?: number | null;
   readingTimeOverride?: number | null;
+  viewCount: number;
   createdAt: string;
   updatedAt: string;
 }
