@@ -179,6 +179,7 @@ function Router() {
           <Route path="/shipping"><Redirect to="/shipping-policy" /></Route>
           <Route path="/returns"><Redirect to="/return-policy" /></Route>
           <Route path="/refund"><Redirect to="/return-policy" /></Route>
+          <Route path="/customize"><Redirect to="/design-studio" /></Route>
 
           <Route component={NotFound} />
         </Switch>
