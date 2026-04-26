@@ -308,9 +308,16 @@ function RelatedPostCard({ post }: { post: BlogPostData }) {
           )}
         </div>
         <div className="p-4">
-          {post.category && (
-            <span className="text-[10px] font-black uppercase tracking-wider text-orange-500">{post.category}</span>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {post.category && (
+              <span className="text-[10px] font-black uppercase tracking-wider text-orange-500">{post.category}</span>
+            )}
+            {post.trending && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black text-red-600 bg-red-50 border border-red-100">
+                <Flame className="w-3 h-3" /> Trending
+              </span>
+            )}
+          </div>
           <h4 className="font-black text-sm text-gray-900 mt-1 line-clamp-2 group-hover:text-orange-600 transition-colors">{post.title}</h4>
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{post.readingTime} min</span>
