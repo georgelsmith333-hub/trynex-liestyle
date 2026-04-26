@@ -1,5 +1,5 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical, AlertTriangle, Flame } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -77,8 +77,8 @@ export default function AdminBlog() {
   const [catDeleteConfirm, setCatDeleteConfirm] = useState<string | null>(null);
   const [catReassignTo, setCatReassignTo] = useState<string>("");
   const [localCatOrder, setLocalCatOrder] = useState<string[]>([]);
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const dragIdxRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number>(0);
   const catItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const addCategoryMutation = useMutation({
@@ -153,69 +153,52 @@ export default function AdminBlog() {
     if (isCatManagerOpen) setLocalCatOrder(categories);
   }, [isCatManagerOpen, categories]);
 
-  const handleCatDragStart = (idx: number) => {
-    dragIdxRef.current = idx;
-  };
+  const finalizeCatReorder = useCallback((order: string[]) => {
+    const unchanged = order.length === categories.length &&
+      order.every((c, i) => c === categories[i]);
+    if (!unchanged) {
+      reorderCategoriesMutation.mutate(order);
+    }
+  }, [categories, reorderCategoriesMutation]);
 
-  const handleCatDragOver = (e: React.DragEvent, idx: number) => {
+  const handleGripPointerDown = useCallback((e: React.PointerEvent, idx: number) => {
     e.preventDefault();
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    dragIdxRef.current = idx;
+    setDraggingIdx(idx);
+  }, []);
+
+  const handleRowPointerEnter = useCallback((idx: number) => {
     if (dragIdxRef.current === null || dragIdxRef.current === idx) return;
     setLocalCatOrder(prev => {
       const next = [...prev];
       const [moved] = next.splice(dragIdxRef.current!, 1);
       next.splice(idx, 0, moved);
       dragIdxRef.current = idx;
+      setDraggingIdx(idx);
       return next;
     });
-  };
+  }, []);
 
-  const handleCatDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const unchanged = localCatOrder.length === categories.length &&
-      localCatOrder.every((c, i) => c === categories[i]);
-    if (!unchanged) {
-      reorderCategoriesMutation.mutate(localCatOrder);
+  const handleCatPointerUp = useCallback(() => {
+    if (dragIdxRef.current !== null) {
+      setLocalCatOrder(prev => {
+        finalizeCatReorder(prev);
+        return prev;
+      });
     }
     dragIdxRef.current = null;
-  };
+    setDraggingIdx(null);
+  }, [finalizeCatReorder]);
 
-  const handleCatDragEnd = () => {
-    dragIdxRef.current = null;
-  };
-
-  const handleCatTouchStart = (e: React.TouchEvent, idx: number) => {
-    dragIdxRef.current = idx;
-    touchStartYRef.current = e.touches[0].clientY;
-  };
-
-  const handleCatTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (dragIdxRef.current === null) return;
-    const touchY = e.touches[0].clientY;
-    const items = catItemRefs.current.filter(Boolean) as HTMLDivElement[];
-    for (let i = 0; i < items.length; i++) {
-      const rect = items[i].getBoundingClientRect();
-      if (touchY >= rect.top && touchY <= rect.bottom && i !== dragIdxRef.current) {
-        setLocalCatOrder(prev => {
-          const next = [...prev];
-          const [moved] = next.splice(dragIdxRef.current!, 1);
-          next.splice(i, 0, moved);
-          dragIdxRef.current = i;
-          return next;
-        });
-        break;
-      }
-    }
-  };
-
-  const handleCatTouchEnd = () => {
-    const unchanged = localCatOrder.length === categories.length &&
-      localCatOrder.every((c, i) => c === categories[i]);
-    if (!unchanged) {
-      reorderCategoriesMutation.mutate(localCatOrder);
-    }
-    dragIdxRef.current = null;
-  };
+  useEffect(() => {
+    document.addEventListener("pointerup", handleCatPointerUp);
+    document.addEventListener("pointercancel", handleCatPointerUp);
+    return () => {
+      document.removeEventListener("pointerup", handleCatPointerUp);
+      document.removeEventListener("pointercancel", handleCatPointerUp);
+    };
+  }, [handleCatPointerUp]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -802,19 +785,21 @@ export default function AdminBlog() {
                       <div
                         key={cat}
                         ref={el => { catItemRefs.current[idx] = el; }}
-                        draggable
-                        onDragStart={() => handleCatDragStart(idx)}
-                        onDragOver={e => handleCatDragOver(e, idx)}
-                        onDrop={handleCatDrop}
-                        onDragEnd={handleCatDragEnd}
-                        onTouchStart={e => handleCatTouchStart(e, idx)}
-                        onTouchMove={handleCatTouchMove}
-                        onTouchEnd={handleCatTouchEnd}
-                        className="flex items-center justify-between px-3 py-3 rounded-xl bg-gray-50 border border-gray-100 cursor-default select-none"
+                        onPointerEnter={() => handleRowPointerEnter(idx)}
+                        className="flex items-center justify-between px-3 py-3 rounded-xl border cursor-default select-none transition-all duration-150"
+                        style={{
+                          background: draggingIdx === idx ? "#fff7ed" : "#f9fafb",
+                          borderColor: draggingIdx === idx ? "rgba(232,93,4,0.35)" : "#f3f4f6",
+                          boxShadow: draggingIdx === idx ? "0 4px 16px rgba(232,93,4,0.12)" : undefined,
+                          opacity: draggingIdx !== null && draggingIdx !== idx ? 0.6 : 1,
+                          transform: draggingIdx === idx ? "scale(1.02)" : undefined,
+                        }}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span
-                            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors shrink-0"
+                            onPointerDown={e => handleGripPointerDown(e, idx)}
+                            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-orange-400 transition-colors shrink-0"
+                            style={{ touchAction: "none" }}
                             title="Drag to reorder"
                           >
                             <GripVertical className="w-4 h-4" />
