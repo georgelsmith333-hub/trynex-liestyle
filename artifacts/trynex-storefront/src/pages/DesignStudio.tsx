@@ -457,8 +457,8 @@ export default function DesignStudio() {
     [apparelZones, activeFace]
   );
 
-  // Water bottle has no 3D GLB model, and flat zones (sleeve/neck) don't have 3D.
-  const effectiveSupports3D = supports3D && !isWaterBottle && !isFlatZone;
+  // Flat zones (sleeve/neck) have no 3D — all products including water bottle now support 3D.
+  const effectiveSupports3D = supports3D && !isFlatZone;
 
   /* ── Cap dark-color mockup override ─────────────────
      The cap has no transparent-bg cutout PNG, so the

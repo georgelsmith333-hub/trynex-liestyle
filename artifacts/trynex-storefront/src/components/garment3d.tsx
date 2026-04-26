@@ -104,6 +104,7 @@ export {
   HOODIE_PZ,
   CAP_PZ,
   MUG_PZ,
+  WATERBOTTLE_PZ,
 } from "../pages/design-studio/mockups";
 
 /* ─────────────────────────────── helpers ─────────────── */
@@ -562,6 +563,124 @@ export function MugBody({
 }
 useGLTF.preload("/models/mug.glb");
 
+/* ─────────────────────── WATER BOTTLE / TUMBLER ────── */
+/**
+ * Procedural tumbler shape — no GLB file required.
+ * Profile: tapered cylindrical body + shoulder taper + narrow neck + lid + base disk.
+ * The design wrap texture sits on the main body cylinder whose side UVs wrap
+ * naturally around the circumference (identical offset=0.25 trick as MugBody).
+ */
+export function WaterBottleBody({
+  wrapTex,
+  garmentColor,
+}: {
+  wrapTex?: THREE.Texture | null;
+  garmentColor: string;
+}) {
+  // Main printable body — open-ended cylinder so UVs wrap the side only
+  const bodyGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.360, 0.440, 2.08, 80, 1, true),
+    []
+  );
+  // Shoulder taper (body → neck transition)
+  const shoulderGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.222, 0.360, 0.25, 64, 1, false),
+    []
+  );
+  // Narrow neck
+  const neckGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.210, 0.210, 0.22, 48, 1, false),
+    []
+  );
+  // Screw-top lid (slightly flared)
+  const lidGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.258, 0.240, 0.14, 48, 1, false),
+    []
+  );
+  // Flat base disk
+  const baseDiskGeo = useMemo(() => new THREE.CircleGeometry(0.440, 64), []);
+
+  // Y positions (body centre at 0, half-height = 1.04):
+  //   body:     y ∈ [-1.04, +1.04]
+  //   shoulder: height 0.25 → y ∈ [+1.04, +1.29] → centre = +1.165
+  //   neck:     height 0.22 → y ∈ [+1.29, +1.51] → centre = +1.400
+  //   lid:      height 0.14 → y ∈ [+1.51, +1.65] → centre = +1.580
+  //   base disk: y = -1.04
+
+  return (
+    <group scale={1.05}>
+      {/* ── Main body (base colour) ───────────────────── */}
+      <mesh geometry={bodyGeo} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color={garmentColor}
+          roughness={0.25}
+          metalness={0.18}
+          clearcoat={0.80}
+          clearcoatRoughness={0.10}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+
+      {/* ── Design wrap overlay (front-face only) ──────── */}
+      {wrapTex && (
+        <mesh geometry={bodyGeo} scale={[1.003, 1, 1.003]}>
+          <meshStandardMaterial
+            map={wrapTex}
+            transparent
+            roughness={0.28}
+            metalness={0}
+            depthWrite={false}
+            alphaTest={0.015}
+            side={THREE.FrontSide}
+          />
+        </mesh>
+      )}
+
+      {/* ── Base disk ─────────────────────────────────── */}
+      <mesh geometry={baseDiskGeo} position={[0, -1.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <meshPhysicalMaterial
+          color={garmentColor}
+          roughness={0.38}
+          metalness={0.12}
+          clearcoat={0.4}
+        />
+      </mesh>
+
+      {/* ── Shoulder ─────────────────────────────────── */}
+      <mesh geometry={shoulderGeo} position={[0, 1.165, 0]} castShadow>
+        <meshPhysicalMaterial
+          color={garmentColor}
+          roughness={0.25}
+          metalness={0.18}
+          clearcoat={0.80}
+          clearcoatRoughness={0.10}
+        />
+      </mesh>
+
+      {/* ── Neck ─────────────────────────────────────── */}
+      <mesh geometry={neckGeo} position={[0, 1.400, 0]} castShadow>
+        <meshPhysicalMaterial
+          color={garmentColor}
+          roughness={0.28}
+          metalness={0.16}
+          clearcoat={0.65}
+          clearcoatRoughness={0.12}
+        />
+      </mesh>
+
+      {/* ── Lid ──────────────────────────────────────── */}
+      <mesh geometry={lidGeo} position={[0, 1.580, 0]} castShadow>
+        <meshPhysicalMaterial
+          color={garmentColor}
+          roughness={0.40}
+          metalness={0.10}
+          clearcoat={0.30}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════
    SHARED 3D-VIEWER INFRASTRUCTURE
    Used by ProductViewer3D + CartViewer3D so the studio,
@@ -603,7 +722,7 @@ export const VIEWER_FRAMING: Record<ViewerCategory, {
   hoodie:      { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
   cap:         { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
   mug:         { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
-  waterbottle: { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
+  waterbottle: { radius: 2.9, cameraY:  0.32, minDistance: 2.0, maxDistance: 4.6, shadowY: -1.12 },
 };
 
 /**

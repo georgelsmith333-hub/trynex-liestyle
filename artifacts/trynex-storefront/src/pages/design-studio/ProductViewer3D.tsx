@@ -27,6 +27,7 @@ import {
   HoodieBody,
   CapBody,
   MugBody,
+  WaterBottleBody,
   ResettableOrbitControls,
   ViewerLoadingOverlay,
   NoWebGLFallback,
@@ -242,6 +243,88 @@ function useMugWrapTexture(
   return texRef.current;
 }
 
+/* ── Water-bottle wrap texture ───────────────────────────────────────────────
+   2048×1024 canvas — design composited into the LEFT half [0–1024].
+   With tex.offset.set(0.25, 0) the CylinderGeometry +Z face maps to canvas
+   x≈512 (centre of left half) so the design appears on the front of the bottle.
+   The right half stays transparent → design is hidden on the back side.
+──────────────────────────────────────────────────────────────────────────── */
+function useBottleWrapTexture(
+  front: FacePayload,
+  active: boolean
+): THREE.CanvasTexture | null {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cacheRef  = useRef<Map<string, HTMLImageElement>>(new Map());
+  const texRef    = useRef<THREE.CanvasTexture | null>(null);
+  const [, setVersion] = useState(0);
+
+  if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
+  if (!texRef.current && active) {
+    const tex = new THREE.CanvasTexture(canvasRef.current);
+    tex.colorSpace  = THREE.SRGBColorSpace;
+    tex.anisotropy  = 8;
+    tex.wrapS       = THREE.RepeatWrapping;
+    tex.wrapT       = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(1, 1);
+    tex.offset.set(0.25, 0); // +Z front → canvas centre-left
+    tex.flipY       = true;
+    texRef.current  = tex;
+  }
+
+  const sig = active
+    ? JSON.stringify({
+        fl: front.layers.map((l) =>
+          l.type === "image"
+            ? [l.visible, l.transform, l.src.slice(0, 64)]
+            : [l.visible, l.transform, l.text, l.color]
+        ),
+        pz: front.printZone,
+      })
+    : "";
+
+  useEffect(() => {
+    if (!active) return;
+    const mainCanvas = canvasRef.current!;
+    mainCanvas.width  = 2048;
+    mainCanvas.height = 1024;
+    const ctx = mainCanvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 2048, 1024);
+
+    if (front.layers.length === 0) {
+      if (texRef.current) { texRef.current.needsUpdate = true; setVersion(v => v + 1); }
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const tmp = document.createElement("canvas");
+      await composeLayers({
+        canvas: tmp,
+        baseHeight: front.baseHeight,
+        printZone: front.printZone,
+        layers: front.layers,
+        garmentColor: null,
+        outW: 1024,
+        outH: 1024,
+        imageCache: cacheRef.current,
+        clipToPrintZone: true,
+        blendMode: "source-over",
+      });
+      if (!cancelled) ctx.drawImage(tmp, 0, 0);
+      if (!cancelled && texRef.current) {
+        texRef.current.needsUpdate = true;
+        setVersion((v) => v + 1);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, active]);
+
+  return active ? texRef.current : null;
+}
+
 /* ── Camera rig: smooth orbit to the active face ─────────────────────────── */
 function CameraRig({
   activeFace,
@@ -279,22 +362,26 @@ export default function ProductViewer3D({
 }: ProductViewer3DProps) {
   const isMug         = product.category === "mug";
   const isWaterBottle = product.category === "waterbottle";
+  const isGarment     = !isMug && !isWaterBottle;
 
-  /* Mug: build a combined cylindrical wrap texture from both sides */
+  /* Mug: combined cylindrical wrap texture from both sides */
   const mugTex = useMugWrapTexture(
     isMug ? front : { layers: [], printZone: front.printZone, baseHeight: front.baseHeight },
     isMug ? back : undefined,
     isMug && isWrapMode
   );
 
+  /* Water bottle: front-face-only wrap texture */
+  const bottleTex = useBottleWrapTexture(front, isWaterBottle);
+
   /* Garments (tshirt / longsleeve / hoodie / cap): transparent per-face overlays */
   const frontTex = useFaceTexture(
-    !isMug && !isWaterBottle ? front : undefined,
+    isGarment ? front : undefined,
     null,
     { outW: 1024, outH: 1024, clipToPrintZone: true }
   );
   const backTex = useFaceTexture(
-    !isMug && !isWaterBottle && back ? back : undefined,
+    isGarment && back ? back : undefined,
     null,
     { outW: 1024, outH: 1024, clipToPrintZone: true }
   );
@@ -320,19 +407,14 @@ export default function ProductViewer3D({
     }).then(() => setFallbackUrl(c.toDataURL("image/png")));
   }, [supports3D, front]);
 
-  /* Water bottle has no 3D GLB model — show the 2D photo mockup with the design overlaid */
-  if (isWaterBottle || !supports3D) {
+  /* No WebGL2 → flat 2D photo mockup fallback */
+  if (!supports3D) {
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <NoWebGLFallback
           garmentSrc={product.frontSrc}
           designSrc={fallbackUrl}
           garmentColor={garmentColor}
-          message={
-            isWaterBottle
-              ? "3D preview not available for Water Bottle — the 2D mockup is shown above."
-              : "Your browser does not support 3D preview. Showing the 2D mockup instead."
-          }
         />
       </div>
     );
@@ -382,6 +464,10 @@ export default function ProductViewer3D({
 
           {product.category === "cap" && (
             <CapBody frontTex={frontTex} garmentColor={garmentColor} />
+          )}
+
+          {product.category === "waterbottle" && (
+            <WaterBottleBody wrapTex={bottleTex} garmentColor={garmentColor} />
           )}
 
           <ContactShadows
