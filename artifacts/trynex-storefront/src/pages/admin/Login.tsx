@@ -33,8 +33,8 @@ export default function AdminLogin() {
       credentials: "include",
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (!res.ok) throw Object.assign(new Error(data.message || "Request failed"), { status: res.status, data });
+    const data: Record<string, unknown> = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error((data.message as string) || "Request failed"), { status: res.status, data });
     return data;
   }
 

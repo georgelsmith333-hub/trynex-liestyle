@@ -113,13 +113,13 @@ function Router() {
   // Key on full location path so transitions fire on all route changes.
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="sync" initial={false}>
       <motion.div
         key={location}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.15, ease: "easeInOut" }}
+        transition={{ duration: 0.1, ease: "easeInOut" }}
       >
         <Suspense fallback={<Loader fullScreen />}>
         <Switch>

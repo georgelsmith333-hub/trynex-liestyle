@@ -63,11 +63,7 @@ export const CAP_PZ: PrintZone           = { x: 365, y: 370, w: 270, h: 200 };
 export const MUG_PZ: PrintZone           = { x: 150, y: 180, w: 700, h: 640 };
 export const WATERBOTTLE_PZ: PrintZone   = { x: 358, y: 345, w: 284, h: 420 };
 
-/* ── Water Bottle / Tumbler — inline SVG mockup (no PNG asset exists).
-   White/light-grey shapes on transparent background so the multiply-tint
-   filter in GarmentSVG colours the bottle correctly.               ── */
-const _WB_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000"><path d="M385 225 L615 225 L636 295 Q652 325 655 360 L672 755 Q676 835 618 858 L382 858 Q324 835 328 755 L345 360 Q348 325 364 295 Z" fill="#F4F3F1" stroke="#DDDCDA" stroke-width="6"/><path d="M390 172 L610 172 L615 225 L385 225 Z" fill="#ECEBE9" stroke="#D5D4D2" stroke-width="5"/><rect x="425" y="128" width="150" height="48" rx="18" fill="#E0DFDD" stroke="#C8C7C5" stroke-width="5"/><rect x="447" y="110" width="106" height="24" rx="10" fill="#D5D4D2" stroke="#BFBEBC" stroke-width="4"/><path d="M363 325 C360 455 361 600 364 750" stroke="white" stroke-width="24" stroke-linecap="round" fill="none" opacity="0.65"/><path d="M637 325 C640 455 639 600 636 750" stroke="white" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.28"/><ellipse cx="500" cy="858" rx="138" ry="14" fill="#C8C6C4" opacity="0.35"/></svg>`;
-export const WATERBOTTLE_MOCKUP_URL = `data:image/svg+xml,${encodeURIComponent(_WB_SVG)}`;
+export const WATERBOTTLE_MOCKUP_URL = "/mockups/white-waterbottle-front.png";
 
 const VIEWBOX = "0 0 1000 1000";
 const ASPECT = 1;
@@ -124,8 +120,8 @@ export const BASE_BY_CATEGORY: Record<DesignProduct["category"], { front: string
   hoodie:      { front: "/mockups/white-hoodie-front-cutout.png",     back: "/mockups/white-hoodie-back-cutout.png" },
   mug:         { front: "/mockups/white-mug-front-cutout.png" },
   cap:         undefined,
-  // Water bottle uses its inline SVG as the tintable base (transparent bg, white shapes).
-  waterbottle: { front: WATERBOTTLE_MOCKUP_URL },
+  // Water bottle uses a real product photo — no tint applied.
+  waterbottle: undefined,
 };
 
 // Generate a stable, unique filter id per render so multiple
@@ -178,9 +174,13 @@ export function GarmentSVG({
               result with the original photograph to preserve fabric
               shading, folds and shadows. */}
           <filter id={filterId} x="0" y="0" width="1" height="1" colorInterpolationFilters="sRGB">
+            {/* Desaturate first so photo white-balance artefacts don't bleed
+                into the tint colour — then multiply the flat tint with the
+                neutral-luminosity garment to preserve fabric shading cleanly. */}
+            <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="gray" />
             <feFlood floodColor={tintHex} result="flood" />
             <feComposite in="flood" in2="SourceAlpha" operator="in" result="tinted" />
-            <feBlend in="tinted" in2="SourceGraphic" mode="multiply" />
+            <feBlend in="tinted" in2="gray" mode="multiply" />
           </filter>
         </defs>
       )}

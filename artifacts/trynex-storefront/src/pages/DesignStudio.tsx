@@ -1300,6 +1300,8 @@ export default function DesignStudio() {
                     setSelectedProduct(prod);
                     setSelectedColor({ name: prod.name, hex: prod.garmentColor });
                     setQuantity(1);
+                    // Always reset to front face so uploaded designs are visible on the new product.
+                    setActiveFace("front");
                     // Water bottle has no 3D model — snap back to 2D editor.
                     if (prod.category === "waterbottle") setViewMode("2d");
                   }}
