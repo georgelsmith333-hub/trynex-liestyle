@@ -84,6 +84,12 @@ function HeroPost({ post }: { post: BlogPost }) {
               style={{ background: "var(--color-primary, #E85D04)" }}>
               <Star className="w-3 h-3 fill-white" /> Featured
             </span>
+            {post.trending && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
+                style={{ background: "rgba(239,68,68,0.85)", backdropFilter: "blur(8px)" }}>
+                <Flame className="w-3 h-3" /> Trending
+              </span>
+            )}
             {post.category && (
               <span className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider text-white/90"
                 style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>

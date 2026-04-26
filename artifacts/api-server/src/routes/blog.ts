@@ -191,7 +191,7 @@ function calcReadingTime(content: string): number {
 
 function mapPost(p: any) {
   const readingTime = p.readingTimeOverride ?? calcReadingTime(p.content ?? "");
-  const TRENDING_THRESHOLD = 200;
+  const TRENDING_THRESHOLD = 100;
   return {
     id: p.id,
     title: p.title,

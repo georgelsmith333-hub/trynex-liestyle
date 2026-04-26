@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical, AlertTriangle } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical, AlertTriangle, Flame } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -431,6 +431,11 @@ export default function AdminBlog() {
                   {post.featured && (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
                       <Star className="w-2.5 h-2.5 fill-amber-500" /> Featured
+                    </span>
+                  )}
+                  {post.trending && (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-50 text-red-600 border border-red-100 flex items-center gap-1">
+                      <Flame className="w-2.5 h-2.5" /> Trending
                     </span>
                   )}
                   {post.category && (

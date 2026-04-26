@@ -219,6 +219,7 @@ export interface BlogPost {
   readingTime?: number | null;
   readingTimeOverride?: number | null;
   viewCount: number;
+  trending?: boolean;
   createdAt: string;
   updatedAt: string;
 }
