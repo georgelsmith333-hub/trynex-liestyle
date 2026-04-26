@@ -163,7 +163,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const [showConfetti, setShowConfetti] = useState(false);
   const spunTodayRef = useRef(false);
 
-  const RESET_DAYS = 30;
+  const RESET_HOURS = 24;
   useEffect(() => {
     if (!enabled) return;
     if (forceOpen) { setOpen(true); return; }
@@ -172,8 +172,8 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
       const stored = localStorage.getItem(STORAGE_SHOWN);
       if (stored) {
         const ts = parseInt(stored, 10);
-        const ageDays = (Date.now() - ts) / (1000 * 60 * 60 * 24);
-        if (!isNaN(ts) && ageDays < RESET_DAYS) return;
+        const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
+        if (!isNaN(ts) && ageHours < RESET_HOURS) return;
       }
     } catch { return; }
     const t = setTimeout(() => {
