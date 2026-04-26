@@ -1669,6 +1669,20 @@ export default function DesignStudio() {
                 </div>
                 </>
                 )}
+
+                {/* Processing overlay — shows in-viewport whenever remove-bg or upscale is running.
+                    Absolute over the canvas so users never need to scroll to see it. */}
+                {(isRemoving || isUpscaling) && (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20"
+                    style={{ background: "rgba(255,255,255,0.82)", backdropFilter: "blur(2px)" }}
+                  >
+                    <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                    <p className="text-xs font-bold text-gray-700">
+                      {isRemoving ? "Removing background…" : "Upscaling image…"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Interaction hint */}

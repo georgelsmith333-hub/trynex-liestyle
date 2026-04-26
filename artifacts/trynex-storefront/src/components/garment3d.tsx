@@ -366,7 +366,7 @@ function GarmentGLB({
             normalScale={new THREE.Vector2(0.18, 0.18)}
             roughnessMap={FABRIC_MAPS?.rough ?? null}
             sheen={0.3}
-            sheenRoughness={0.8}
+            sheenRoughness={0.85}
             sheenColor={garmentColor}
           />
         </mesh>
