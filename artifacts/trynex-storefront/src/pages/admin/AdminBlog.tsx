@@ -1,7 +1,7 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, X, Save, FileText, Calendar, ImageIcon, Star, Upload, Tag, Settings2, BarChart2, GripVertical, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders, getApiUrl } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -75,6 +75,7 @@ export default function AdminBlog() {
   const [isCatManagerOpen, setIsCatManagerOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [catDeleteConfirm, setCatDeleteConfirm] = useState<string | null>(null);
+  const [catReassignTo, setCatReassignTo] = useState<string>("");
   const [localCatOrder, setLocalCatOrder] = useState<string[]>([]);
   const dragIdxRef = useRef<number | null>(null);
 
@@ -100,8 +101,10 @@ export default function AdminBlog() {
   });
 
   const deleteCategoryMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await fetch(getApiUrl(`/api/blog/categories/${encodeURIComponent(name)}`), {
+    mutationFn: async ({ name, reassignTo }: { name: string; reassignTo?: string }) => {
+      const base = getApiUrl(`/api/blog/categories/${encodeURIComponent(name)}`);
+      const url = reassignTo ? `${base}?reassignTo=${encodeURIComponent(reassignTo)}` : base;
+      const res = await fetch(url, {
         method: "DELETE",
         headers: { ...getAuthHeaders() },
       });
@@ -109,11 +112,17 @@ export default function AdminBlog() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message ?? "Failed to delete category");
       }
-      return res.json();
+      return res.json() as Promise<{ categories: string[]; affectedCount: number }>;
     },
-    onSuccess: () => {
+    onSuccess: (data, { reassignTo }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/blog/categories"] });
-      toast({ title: "Category removed" });
+      if (reassignTo && data.affectedCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      }
+      const msg = data.affectedCount > 0 && reassignTo
+        ? `Category removed · ${data.affectedCount} post${data.affectedCount !== 1 ? "s" : ""} moved to "${reassignTo}"`
+        : "Category removed";
+      toast({ title: msg });
     },
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
@@ -762,7 +771,7 @@ export default function AdminBlog() {
                         <span className="text-sm font-semibold text-gray-800">{cat}</span>
                       </div>
                       <button
-                        onClick={() => setCatDeleteConfirm(cat)}
+                        onClick={() => { setCatDeleteConfirm(cat); setCatReassignTo(""); }}
                         disabled={deleteCategoryMutation.isPending}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                         title="Remove category"
@@ -811,19 +820,89 @@ export default function AdminBlog() {
         onCancel={() => setDeleteConfirm(null)}
       />
 
-      <ConfirmDialog
-        open={catDeleteConfirm !== null}
-        title={`Remove "${catDeleteConfirm}" category?`}
-        description="Posts in this category will keep their existing category label, but the category won't appear in the dropdown going forward."
-        confirmText="Remove"
-        onConfirm={() => {
-          if (catDeleteConfirm) {
-            deleteCategoryMutation.mutate(catDeleteConfirm);
-            setCatDeleteConfirm(null);
-          }
-        }}
-        onCancel={() => setCatDeleteConfirm(null)}
-      />
+      <AnimatePresence>
+        {catDeleteConfirm !== null && (() => {
+          const affectedPosts = posts.filter(p => p.category === catDeleteConfirm);
+          const affectedCount = affectedPosts.length;
+          const otherCategories = categories.filter(c => c !== catDeleteConfirm);
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              onClick={e => { if (e.target === e.currentTarget) setCatDeleteConfirm(null); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+              >
+                <div className="p-6 space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+                      <AlertTriangle className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm">Remove "{catDeleteConfirm}" category?</h3>
+                      {affectedCount > 0 ? (
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          <span className="font-semibold text-orange-600">{affectedCount} post{affectedCount !== 1 ? "s" : ""}</span> use this category and will become orphaned unless reassigned.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          No posts use this category. It will be removed from the dropdown.
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={() => setCatDeleteConfirm(null)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {affectedCount > 0 && otherCategories.length > 0 && (
+                    <div className="rounded-xl p-3 space-y-2" style={{ background: "#fafafa", border: "1px solid #e5e7eb" }}>
+                      <p className="text-xs font-semibold text-gray-600">Reassign affected posts to:</p>
+                      <select
+                        value={catReassignTo}
+                        onChange={e => setCatReassignTo(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="">— Leave as-is (orphaned) —</option>
+                        {otherCategories.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 px-6 pb-6">
+                  <button
+                    onClick={() => setCatDeleteConfirm(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      deleteCategoryMutation.mutate({ name: catDeleteConfirm, reassignTo: catReassignTo || undefined });
+                      setCatDeleteConfirm(null);
+                    }}
+                    disabled={deleteCategoryMutation.isPending}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </AdminLayout>
   );
 }

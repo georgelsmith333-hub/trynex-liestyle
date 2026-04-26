@@ -103,6 +103,7 @@ router.post("/blog/categories", requireAdmin, async (req, res) => {
 });
 
 // DELETE /blog/categories/:name — admin only, removes a category
+// Optional query param: reassignTo — moves posts in this category to another before deleting
 router.delete("/blog/categories/:name", requireAdmin, async (req, res) => {
   try {
     const name = decodeURIComponent(req.params.name ?? "").trim();
@@ -110,14 +111,35 @@ router.delete("/blog/categories/:name", requireAdmin, async (req, res) => {
       res.status(400).json({ error: "validation_error", message: "Category name is required" });
       return;
     }
+    const reassignTo = typeof req.query.reassignTo === "string" ? req.query.reassignTo.trim() : null;
+
     const categories = await getBlogCategories();
     const updated = categories.filter(c => c.toLowerCase() !== name.toLowerCase());
     if (updated.length === categories.length) {
       res.status(404).json({ error: "not_found", message: "Category not found" });
       return;
     }
+
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(blogPostsTable)
+      .where(sql`LOWER(${blogPostsTable.category}) = LOWER(${name})`);
+    const affectedCount = Number(countResult?.count ?? 0);
+
+    if (affectedCount > 0 && reassignTo) {
+      const targetExists = categories.some(c => c.toLowerCase() === reassignTo.toLowerCase());
+      if (!targetExists) {
+        res.status(400).json({ error: "validation_error", message: `Reassign target category "${reassignTo}" does not exist` });
+        return;
+      }
+      await db
+        .update(blogPostsTable)
+        .set({ category: reassignTo, updatedAt: new Date() })
+        .where(sql`LOWER(${blogPostsTable.category}) = LOWER(${name})`);
+    }
+
     await saveBlogCategories(updated);
-    res.json({ categories: updated });
+    res.json({ categories: updated, affectedCount });
   } catch (err) {
     req.log.error({ err }, "Failed to delete blog category");
     res.status(500).json({ error: "internal_error", message: "Failed to delete blog category" });
