@@ -48,10 +48,11 @@ const STORAGE_LAST_SPIN = "spin_last_date";
 const STORAGE_SHOWN     = "spin_modal_shown_v2";
 const STORAGE_REWARD    = "spin_reward";
 
-/* ── Confetti particle system ── */
+/* ── Confetti particle system — fully typed, no any casts ── */
 interface Particle {
   id: number;
   x: number;
+  y: number;
   vy: number;
   vx: number;
   color: string;
@@ -78,6 +79,7 @@ function Confetti({ active }: { active: boolean }) {
     const initial: Particle[] = Array.from({ length: 60 }, (_, i) => ({
       id: i,
       x: 35 + Math.random() * 30,
+      y: 50,
       vy: -(6 + Math.random() * 8),
       vx: (Math.random() - 0.5) * 8,
       color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
@@ -87,25 +89,22 @@ function Confetti({ active }: { active: boolean }) {
       shape: Math.random() > 0.4 ? "rect" : "circle",
     }));
 
-    stateRef.current = initial.map(p => ({ ...p, y: 50 } as Particle & { y: number }));
-    setParticles(stateRef.current);
+    stateRef.current = initial;
+    setParticles([...stateRef.current]);
 
     let lastTime = performance.now();
     const tick = (now: number) => {
       const dt = Math.min((now - lastTime) / 16.67, 3);
       lastTime = now;
-      stateRef.current = (stateRef.current as (Particle & { y: number })[])
-        .map(p => {
-          const np = {
-            ...p,
-            x: p.x + p.vx * dt * 0.4,
-            y: (p as any).y + p.vy * dt * 0.4,
-            vy: p.vy + 0.25 * dt,
-            rotation: p.rotation + p.rotSpeed * dt,
-          };
-          return np;
-        })
-        .filter((p: any) => p.y < 130) as (Particle & { y: number })[];
+      stateRef.current = stateRef.current
+        .map((p): Particle => ({
+          ...p,
+          x: p.x + p.vx * dt * 0.4,
+          y: p.y + p.vy * dt * 0.4,
+          vy: p.vy + 0.25 * dt,
+          rotation: p.rotation + p.rotSpeed * dt,
+        }))
+        .filter(p => p.y < 130);
       setParticles([...stateRef.current]);
       if (stateRef.current.length > 0) {
         animRef.current = requestAnimationFrame(tick);
@@ -124,7 +123,7 @@ function Confetti({ active }: { active: boolean }) {
       className="absolute inset-0 pointer-events-none overflow-hidden z-20"
       aria-hidden="true"
     >
-      {(particles as (Particle & { y: number })[]).map(p => (
+      {particles.map(p => (
         <div
           key={p.id}
           style={{

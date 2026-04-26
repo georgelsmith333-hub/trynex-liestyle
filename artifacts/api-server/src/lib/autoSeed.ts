@@ -72,11 +72,19 @@ async function seedHampersIfEmpty(): Promise<void> {
   }
 }
 
+/**
+ * Spread a set of blog posts across a 6-month window (Nov 2025 – Apr 2026).
+ * Returns the Date for the i-th post (0 = oldest, n-1 = newest).
+ */
+function blogPostDate(i: number, total: number): Date {
+  const start = new Date("2025-11-05").getTime();
+  const end   = new Date("2026-04-20").getTime();
+  const fraction = total > 1 ? i / (total - 1) : 0;
+  return new Date(start + Math.round(fraction * (end - start)));
+}
+
 async function seedBlogPostsIfEmpty(): Promise<void> {
   try {
-    const existing = await db.select().from(blogPostsTable).limit(1);
-    if (existing.length > 0) return;
-
     const posts: (typeof blogPostsTable.$inferInsert)[] = [
       {
         title: "10 Unique Birthday Gift Ideas with Custom Mugs",
@@ -745,8 +753,16 @@ async function seedBlogPostsIfEmpty(): Promise<void> {
       },
     ];
 
-    for (const post of posts) {
-      await db.insert(blogPostsTable).values(post).onConflictDoNothing();
+    for (let i = 0; i < posts.length; i++) {
+      const createdAt = blogPostDate(i, posts.length);
+      const updatedAt = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+      await db
+        .insert(blogPostsTable)
+        .values({ ...posts[i], createdAt, updatedAt })
+        .onConflictDoUpdate({
+          target: blogPostsTable.slug,
+          set: { createdAt, updatedAt },
+        });
     }
     logger.info({ count: posts.length }, "Seeded blog posts");
   } catch (err) {

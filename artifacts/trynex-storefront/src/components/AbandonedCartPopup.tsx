@@ -7,13 +7,21 @@ import { ShoppingBag, X, ArrowRight, Tag, Truck, Clock } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-function useCountdown(durationSeconds: number, active: boolean) {
-  const [remaining, setRemaining] = useState(durationSeconds);
+const POPUP_DURATION_S = 10 * 60;
+
+interface CountdownResult {
+  display: string;
+  pct: number;
+  expired: boolean;
+}
+
+function useCartCountdown(active: boolean): CountdownResult {
+  const [remaining, setRemaining] = useState(POPUP_DURATION_S);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!active) return;
-    setRemaining(durationSeconds);
+    setRemaining(POPUP_DURATION_S);
     intervalRef.current = setInterval(() => {
       setRemaining(prev => {
         if (prev <= 1) {
@@ -26,12 +34,37 @@ function useCountdown(durationSeconds: number, active: boolean) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [active, durationSeconds]);
+  }, [active]);
 
   const m = Math.floor(remaining / 60);
   const s = remaining % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
-  return { display: `${pad(m)}:${pad(s)}`, expired: remaining === 0 };
+  return {
+    display: `${pad(m)}:${pad(s)}`,
+    pct: (remaining / POPUP_DURATION_S) * 100,
+    expired: remaining === 0,
+  };
+}
+
+/**
+ * Parse promo discount string (e.g. "৳100", "10%", "15% off") and compute the
+ * actual taka savings given the current cart subtotal.
+ * Returns 0 if the string cannot be parsed or the discount is negligible.
+ */
+function calcSavings(discountStr: string | undefined, subtotal: number): number {
+  if (!discountStr || subtotal <= 0) return 0;
+  const trimmed = discountStr.trim();
+  // Percentage: "10%", "15% off", etc.
+  const pctMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (pctMatch) {
+    return Math.round((subtotal * parseFloat(pctMatch[1])) / 100);
+  }
+  // Fixed taka: "৳100", "100", "BDT 100"
+  const fixedMatch = trimmed.match(/(\d+(?:\.\d+)?)/);
+  if (fixedMatch) {
+    return parseFloat(fixedMatch[1]);
+  }
+  return 0;
 }
 
 export function AbandonedCartPopup() {
@@ -49,7 +82,10 @@ export function AbandonedCartPopup() {
   const excludedPaths = ["/cart", "/checkout", "/admin"];
   const isExcluded = excludedPaths.some(p => location.startsWith(p));
 
-  const { display: countdownDisplay, expired: countdownExpired } = useCountdown(10 * 60, show);
+  const { display: countdownDisplay, pct: countdownPct, expired: countdownExpired } = useCartCountdown(show);
+
+  // Dynamically calculated savings in taka from active promo
+  const savingsAmount = calcSavings(promoDiscount, subtotal);
 
   useEffect(() => {
     if (items.length === 0 || isExcluded || dismissed) return;
@@ -87,8 +123,6 @@ export function AbandonedCartPopup() {
 
   if (typeof document === "undefined") return null;
 
-  const urgencyPct = show ? ((10 * 60 - (parseInt(countdownDisplay.replace(":", "")) || 600)) / (10 * 60)) * 100 : 0;
-
   return createPortal(
     <AnimatePresence>
       {show && (
@@ -107,12 +141,12 @@ export function AbandonedCartPopup() {
             transition={{ type: "spring", damping: 26, stiffness: 280 }}
             className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
           >
-            {/* Countdown urgency bar */}
+            {/* Countdown urgency bar — decreases as time runs out */}
             <div className="h-1 bg-gray-100 relative overflow-hidden">
               <motion.div
                 className="h-full absolute left-0 top-0"
                 style={{ background: "linear-gradient(90deg, #E85D04, #FB8500)" }}
-                animate={{ width: `${100 - urgencyPct}%` }}
+                animate={{ width: `${countdownPct}%` }}
                 transition={{ duration: 1, ease: "linear" }}
               />
             </div>
@@ -132,6 +166,13 @@ export function AbandonedCartPopup() {
               <p className="text-sm text-gray-500 mb-3">
                 You have <strong className="text-orange-600">{items.length} item{items.length !== 1 ? "s" : ""}</strong> worth <strong className="text-orange-600">{formatPrice(subtotal)}</strong> in your cart.
               </p>
+              {/* Savings badge */}
+              {savingsAmount > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black mb-2"
+                  style={{ background: "rgba(22,163,74,0.08)", color: "#15803d", border: "1px solid rgba(22,163,74,0.15)" }}>
+                  You save {formatPrice(savingsAmount)} with code {promoCode}!
+                </div>
+              )}
               {/* Countdown timer */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black"
                 style={{ background: "rgba(232,93,4,0.08)", color: "#E85D04" }}>
@@ -155,8 +196,11 @@ export function AbandonedCartPopup() {
                   </div>
                 )}
                 <div className="ml-auto text-right">
-                  <p className="text-[10px] text-gray-400 font-medium">Total</p>
+                  <p className="text-[10px] text-gray-400 font-medium">Subtotal</p>
                   <p className="text-sm font-black text-gray-900">{formatPrice(subtotal)}</p>
+                  {savingsAmount > 0 && (
+                    <p className="text-[10px] font-bold text-green-600">Save {formatPrice(savingsAmount)}</p>
+                  )}
                 </div>
               </div>
 
@@ -166,7 +210,10 @@ export function AbandonedCartPopup() {
                   <Tag className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-bold text-orange-700 leading-tight">
-                      Use code <span className="px-1.5 py-0.5 rounded bg-white text-orange-600 font-black border border-orange-100">{promoCode}</span> for {promoDiscount} off — one-time only!
+                      Use code <span className="px-1.5 py-0.5 rounded bg-white text-orange-600 font-black border border-orange-100">{promoCode}</span>
+                      {savingsAmount > 0
+                        ? ` to save ${formatPrice(savingsAmount)} — one-time only!`
+                        : ` for ${promoDiscount} off — one-time only!`}
                     </p>
                     {showFreeShipNudge && (
                       <p className="text-[10px] text-orange-600 mt-1 opacity-80">
