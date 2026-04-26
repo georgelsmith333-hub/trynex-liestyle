@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, productsTable, categoriesTable } from "@workspace/db";
-import { desc, sql } from "drizzle-orm";
+import { db, productsTable, categoriesTable, blogPostsTable } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -28,8 +28,11 @@ router.get("/sitemap.xml", async (_req, res) => {
 
     let blogPosts: { slug: string; updatedAt: Date | null }[] = [];
     try {
-      const result = await db.execute(sql`SELECT slug, updated_at FROM blog_posts WHERE published = true ORDER BY created_at DESC`);
-      blogPosts = (result.rows || []) as any[];
+      blogPosts = await db
+        .select({ slug: blogPostsTable.slug, updatedAt: blogPostsTable.updatedAt })
+        .from(blogPostsTable)
+        .where(eq(blogPostsTable.published, true))
+        .orderBy(desc(blogPostsTable.updatedAt));
     } catch (err) {
       logger.warn({ err, route: "GET /sitemap.xml" }, "Failed to load blog posts for sitemap");
     }
