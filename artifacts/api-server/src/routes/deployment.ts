@@ -18,6 +18,7 @@ const KEYS = {
   lastPushAt: "github_last_push_at",
   lastPushSha: "github_last_push_sha",
   lastPushMsg: "github_last_push_message",
+  renderDeployHook: "render_deploy_hook",
 } as const;
 
 const REPO_ROOT = process.env.REPO_ROOT || "/home/runner/workspace";
@@ -31,6 +32,8 @@ const BRANCH_RE = /^(?!-)[A-Za-z0-9._/-]{1,100}$/;
 const NAME_RE = /^[^\x00-\x1f<>"\\\n\r]{1,80}$/;
 const EMAIL_RE = /^[^\s<>"@\n\r]{1,80}@[^\s<>"@\n\r]{1,80}$/;
 const TOKEN_RE = /^[A-Za-z0-9_]{20,200}$/;
+// Render deploy hooks are HTTPS URLs
+const RENDER_HOOK_RE = /^https:\/\/api\.render\.com\/deploy\/[A-Za-z0-9_?=&.-]{10,300}$/;
 
 function scrubToken(text: string, token: string | undefined): string {
   if (!token) return text;
@@ -54,9 +57,25 @@ async function upsertSetting(key: string, value: string) {
   }
 }
 
+// Check whether REPO_ROOT is a valid git repository by attempting a
+// lightweight git command. Returns true if it is, false otherwise.
+async function isGitRepo(cwd: string): Promise<boolean> {
+  try {
+    await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      timeout: 5000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 router.get("/admin/deployment/status", requireAdmin, async (req, res) => {
   try {
     const s = await readSettings(Object.values(KEYS));
+    const renderDeployHookRaw = s[KEYS.renderDeployHook] || "";
     res.json({
       configured: Boolean(s[KEYS.owner] && s[KEYS.repo] && s[KEYS.token]),
       owner: s[KEYS.owner] || "",
@@ -68,6 +87,7 @@ router.get("/admin/deployment/status", requireAdmin, async (req, res) => {
       lastPushAt: s[KEYS.lastPushAt] || null,
       lastPushSha: s[KEYS.lastPushSha] || null,
       lastPushMessage: s[KEYS.lastPushMsg] || null,
+      renderDeployHookSet: Boolean(renderDeployHookRaw),
     });
   } catch (err) {
     req.log.error({ err }, "deployment status failed");
@@ -77,7 +97,7 @@ router.get("/admin/deployment/status", requireAdmin, async (req, res) => {
 
 router.put("/admin/deployment/config", requireAdmin, async (req, res) => {
   try {
-    const { owner, repo, branch, token, authorName, authorEmail } = req.body ?? {};
+    const { owner, repo, branch, token, authorName, authorEmail, renderDeployHook } = req.body ?? {};
 
     const ownerStr = String(owner ?? "").trim();
     const repoStr = String(repo ?? "").trim();
@@ -125,6 +145,24 @@ router.put("/admin/deployment/config", requireAdmin, async (req, res) => {
         await upsertSetting(KEYS.token, tokenStr);
       }
     }
+
+    // Render deploy hook — optional. Empty string clears it.
+    if (typeof renderDeployHook === "string") {
+      const hookStr = renderDeployHook.trim();
+      if (hookStr === "") {
+        // Clear the hook
+        await db.delete(settingsTable).where(eq(settingsTable.key, KEYS.renderDeployHook));
+      } else if (!RENDER_HOOK_RE.test(hookStr)) {
+        res.status(400).json({
+          error: "validation_error",
+          message: "Invalid Render deploy hook URL. It must start with https://api.render.com/deploy/",
+        });
+        return;
+      } else {
+        await upsertSetting(KEYS.renderDeployHook, hookStr);
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "deployment config save failed");
@@ -138,7 +176,7 @@ router.post("/admin/deployment/push", requireAdmin, async (req, res) => {
   const cwd = REPO_ROOT;
   const env = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 
-  const runGit = async (args: string[], label: string): Promise<{ stdout: string; stderr: string }> => {
+  const runGit = async (args: string[], _label: string): Promise<{ stdout: string; stderr: string }> => {
     return await execFileAsync("git", args, { cwd, env, maxBuffer: 10 * 1024 * 1024 });
   };
 
@@ -182,6 +220,23 @@ router.post("/admin/deployment/push", requireAdmin, async (req, res) => {
     if (!OWNER_RE.test(owner) || !REPO_RE.test(repo) || !BRANCH_RE.test(branch) ||
         !NAME_RE.test(authorName) || !EMAIL_RE.test(authorEmail) || !TOKEN_RE.test(token)) {
       res.status(400).json({ error: "validation_error", message: "Stored deployment settings are invalid. Please re-save them." });
+      return;
+    }
+
+    // Pre-flight: confirm we are inside a git repository at REPO_ROOT.
+    // On Render's production servers, the source repo is not present —
+    // only the compiled artifact is deployed. In that case, git commands
+    // would fail with "not a git repository". Detect this early and give
+    // a clear, actionable error message instead of a cryptic git failure.
+    const inRepo = await isGitRepo(cwd);
+    if (!inRepo) {
+      res.status(503).json({
+        error: "not_a_git_repo",
+        message:
+          `Cannot find a git repository at REPO_ROOT (${cwd}). ` +
+          "Git push is only available when the API server is running inside the source repository (e.g. on Replit). " +
+          "In production, use the 'Trigger Render Deploy' button instead, or push from your development machine.",
+      });
       return;
     }
 
@@ -233,6 +288,56 @@ router.post("/admin/deployment/push", requireAdmin, async (req, res) => {
     if (remoteAdded) {
       try { await runGit(["remote", "remove", TEMP_REMOTE], "remote remove (cleanup)"); } catch { /* ignore */ }
     }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/deployment/trigger
+// Trigger a Render deploy hook. This is the recommended way to redeploy
+// from the production admin panel where the git repo is not available.
+// The hook URL is stored in the settings table (never returned to the client).
+// ---------------------------------------------------------------------------
+router.post("/admin/deployment/trigger", requireAdmin, async (req, res) => {
+  try {
+    const s = await readSettings([KEYS.renderDeployHook]);
+    const hookUrl = s[KEYS.renderDeployHook];
+    if (!hookUrl) {
+      res.status(400).json({
+        error: "not_configured",
+        message: "Render deploy hook not configured. Add it in the deployment settings.",
+      });
+      return;
+    }
+
+    // Call the Render deploy hook. Render expects a POST; the response is
+    // typically a 201 with a JSON body describing the triggered deploy.
+    const hookRes = await fetch(hookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!hookRes.ok) {
+      const body = await hookRes.text().catch(() => "");
+      req.log.error({ status: hookRes.status, body }, "Render deploy hook returned non-2xx");
+      res.status(502).json({
+        error: "hook_failed",
+        message: `Render deploy hook returned HTTP ${hookRes.status}. Check the hook URL.`,
+      });
+      return;
+    }
+
+    const data = await hookRes.json().catch(() => ({}));
+    const triggeredAt = new Date().toISOString();
+    req.log.info({ triggeredAt }, "Render deploy hook triggered");
+
+    res.json({
+      success: true,
+      triggeredAt,
+      render: data,
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "Render deploy trigger failed");
+    res.status(500).json({ error: "internal_error", message: String(err?.message || "Trigger failed") });
   }
 });
 

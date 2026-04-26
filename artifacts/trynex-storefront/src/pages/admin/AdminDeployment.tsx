@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { getApiUrl, getAuthHeaders } from "@/lib/utils";
 import {
   GitBranch, Github, Save, Rocket, Loader2, CheckCircle2, AlertCircle,
-  Eye, EyeOff, Trash2, Clock, ExternalLink, Copy, Check
+  Eye, EyeOff, Trash2, Clock, ExternalLink, Copy, Check, Zap, Info
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -18,6 +18,7 @@ interface DeploymentStatus {
   lastPushAt: string | null;
   lastPushSha: string | null;
   lastPushMessage: string | null;
+  renderDeployHookSet: boolean;
 }
 
 interface PushResult {
@@ -31,14 +32,21 @@ interface PushResult {
   log: string;
 }
 
+interface TriggerResult {
+  success: boolean;
+  triggeredAt: string;
+}
+
 export default function AdminDeployment() {
   const [status, setStatus] = useState<DeploymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pushing, setPushing] = useState(false);
+  const [triggering, setTriggering] = useState(false);
   const [error, setError] = useState("");
   const [saveOk, setSaveOk] = useState(false);
   const [pushResult, setPushResult] = useState<PushResult | null>(null);
+  const [triggerResult, setTriggerResult] = useState<TriggerResult | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -48,6 +56,7 @@ export default function AdminDeployment() {
   const [token, setToken] = useState("");
   const [authorName, setAuthorName] = useState("TryNex Admin");
   const [authorEmail, setAuthorEmail] = useState("admin@trynex.local");
+  const [renderDeployHook, setRenderDeployHook] = useState("");
   const [commitMessage, setCommitMessage] = useState("chore: deploy from TryNex admin");
 
   const fetchStatus = async () => {
@@ -63,6 +72,7 @@ export default function AdminDeployment() {
       setAuthorName(data.authorName);
       setAuthorEmail(data.authorEmail);
       if (data.tokenMasked) setToken(data.tokenMasked);
+      // Don't pre-fill the hook URL — it's write-only; show a placeholder if set
     } catch (e: any) {
       setError(e.message || "Failed to load");
     }
@@ -83,6 +93,8 @@ export default function AdminDeployment() {
     try {
       const body: Record<string, string> = { owner, repo, branch, authorName, authorEmail };
       if (token && !/^•+/.test(token)) body.token = token;
+      // Only send the hook if the user typed something (empty = clear it)
+      body.renderDeployHook = renderDeployHook.trim();
       const r = await fetch(getApiUrl("/api/admin/deployment/config"), {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
@@ -91,6 +103,7 @@ export default function AdminDeployment() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.message || "Save failed");
       setSaveOk(true);
+      setRenderDeployHook(""); // clear after save (it's write-only)
       setTimeout(() => setSaveOk(false), 3000);
       await fetchStatus();
     } catch (e: any) {
@@ -102,6 +115,7 @@ export default function AdminDeployment() {
   const handlePush = async () => {
     setError("");
     setPushResult(null);
+    setTriggerResult(null);
     if (!status?.configured) {
       setError("Configure your GitHub credentials first");
       return;
@@ -121,6 +135,25 @@ export default function AdminDeployment() {
       setError(e.message || "Push failed");
     }
     setPushing(false);
+  };
+
+  const handleTrigger = async () => {
+    setError("");
+    setPushResult(null);
+    setTriggerResult(null);
+    setTriggering(true);
+    try {
+      const r = await fetch(getApiUrl("/api/admin/deployment/trigger"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || "Trigger failed");
+      setTriggerResult(data);
+    } catch (e: any) {
+      setError(e.message || "Trigger failed");
+    }
+    setTriggering(false);
   };
 
   const handleClearToken = async () => {
@@ -155,7 +188,7 @@ export default function AdminDeployment() {
             </div>
             <div>
               <h1 className="text-2xl font-black font-display text-gray-900">Deployment</h1>
-              <p className="text-sm text-gray-500">Push your latest code to GitHub. Cloudflare Pages and Render will auto-deploy from there.</p>
+              <p className="text-sm text-gray-500">Push code to GitHub or trigger a Render redeploy.</p>
             </div>
           </div>
         </motion.div>
@@ -281,6 +314,28 @@ export default function AdminDeployment() {
                 />
               </div>
 
+              {/* Render deploy hook — write-only field */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  Render Deploy Hook URL
+                  <span className="normal-case font-semibold text-gray-400">(optional)</span>
+                  {status?.renderDeployHookSet && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[9px] font-black tracking-wider">SET</span>
+                  )}
+                </label>
+                <input
+                  type="password"
+                  value={renderDeployHook}
+                  onChange={(e) => setRenderDeployHook(e.target.value)}
+                  placeholder={status?.renderDeployHookSet ? "••• already saved — paste new URL to update, leave blank to keep" : "https://api.render.com/deploy/srv-…"}
+                  autoComplete="off"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none text-sm font-mono"
+                />
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Find this in your Render service → Settings → Deploy Hook. Used by the "Trigger Render Deploy" button below.
+                </p>
+              </div>
+
               <div className="md:col-span-2 flex items-center gap-3 pt-2">
                 <button
                   type="submit"
@@ -311,7 +366,7 @@ export default function AdminDeployment() {
           )}
         </motion.form>
 
-        {/* PUSH CARD */}
+        {/* PUSH CARD — git push (works from Replit dev environment) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -323,7 +378,10 @@ export default function AdminDeployment() {
               <Rocket className="w-4 h-4 text-orange-500" />
               Push to GitHub
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Stages all current changes, commits, and pushes to <span className="font-mono font-bold">{branch || "main"}</span>.</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Stages all current changes, commits, and pushes to <span className="font-mono font-bold">{branch || "main"}</span>.{" "}
+              <span className="text-amber-600 font-semibold">Requires running the admin from the Replit development environment.</span>
+            </p>
           </div>
 
           <div className="p-6 space-y-4">
@@ -407,8 +465,79 @@ export default function AdminDeployment() {
           </div>
         </motion.div>
 
-        <div className="text-xs text-gray-400 leading-relaxed bg-gray-50 border border-gray-100 rounded-xl p-4">
-          <strong className="text-gray-600">How it works:</strong> When you push, the server stages all current files, commits with your chosen message, and pushes to your GitHub branch using your personal access token. Cloudflare Pages (storefront) and Render (API server) will detect the new commit and redeploy automatically. Your token is stored in the database and never echoed back to the browser.
+        {/* RENDER DEPLOY TRIGGER CARD */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-purple-500" />
+              Trigger Render Deploy
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Instantly trigger a new Render deployment from the latest GitHub commit. Works from anywhere, including the production admin panel.
+            </p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {!status?.renderDeployHookSet ? (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-700">
+                  No Render deploy hook saved yet. Add it in the settings above.{" "}
+                  <a
+                    href="https://render.com/docs/deploy-hooks"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-semibold"
+                  >
+                    How to get a deploy hook →
+                  </a>
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleTrigger}
+                  disabled={triggering}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-black text-white text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: triggering
+                    ? "linear-gradient(135deg, #6b7280, #4b5563)"
+                    : "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
+                >
+                  {triggering ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Triggering…</>
+                  ) : (
+                    <><Zap className="w-4 h-4" /> Trigger Render Deploy Now</>
+                  )}
+                </button>
+
+                {triggerResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-purple-200 bg-purple-50 p-4"
+                  >
+                    <div className="flex items-center gap-2 text-purple-800 font-bold text-sm">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Render deploy triggered!
+                    </div>
+                    <p className="text-xs text-purple-700 mt-1">
+                      Triggered at {new Date(triggerResult.triggeredAt).toLocaleString("en-BD")}. Render will pick up the latest GitHub commit and redeploy — this usually takes 2–5 minutes.
+                    </p>
+                  </motion.div>
+                )}
+              </>
+            )}
+          </div>
+        </motion.div>
+
+        <div className="text-xs text-gray-400 leading-relaxed bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-1">
+          <p><strong className="text-gray-600">Push to GitHub:</strong> Run this from the Replit development environment. It stages all changes, commits, and pushes to your GitHub branch using your PAT. Render will auto-deploy from the new commit.</p>
+          <p><strong className="text-gray-600">Trigger Render Deploy:</strong> Works from anywhere. Calls Render's deploy hook to start a new deploy from the latest commit already on GitHub. Use this from the production admin panel.</p>
         </div>
       </div>
     </AdminLayout>
