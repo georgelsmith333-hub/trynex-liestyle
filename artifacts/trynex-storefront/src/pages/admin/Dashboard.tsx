@@ -155,8 +155,8 @@ export default function AdminDashboard() {
           <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
           <div className="flex-1 text-blue-800">
             <span className="font-semibold">Production database is separate.</span> Your live site on{" "}
-            <span className="font-medium">trynexshop.com</span> uses the Render database — which starts empty.
-            Add your products, categories, and settings via this admin panel after each new deployment.
+            <span className="font-medium">trynexshop.com</span> uses the Render database and this admin panel edits that same live data.
+            If content looks missing, refresh the admin page and confirm you are logged into the production site.
           </div>
           <button onClick={dismissProdNotice} className="text-blue-400 hover:text-blue-600 mt-0.5 shrink-0">
             <X className="w-4 h-4" />

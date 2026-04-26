@@ -72,7 +72,7 @@ export function SeoGuide() {
               Go to <strong>search.google.com/search-console</strong> and click <strong>Start Now</strong>.
             </Step>
             <Step n={2}>
-              Choose <strong>URL prefix</strong> property type. Enter your domain: <Tag>https://trynex.app</Tag>
+              Choose <strong>URL prefix</strong> property type. Enter your domain: <Tag>https://trynexshop.com</Tag>
             </Step>
             <Step n={3}>
               Verify ownership via <strong>HTML meta tag</strong> method. Copy the meta tag and ask your dev to add it to the <Tag>&lt;head&gt;</Tag> of your site, or add it in the admin Settings → SEO section.
