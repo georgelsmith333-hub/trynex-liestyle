@@ -191,6 +191,7 @@ function calcReadingTime(content: string): number {
 
 function mapPost(p: any) {
   const readingTime = p.readingTimeOverride ?? calcReadingTime(p.content ?? "");
+  const TRENDING_THRESHOLD = 200;
   return {
     id: p.id,
     title: p.title,
@@ -208,6 +209,7 @@ function mapPost(p: any) {
     readingTime,
     readingTimeOverride: p.readingTimeOverride ?? null,
     viewCount: p.viewCount ?? 0,
+    trending: (p.viewCount ?? 0) >= TRENDING_THRESHOLD,
     createdAt: p.createdAt?.toISOString(),
     updatedAt: p.updatedAt?.toISOString(),
   };
@@ -228,8 +230,13 @@ router.get("/blog", async (req, res) => {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
+    const sortParam = typeof req.query.sort === "string" ? req.query.sort : "newest";
+    const orderClause = sortParam === "views"
+      ? [desc(blogPostsTable.viewCount)]
+      : [desc(blogPostsTable.featured), desc(blogPostsTable.createdAt)];
+
     const [posts, countResult] = await Promise.all([
-      db.select().from(blogPostsTable).where(where).orderBy(desc(blogPostsTable.featured), desc(blogPostsTable.createdAt)).limit(limitNum).offset(offset),
+      db.select().from(blogPostsTable).where(where).orderBy(...orderClause).limit(limitNum).offset(offset),
       db.select({ count: sql<number>`count(*)` }).from(blogPostsTable).where(where),
     ]);
 

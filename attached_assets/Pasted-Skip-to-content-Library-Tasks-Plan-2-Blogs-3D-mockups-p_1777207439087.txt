@@ -1,0 +1,176 @@
+Skip to content
+Library
+Tasks
+Plan #2 - Blogs, 3D mockups & promo upgrades
+#2 - Blogs, 3D Mockups & Promo Upgrades
+What & Why
+Three content and experience pillars to make TryNex feel like a premium flagship brand: 20 production-ready SEO-optimized blog articles seeded into the database, realistic photorealistic 3D garment mockups that replace any remaining SVG fallbacks, and visual/copy upgrades to the promotional offer system (spin wheel prizes, flash sale messaging, exit-intent UX).
+
+Done looks like
+20 published blog posts covering Bangladesh apparel, custom printing tips, fashion trends, gift ideas, corporate wear, and care guides — each with unique slug, keyword-rich title, full HTML body (500–900 words), excerpt, category, tags, cover image URL, author, and correct published_at dates spread over the last 6 months
+Every blog post auto-generates valid BlogPosting + FAQPage JSON-LD (where applicable) via the existing SEOHead component
+The 3D viewer shows photo-quality fabric textures on all five product types (t-shirt, hoodie, long-sleeve, cap, mug); no SVG placeholder ever appears for users with WebGL2 support; loading skeleton is polished
+The garment GLB models are regenerated with higher-poly geometry and proper UV seams so photorealistic cotton/ceramic textures wrap convincingly
+Spin wheel prizes updated: clearer prize copy, higher perceived value (e.g. "FREE Delivery", "৳100 Off", "10% Off", "Buy 1 Get 1 on Accessories"), wheel sectors visually distinct and branded
+Flash sale bar: animated gradient, countdown urgency copy aligned with Bangladesh sale seasons (Eid, Puja, New Year)
+Exit-intent popup: premium design, stronger value proposition headline, clear trust signals
+Abandoned cart popup: shows item thumbnails, urgency timer, and a dynamically calculated savings figure
+All promotional components have zero console errors and work on mobile viewport
+Out of scope
+Actual email delivery for forgot-password (stub only — covered in security task)
+New payment gateways
+New product types beyond the five existing ones
+Steps
+Blog seed script — Write a Node.js seed script that inserts 20 blog posts into the blog_posts table via Drizzle; each post has unique slug, category (Style Tips / Printing Guide / Gift Ideas / Corporate Wear / Care & Maintenance), 3–5 tags, cover image from Unsplash CDN URLs, and a realistic HTML body with H2/H3 headings, one FAQ section, and 600–800 words of Bangladesh-relevant apparel content
+Run and verify seed — Execute the seed script and confirm all 20 posts appear in the admin blog list and public blog page with correct SEO meta rendered
+3D model geometry upgrade — Regenerate hoodie, longsleeve, cap, and mug GLBs using the existing scripts/generate-models.cjs generator with higher segment counts and improved UV islands; re-export and replace files in public/models/
+Fabric texture realism — Enhance garment3d.tsx procedural texture generator to produce a tighter, more photorealistic cotton-weave pattern with subtle normal-map-style bumpiness via canvas pixel manipulation; add a ceramic gloss sheen to the mug material using MeshPhysicalMaterial
+3D loading & fallback polish — Ensure the Suspense loading skeleton matches the final render dimensions, add a subtle shimmer animation, and confirm the 2D canvas fallback never activates for WebGL2-capable browsers in the storefront
+Spin wheel upgrade — Update prize definitions, sector colors, and label copy; add a subtle confetti burst on win using a lightweight canvas animation
+Flash sale bar & exit-intent polish — Refine the animated gradient, update default copy to reference Bangladeshi seasonal sales, strengthen the exit-intent headline and layout for mobile
+Abandoned cart popup — Add per-item thumbnail display, live savings calculation, and a 10-minute countdown timer that starts when the popup appears
+Relevant files
+lib/db/src/schema/index.ts
+artifacts/api-server/src/routes/blog.ts
+artifacts/trynex-storefront/src/pages/admin/AdminBlog.tsx
+artifacts/trynex-storefront/src/pages/Blog.tsx
+artifacts/trynex-storefront/src/pages/BlogPost.tsx
+artifacts/trynex-storefront/src/components/SEOHead.tsx
+artifacts/trynex-storefront/src/components/garment3d.tsx
+artifacts/trynex-storefront/src/pages/design-studio/ProductViewer3D.tsx
+artifacts/trynex-storefront/public/models/
+scripts/generate-models.cjs
+artifacts/trynex-storefront/src/components/SpinWheel.tsx
+artifacts/trynex-storefront/src/components/FlashSaleBar.tsx
+artifacts/trynex-storefront/src/components/ExitIntentPopup.tsx
+artifacts/trynex-storefront/src/components/AbandonedCartPopup.tsx
+Diff: index.ts
+lib/db/src/schema/index.ts
+-0
++2
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+Preview
+Agent
+itseagle543 completed: Add blog post view counts and related-post recommendations to boost engagement
+Updated environment
+itseagle543 started: Let admins manage blog posts with featured images and categories from the admin panel
+Psuh everything if you have done everything whatever we talked about
+
+2 hours ago
+I told you to push everything to github
+
+2 hours ago
+Completed: Let admins manage blog posts with featured images and categories from the admin panel
+Updated environment
+Started: Add a sitemap entry for all blog posts so Google can discover and rank them
+Completed: Add a sitemap entry for all blog posts so Google can discover and rank them
+Updated environment
+Started: Show view count on blog listing and admin panel so you can track which posts are most popular
+Updated environment
+Updated environment
+Updated environment
+I need your full help to enhance the full website and all things a to z working as needed with full e 2 e check and audit and test and then all things fixing done then push the udpates to github. Thanks. : See the drop image here section is not working and the full website is not perfectly working or not responsive. Fix these things. And then see the second and third of an same item which is selected red one which is showing red front side perfectly but the back side showing full red card not only the apparel color changed, i hope you can understand. Also see the admin panel and other things is fully working live and also make sure the spinner is show to user as needed perfectly and dont you dare to make any more wrong like before which doesnt show and i need to scrollout this is bullshit, it should come as needed, now i didnt get the spinner showing so u fix everything as needed and fully professional like Silicon valley project doing and make each and everything ok and then see again to the design studio and all designs in 3d should be very nice + realistic so kindly make sure you do this things as needed. Also done all pending tasks and give all in one task and run and also after all things done just push the codes. Everything at once.
+
+8 minutes ago
+Let me do a thorough investigation of the codebase before creating the plan. I'll look at the Design Studio, the back-side color issue, and the spinner problem simultaneously:
+
+Let me dig deeper into the specific bugs before writing the plan:
+
+Now I have a complete picture of everything. Let me read the task planning skill before creating the plan:
+
+Good, I now have a thorough picture of all bugs and pending work. Let me check the current full task list and then write the consolidated plan:
+
+Now I have all the information I need. The root cause of the back-side bug is clear: the white-*-back-cutout.png files likely have non-transparent backgrounds (white pixels instead of alpha=0), so the SVG multiply filter colors the entire container red instead of just the shirt. Let me now write the comprehensive plan:
+
+The existing plan is good but needs to expand to cover all pending tasks. Let me write the comprehensive all-in-one plan:
+
+Now let me update Task #20 with the comprehensive plan and also handle the other pending tasks:
+
+Good, now let me consolidate by proposing the unified task to the user:
+
+Executed action
+Attempting to reconnect…
+Task updates
+Ready for review
+Submit the sitemap to Google Search Console so indexing starts immediately
+
+Ask questions, plan your work…
+Plan #20 - Full website audit, fix & feature completion — Design Studio, spinners, responsive, blog, GitHub push
+#20 - Full Website Audit, Fix & Feature Completion
+What & Why
+Comprehensive end-to-end audit and fix pass covering all outstanding critical bugs in the Design Studio, full site responsiveness, promotional popup visibility, 3D realism, and completion of all remaining pending features (blog sitemap images, sort-by-views, trending badge, mobile category reorder, category post-count badge, reassign-warning). All changes then pushed to GitHub.
+
+Done looks like
+Drop zone — tapping "Drop image here" on mobile opens the file picker; dragging a file on desktop works; the drop area has pointer-events: auto so clicking it works too
+Back-side colour — switching to the Back face only tints the shirt shape; the card background stays warm-grey; the back cutout PNGs are regenerated with proper transparency if any are found to have solid white backgrounds
+Spinner — every async action (upload, remove-bg, add-to-cart, 3D load) shows a loading indicator in-viewport; no scrolling needed; spinner dismisses correctly
+SpinWheel / promos — SpinWheel appears on first visit and correctly resets so admins can preview it; AbandonedCartPopup z-index is raised so it never gets buried; ExitIntentPopup fires reliably on mobile scroll-up
+Responsive layout — Design Studio, product pages, cart, checkout, blog, and admin all render cleanly on 360px–768px with no horizontal overflow or clipped buttons
+Admin panel — all admin routes load error-free; CRUD with toast feedback; no broken API calls
+3D realism — garment rendered with PBR fabric material (roughness ~0.88, subtle sheen), proper key + fill lighting, design texture crisp on mesh, no cross-face bleed
+Blog sitemap images — <image:image> tags included for each blog post that has a featured image
+Sort by most viewed — blog listing page has a "Most Viewed" sort option that orders posts by view count descending
+Trending badge — posts with view count ≥ a configurable threshold show a 🔥 Trending badge on cards
+Mobile touch reorder — category drag-to-reorder in the admin blog manager works with touch gestures on mobile
+Category post-count badge — each category row in the manager shows the number of posts using it
+Reassign-to-deleted warning — if admin selects a reassign target that is the same category being deleted, they see an error before the action proceeds
+GitHub push — all changes committed with a descriptive message and pushed to georgelsmith333-hub/trynex-liestyle
+Out of scope
+New product types or new 3D garment models
+Payment gateway changes
+Google Search Console verification (handled by Task #13 which is already implemented)
+Steps
+Fix drop zone — Add onClick to the drop-zone container to trigger the hidden file-input on both desktop and mobile; set cursor: pointer and remove pointer-events-none from the inner UI; keep onDrop/onDragOver for desktop DnD.
+
+Fix back-side colour flood — Inspect white-tshirt-back-cutout.png, white-hoodie-back-cutout.png, and white-longsleeve-back-cutout.png for non-transparent backgrounds; if any have white/solid backgrounds, use the built-in /api/remove-bg endpoint to regenerate them with alpha transparency and overwrite the files in public/mockups/; also add a CSS background: transparent and isolation: isolate on the SVG wrapper so no parent colour leaks in.
+
+Fix spinner visibility — For each async flag (isAddingToCart, 3D Suspense, isRemoving, isUpscaling), ensure the spinner is rendered inside a fixed inset-0 overlay or as an inline spinner directly within the triggering button; remove any spinner that relies on the user scrolling to the bottom; raise AbandonedCartPopup z-index from z-50 to z-[500].
+
+Fix SpinWheel display — Make the "Prize Wheel" admin settings toggle reset spin_modal_shown_v2 in localStorage when turned ON, so admins can preview it and returning users get a fresh prompt on their next visit after a configurable number of days; also add a data-testid to the wheel for easier debugging.
+
+Responsive audit and fixes — On a 390px viewport, fix any horizontal overflow in DesignStudio.tsx (product tab scrollbar, colour swatches wrapping, right panel), ProductDetail.tsx, Cart.tsx, Checkout.tsx, Blog.tsx, and all admin pages; use overflow-x: auto snap, flex-wrap, or stacked card layouts consistent with the existing design language.
+
+Admin panel health check — Load every admin route in sequence; fix any API calls missing auth headers; verify product create/edit, blog post publish, settings save, and category management all complete with correct toast notifications; fix any TypeScript errors surfaced by the audit.
+
+3D garment realism — Upgrade MeshStandardMaterial to MeshPhysicalMaterial with roughness: 0.88, sheen: 0.3; add a subtle procedural canvas normal-map for cotton-weave texture; add a soft directional key light plus a low-intensity fill light; apply anisotropy: 4 on the design texture; ensure the UV projection doesn't bleed design onto the wrong hemisphere.
+
+Blog sitemap images — Update the sitemap API route to include <image:image> XML tags for each blog post that has a coverImage; validate the output against the sitemap protocol.
+
+Sort by most viewed — Add a sort=views query param to the blog API; on the Blog page add a "Most Viewed" chip/button to the existing sort controls; wire it to refetch with sort=views.
+
+Trending badge — Add a trending boolean to the blog post query response (true when views >= threshold, where threshold defaults to 500 and is configurable in admin settings); render a 🔥 badge chip on blog cards and the post header.
+
+Mobile touch reorder for categories — In the AdminBlog category manager, add touch event handlers (onTouchStart, onTouchMove, onTouchEnd) that mirror the existing mouse-drag reorder logic so admins can drag-sort on mobile.
+
+Category post-count badge — In AdminBlog, add the post count (already computed client-side from the loaded posts list) as a small grey badge next to each category name in the category manager list.
+
+Reassign-to-deleted-category warning — Before confirming a category deletion with a reassign target, check if the selected reassign target equals the category being deleted (case-insensitive); if so, block the submit and show an inline error: "Cannot reassign posts to the category you are deleting."
+
+E2E check and GitHub push — Walk through design → cart → checkout, admin login → products → blog → settings; fix any remaining console errors; commit all changes and push to GitHub using the established token method.
+
+Relevant files
+artifacts/trynex-storefront/src/pages/DesignStudio.tsx
+artifacts/trynex-storefront/src/pages/design-studio/mockups.tsx
+artifacts/trynex-storefront/src/pages/design-studio/ProductViewer3D.tsx
+artifacts/trynex-storefront/src/pages/design-studio/composer.ts
+artifacts/trynex-storefront/src/components/garment3d.tsx
+artifacts/trynex-storefront/src/components/SpinWheel.tsx
+artifacts/trynex-storefront/src/components/ui/Loader.tsx
+artifacts/trynex-storefront/src/components/ui/spinner.tsx
+artifacts/trynex-storefront/src/pages/Blog.tsx
+artifacts/trynex-storefront/src/pages/ProductDetail.tsx
+artifacts/trynex-storefront/src/pages/Cart.tsx
+artifacts/trynex-storefront/src/pages/Checkout.tsx
+artifacts/trynex-storefront/src/pages/admin/AdminBlog.tsx
+artifacts/trynex-storefront/src/pages/admin
+artifacts/trynex-storefront/public/mockups
+artifacts/api-server/src/routes/blog.ts
+artifacts/api-server/src/routes/sitemap.ts
+Plan #20 - Full website audit, fix & feature completion — Design Studio, spinners, responsive, blog, GitHub push
+View a proposed or accepted plan.

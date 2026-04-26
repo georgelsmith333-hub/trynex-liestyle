@@ -283,13 +283,16 @@ export function RealisticShirt({
   return (
     <group scale={2.6}>
       <mesh geometry={baseGeo} castShadow receiveShadow>
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={garmentColor}
           roughness={0.82}
           metalness={0.02}
           normalMap={FABRIC_MAPS?.normal ?? null}
           normalScale={new THREE.Vector2(0.18, 0.18)}
           roughnessMap={FABRIC_MAPS?.rough ?? null}
+          sheen={0.3}
+          sheenRoughness={0.8}
+          sheenColor={garmentColor}
         />
       </mesh>
       {frontTex && frontGeo && (
@@ -355,13 +358,16 @@ function GarmentGLB({
       {/* Base colour for every part — apply procedural fabric maps */}
       {meshes.map((m, i) => (
         <mesh key={i} geometry={m.geometry} castShadow receiveShadow>
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color={garmentColor}
             roughness={roughness}
             metalness={0.01}
             normalMap={FABRIC_MAPS?.normal ?? null}
             normalScale={new THREE.Vector2(0.18, 0.18)}
             roughnessMap={FABRIC_MAPS?.rough ?? null}
+            sheen={0.3}
+            sheenRoughness={0.8}
+            sheenColor={garmentColor}
           />
         </mesh>
       ))}

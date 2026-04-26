@@ -78,6 +78,8 @@ export default function AdminBlog() {
   const [catReassignTo, setCatReassignTo] = useState<string>("");
   const [localCatOrder, setLocalCatOrder] = useState<string[]>([]);
   const dragIdxRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number>(0);
+  const catItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const addCategoryMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -178,6 +180,40 @@ export default function AdminBlog() {
   };
 
   const handleCatDragEnd = () => {
+    dragIdxRef.current = null;
+  };
+
+  const handleCatTouchStart = (e: React.TouchEvent, idx: number) => {
+    dragIdxRef.current = idx;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleCatTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (dragIdxRef.current === null) return;
+    const touchY = e.touches[0].clientY;
+    const items = catItemRefs.current.filter(Boolean) as HTMLDivElement[];
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect();
+      if (touchY >= rect.top && touchY <= rect.bottom && i !== dragIdxRef.current) {
+        setLocalCatOrder(prev => {
+          const next = [...prev];
+          const [moved] = next.splice(dragIdxRef.current!, 1);
+          next.splice(i, 0, moved);
+          dragIdxRef.current = i;
+          return next;
+        });
+        break;
+      }
+    }
+  };
+
+  const handleCatTouchEnd = () => {
+    const unchanged = localCatOrder.length === categories.length &&
+      localCatOrder.every((c, i) => c === categories[i]);
+    if (!unchanged) {
+      reorderCategoriesMutation.mutate(localCatOrder);
+    }
     dragIdxRef.current = null;
   };
 
@@ -751,35 +787,51 @@ export default function AdminBlog() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {localCatOrder.map((cat, idx) => (
-                    <div
-                      key={cat}
-                      draggable
-                      onDragStart={() => handleCatDragStart(idx)}
-                      onDragOver={e => handleCatDragOver(e, idx)}
-                      onDrop={handleCatDrop}
-                      onDragEnd={handleCatDragEnd}
-                      className="flex items-center justify-between px-3 py-3 rounded-xl bg-gray-50 border border-gray-100 cursor-default select-none"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors touch-none"
-                          title="Drag to reorder"
-                        >
-                          <GripVertical className="w-4 h-4" />
-                        </span>
-                        <span className="text-sm font-semibold text-gray-800">{cat}</span>
-                      </div>
-                      <button
-                        onClick={() => { setCatDeleteConfirm(cat); setCatReassignTo(""); }}
-                        disabled={deleteCategoryMutation.isPending}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                        title="Remove category"
+                  {(() => {
+                    const postCountByCategory = posts.reduce<Record<string, number>>((acc, p) => {
+                      const cat = p.category ?? "General";
+                      acc[cat] = (acc[cat] ?? 0) + 1;
+                      return acc;
+                    }, {});
+                    return localCatOrder.map((cat, idx) => (
+                      <div
+                        key={cat}
+                        ref={el => { catItemRefs.current[idx] = el; }}
+                        draggable
+                        onDragStart={() => handleCatDragStart(idx)}
+                        onDragOver={e => handleCatDragOver(e, idx)}
+                        onDrop={handleCatDrop}
+                        onDragEnd={handleCatDragEnd}
+                        onTouchStart={e => handleCatTouchStart(e, idx)}
+                        onTouchMove={handleCatTouchMove}
+                        onTouchEnd={handleCatTouchEnd}
+                        className="flex items-center justify-between px-3 py-3 rounded-xl bg-gray-50 border border-gray-100 cursor-default select-none"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span
+                            className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors shrink-0"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </span>
+                          <span className="text-sm font-semibold text-gray-800 truncate">{cat}</span>
+                          {postCountByCategory[cat] !== undefined && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 shrink-0">
+                              {postCountByCategory[cat]}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => { setCatDeleteConfirm(cat); setCatReassignTo(""); }}
+                          disabled={deleteCategoryMutation.isPending}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                          title="Remove category"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ));
+                  })()}
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
@@ -879,6 +931,11 @@ export default function AdminBlog() {
                   )}
                 </div>
 
+                {catReassignTo && catReassignTo === catDeleteConfirm && (
+                  <p className="mx-6 -mt-2 mb-2 text-xs text-red-600 font-semibold">
+                    Cannot reassign posts to the same category being deleted.
+                  </p>
+                )}
                 <div className="flex gap-3 px-6 pb-6">
                   <button
                     onClick={() => setCatDeleteConfirm(null)}
@@ -888,10 +945,11 @@ export default function AdminBlog() {
                   </button>
                   <button
                     onClick={() => {
+                      if (catReassignTo && catReassignTo === catDeleteConfirm) return;
                       deleteCategoryMutation.mutate({ name: catDeleteConfirm, reassignTo: catReassignTo || undefined });
                       setCatDeleteConfirm(null);
                     }}
-                    disabled={deleteCategoryMutation.isPending}
+                    disabled={deleteCategoryMutation.isPending || (!!catReassignTo && catReassignTo === catDeleteConfirm)}
                     className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
                     style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}
                   >

@@ -1581,15 +1581,21 @@ export default function DesignStudio() {
                 </motion.svg>
                 </AnimatePresence>
 
-                {/* Empty state — drop zone (drag) or tap to upload */}
+                {/* Empty state — drop zone (drag on desktop, tap on mobile) */}
                 {layers.length === 0 && (
                   <div
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="absolute inset-0 flex items-center justify-center cursor-pointer"
                     onDrop={handleDrop}
                     onDragOver={(e) => e.preventDefault()}
+                    onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                    aria-label="Upload image"
                   >
                     <motion.div
-                      className="text-center px-8 py-8 rounded-2xl pointer-events-none"
+                      className="text-center px-8 py-8 rounded-2xl transition-all"
+                      whileHover={{ scale: 1.03 }}
                       style={{ background: "rgba(255,255,255,0.92)", border: "2px dashed rgba(232,93,4,0.35)" }}
                     >
                       <div
@@ -1598,8 +1604,8 @@ export default function DesignStudio() {
                       >
                         <Upload className="w-7 h-7 text-orange-500" />
                       </div>
-                      <p className="font-black text-gray-800 text-base mb-1">Drop image here</p>
-                      <p className="text-xs text-gray-500">or use the Upload tab in the panel →</p>
+                      <p className="font-black text-gray-800 text-base mb-1">Tap to upload</p>
+                      <p className="text-xs text-gray-500">or drag & drop your image here</p>
                     </motion.div>
                   </div>
                 )}

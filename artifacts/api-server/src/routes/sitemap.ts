@@ -26,10 +26,15 @@ router.get("/sitemap.xml", async (_req, res) => {
       })
       .from(categoriesTable);
 
-    let blogPosts: { slug: string; updatedAt: Date | null }[] = [];
+    let blogPosts: { slug: string; updatedAt: Date | null; imageUrl: string | null; title: string }[] = [];
     try {
       blogPosts = await db
-        .select({ slug: blogPostsTable.slug, updatedAt: blogPostsTable.updatedAt })
+        .select({
+          slug: blogPostsTable.slug,
+          updatedAt: blogPostsTable.updatedAt,
+          imageUrl: blogPostsTable.imageUrl,
+          title: blogPostsTable.title,
+        })
         .from(blogPostsTable)
         .where(eq(blogPostsTable.published, true))
         .orderBy(desc(blogPostsTable.updatedAt));
@@ -108,6 +113,12 @@ router.get("/sitemap.xml", async (_req, res) => {
       xml += `    <lastmod>${lastmod}</lastmod>\n`;
       xml += `    <changefreq>monthly</changefreq>\n`;
       xml += `    <priority>0.6</priority>\n`;
+      if (post.imageUrl) {
+        xml += `    <image:image>\n`;
+        xml += `      <image:loc>${escapeXml(post.imageUrl)}</image:loc>\n`;
+        xml += `      <image:title>${escapeXml(post.title)}</image:title>\n`;
+        xml += `    </image:image>\n`;
+      }
       xml += `  </url>\n`;
     }
 

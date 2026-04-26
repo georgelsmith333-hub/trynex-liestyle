@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { Search, Calendar, Clock, ArrowRight, BookOpen, Star, Eye } from "lucide-react";
+import { Search, Calendar, Clock, ArrowRight, BookOpen, Star, Eye, TrendingUp, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { getApiUrl } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ interface BlogPost {
   featured: boolean;
   readingTime: number;
   viewCount: number;
+  trending: boolean;
   createdAt: string;
 }
 
@@ -39,13 +40,14 @@ function useBlogCategories() {
   });
 }
 
-function useBlogPosts(category: string) {
+function useBlogPosts(category: string, sortBy: "newest" | "views") {
   return useQuery<{ posts: BlogPost[] }>({
-    queryKey: ["/api/blog", category],
+    queryKey: ["/api/blog", category, sortBy],
     queryFn: async () => {
-      const url = category === "All"
-        ? getApiUrl("/api/blog?published=true&limit=50")
-        : getApiUrl(`/api/blog?published=true&limit=50&category=${encodeURIComponent(category)}`);
+      const params = new URLSearchParams({ published: "true", limit: "50" });
+      if (category !== "All") params.set("category", category);
+      if (sortBy === "views") params.set("sort", "views");
+      const url = getApiUrl(`/api/blog?${params.toString()}`);
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to load posts");
       return res.json();
@@ -161,6 +163,11 @@ function PostCard({ post, idx }: { post: BlogPost; idx: number }) {
                   ★ Featured
                 </span>
               )}
+              {post.trending && (
+                <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black text-red-600 bg-red-50 border border-red-100">
+                  <Flame className="w-3 h-3" /> Trending
+                </span>
+              )}
             </div>
             <h3 className="font-black text-lg leading-tight mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 text-gray-900 flex-1">
               {post.title}
@@ -199,7 +206,8 @@ function PostCard({ post, idx }: { post: BlogPost; idx: number }) {
 export default function Blog() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const { data, isLoading } = useBlogPosts(activeCategory);
+  const [sortBy, setSortBy] = useState<"newest" | "views">("newest");
+  const { data, isLoading } = useBlogPosts(activeCategory, sortBy);
   const { data: categoriesData } = useBlogCategories();
   const CATEGORIES = ["All", ...(categoriesData?.categories ?? ["General", "Fashion", "Tips", "News", "Lifestyle"])];
 
@@ -211,7 +219,9 @@ export default function Blog() {
     return p.title.toLowerCase().includes(q) || p.excerpt?.toLowerCase().includes(q);
   });
 
-  const featuredPost = filtered.find(p => p.featured) ?? (filtered.length > 0 ? filtered[0] : null);
+  const featuredPost = sortBy === "newest"
+    ? (filtered.find(p => p.featured) ?? (filtered.length > 0 ? filtered[0] : null))
+    : (filtered.length > 0 ? filtered[0] : null);
   const gridPosts = featuredPost ? filtered.filter(p => p.id !== featuredPost.id) : [];
 
   return (
@@ -283,6 +293,16 @@ export default function Blog() {
                   {cat}
                 </button>
               ))}
+              <div className="w-px h-5 bg-gray-200 hidden sm:block" />
+              <button
+                onClick={() => setSortBy(sortBy === "views" ? "newest" : "views")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sortBy === "views" ? "text-white" : "text-gray-500 hover:text-gray-700 bg-white"}`}
+                style={sortBy === "views" ? { background: "linear-gradient(135deg,#E85D04,#FB8500)" } : { border: "1px solid #e5e7eb" }}
+                title="Sort by most viewed"
+              >
+                {sortBy === "views" ? <Flame className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
+                {sortBy === "views" ? "Most Viewed" : "Newest"}
+              </button>
             </div>
           </div>
 
@@ -313,8 +333,10 @@ export default function Blog() {
                 {gridPosts.length > 0 && (
                   <>
                     <div className="flex items-center gap-4 mb-6">
-                      <h2 className="text-xl font-black font-display tracking-tight text-gray-900">
-                        {activeCategory === "All" ? "Latest Articles" : activeCategory}
+                      <h2 className="text-xl font-black font-display tracking-tight text-gray-900 flex items-center gap-2">
+                        {sortBy === "views" ? (
+                          <><Flame className="w-5 h-5 text-red-500" /> Most Viewed</>
+                        ) : activeCategory === "All" ? "Latest Articles" : activeCategory}
                       </h2>
                       <div className="flex-1 h-px bg-gray-100" />
                       <span className="text-sm text-gray-400 font-medium">{gridPosts.length} articles</span>
