@@ -805,11 +805,18 @@ export default function AdminBlog() {
                             <GripVertical className="w-4 h-4" />
                           </span>
                           <span className="text-sm font-semibold text-gray-800 truncate">{cat}</span>
-                          {postCountByCategory[cat] !== undefined && (
-                            <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 shrink-0">
-                              {postCountByCategory[cat]}
-                            </span>
-                          )}
+                          {(() => {
+                            const count = postCountByCategory[cat] ?? 0;
+                            return count > 0 ? (
+                              <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 shrink-0">
+                                {count} {count === 1 ? "post" : "posts"}
+                              </span>
+                            ) : (
+                              <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 shrink-0">
+                                No posts
+                              </span>
+                            );
+                          })()}
                         </div>
                         <button
                           onClick={() => { setCatDeleteConfirm(cat); setCatReassignTo(""); }}
