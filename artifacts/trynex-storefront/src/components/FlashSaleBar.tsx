@@ -47,22 +47,43 @@ function getSeasonConfig(): SeasonConfig {
   const month = new Date().getMonth() + 1;
   const day   = new Date().getDate();
 
-  if (month === 4 && day >= 10 && day <= 20) {
+  // Eid ul-Fitr window — approximate Ramadan/Eid period (Mar–Apr in 2025–2026)
+  if ((month === 3 && day >= 20) || (month === 4 && day <= 5)) {
     return {
-      message: "🌸 Pohela Boishakh Sale — Free delivery on orders above ৳1500!",
+      message: "🌙 Eid Mubarak Sale — Special prices & free delivery on ৳1500+ orders!",
+      gradient: "linear-gradient(90deg, #14532d, #15803d, #22c55e, #15803d, #14532d)",
+      icon: "sparkles",
+      animation: "flashGradient 3s ease infinite",
+    };
+  }
+  // Pohela Boishakh (Apr 14) window
+  if ((month === 4 && day >= 10) && day <= 20) {
+    return {
+      message: "🌸 শুভ নববর্ষ! Pohela Boishakh Sale — Free delivery above ৳1500!",
       gradient: "linear-gradient(90deg, #b45309, #d97706, #f59e0b, #d97706, #b45309)",
       icon: "sparkles",
       animation: "flashGradient 3s ease infinite",
     };
   }
-  if ((month === 3 && day >= 25) || (month === 4 && day <= 9)) {
+  // Eid ul-Adha window — approximate (Jun in 2025–2026)
+  if (month === 6 && day >= 1 && day <= 15) {
     return {
-      message: "🌸 Boishakh Special — Order custom gifts before the rush!",
-      gradient: "linear-gradient(90deg, #b45309, #d97706, #f59e0b, #d97706, #b45309)",
-      icon: "sparkles",
+      message: "🌙 Eid ul-Adha Deals — Celebrate with custom gifts, free delivery ৳1500+!",
+      gradient: "linear-gradient(90deg, #14532d, #15803d, #22c55e, #15803d, #14532d)",
+      icon: "gift",
       animation: "flashGradient 3s ease infinite",
     };
   }
+  // Durga Puja / Festival season (October)
+  if (month === 10) {
+    return {
+      message: "🪔 Puja Festival Sale — Celebrate with personalised gifts!",
+      gradient: "linear-gradient(90deg, #78350f, #b45309, #f59e0b, #b45309, #78350f)",
+      icon: "sparkles",
+      animation: "flashGradient 4s ease infinite",
+    };
+  }
+  // Winter (Dec–Feb)
   if (month === 12 || month === 1 || month === 2) {
     return {
       message: "❄️ Winter Exclusive — Custom hoodies & warm gifts now available!",
@@ -71,6 +92,7 @@ function getSeasonConfig(): SeasonConfig {
       animation: "flashGradient 5s ease infinite",
     };
   }
+  // Spring (March)
   if (month === 3) {
     return {
       message: "🌺 Spring Collection — Fresh designs at special prices!",
@@ -79,6 +101,7 @@ function getSeasonConfig(): SeasonConfig {
       animation: "flashGradient 4s ease infinite",
     };
   }
+  // Monsoon (Jun–Jul)
   if (month === 6 || month === 7) {
     return {
       message: "☔ Monsoon Sale — Stay stylish through the rain, free delivery on ৳1500+!",
@@ -87,7 +110,8 @@ function getSeasonConfig(): SeasonConfig {
       animation: "flashGradient 4s ease infinite",
     };
   }
-  if (month === 10 || month === 11) {
+  // Autumn Festival (Nov)
+  if (month === 11) {
     return {
       message: "🍂 Festival Season Sale — Custom gifts for every occasion!",
       gradient: "linear-gradient(90deg, #7c2d12, #c2410c, #ea580c, #c2410c, #7c2d12)",
