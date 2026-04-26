@@ -298,10 +298,10 @@ export default function Blog() {
                 onClick={() => setSortBy(sortBy === "views" ? "newest" : "views")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sortBy === "views" ? "text-white" : "text-gray-500 hover:text-gray-700 bg-white"}`}
                 style={sortBy === "views" ? { background: "linear-gradient(135deg,#E85D04,#FB8500)" } : { border: "1px solid #e5e7eb" }}
-                title="Sort by most viewed"
+                title="Sort by most popular"
               >
                 {sortBy === "views" ? <Flame className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                {sortBy === "views" ? "Most Viewed" : "Newest"}
+                {sortBy === "views" ? "Most Popular" : "Newest"}
               </button>
             </div>
           </div>
@@ -335,7 +335,7 @@ export default function Blog() {
                     <div className="flex items-center gap-4 mb-6">
                       <h2 className="text-xl font-black font-display tracking-tight text-gray-900 flex items-center gap-2">
                         {sortBy === "views" ? (
-                          <><Flame className="w-5 h-5 text-red-500" /> Most Viewed</>
+                          <><Flame className="w-5 h-5 text-red-500" /> Most Popular</>
                         ) : activeCategory === "All" ? "Latest Articles" : activeCategory}
                       </h2>
                       <div className="flex-1 h-px bg-gray-100" />

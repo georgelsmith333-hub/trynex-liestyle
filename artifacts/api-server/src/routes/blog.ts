@@ -232,7 +232,7 @@ router.get("/blog", async (req, res) => {
 
     const sortParam = typeof req.query.sort === "string" ? req.query.sort : "newest";
     const orderClause = sortParam === "views"
-      ? [desc(blogPostsTable.viewCount)]
+      ? [desc(blogPostsTable.viewCount), desc(blogPostsTable.createdAt)]
       : [desc(blogPostsTable.featured), desc(blogPostsTable.createdAt)];
 
     const [posts, countResult] = await Promise.all([
