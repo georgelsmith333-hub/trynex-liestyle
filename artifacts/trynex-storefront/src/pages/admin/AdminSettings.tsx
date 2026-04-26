@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
-import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag, CheckCircle2, XCircle } from "lucide-react";
+import { Save, Store, Phone, Globe, CreditCard, Truck, BarChart3, Megaphone, Image, Search, KeyRound, Palette, Plus, Trash2, Zap, Tag, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 const inputClass = "w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-400 transition-all placeholder:text-gray-400";
 const inputStyle = { background: 'white', border: '1px solid #e5e7eb', color: '#111827' };
@@ -198,7 +198,18 @@ export default function AdminSettings() {
       return;
     }
     try {
-      await updateSettings({ data: { ...data, studioTshirtColors: tshirtColorsJson, studioMugColors: mugColorsJson } });
+      // Auto-reset spin wheel for all visitors when the admin turns it on after it was off.
+      // This ensures everyone gets a fresh chance to see the popup after a promotion restart.
+      const turningWheelOn = (data.spinWheelEnabled as unknown as boolean) === true
+        && settings?.spinWheelEnabled === false;
+      const payload: Record<string, unknown> = {
+        ...data,
+        studioTshirtColors: tshirtColorsJson,
+        studioMugColors: mugColorsJson,
+      };
+      if (turningWheelOn) payload.spinWheelResetAt = String(Date.now());
+
+      await updateSettings({ data: payload as Record<string, string> });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       toast({ title: "✓ Settings saved successfully!" });
       // Refresh remove.bg configured status so the badge reflects any newly-saved key immediately
@@ -506,6 +517,10 @@ export default function AdminSettings() {
           <Field label="Auto-Open Delay (seconds)" full={false}>
             <input type="number" {...register("spinWheelDelay", { valueAsNumber: true })} className={inputClass} style={inputStyle} placeholder="4" min="1" max="30" />
             <p className="text-xs text-gray-400 mt-1">How many seconds after the home page loads before the popup appears.</p>
+          </Field>
+          <Field label="Cooldown Period (hours)" full={false}>
+            <input type="number" {...register("spinWheelCooldownHours", { valueAsNumber: true })} className={inputClass} style={inputStyle} placeholder="24" min="1" max="720" />
+            <p className="text-xs text-gray-400 mt-1">How long before the same visitor sees the wheel again. Default 24 h. Set lower (e.g. 1) for testing.</p>
           </Field>
           <Field label="Headline" full={false}>
             <input {...register("spinWheelTitle")} className={inputClass} style={inputStyle} placeholder="Spin & Win an Offer!" />

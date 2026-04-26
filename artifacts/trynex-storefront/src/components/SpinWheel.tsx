@@ -164,7 +164,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const spunTodayRef = useRef(false);
 
   const resetAt = settings.spinWheelResetAt ?? 0;
-  const RESET_HOURS = 24;
+  const cooldownHours = Math.max(1, settings.spinWheelCooldownHours ?? 24);
   useEffect(() => {
     if (!enabled) return;
     if (forceOpen) { setOpen(true); return; }
@@ -178,7 +178,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
           localStorage.removeItem(STORAGE_SHOWN);
         } else {
           const ageHours = (Date.now() - ts) / (1000 * 60 * 60);
-          if (!isNaN(ts) && ageHours < RESET_HOURS) return;
+          if (!isNaN(ts) && ageHours < cooldownHours) return;
         }
       }
     } catch { return; }
@@ -187,7 +187,7 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
       try { localStorage.setItem(STORAGE_SHOWN, String(Date.now())); } catch {}
     }, delaySeconds * 1000);
     return () => clearTimeout(t);
-  }, [autoOpen, forceOpen, enabled, delaySeconds, resetAt]);
+  }, [autoOpen, forceOpen, enabled, delaySeconds, resetAt, cooldownHours]);
 
   useEffect(() => {
     try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}
