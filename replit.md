@@ -23,6 +23,7 @@ The platform is built as a pnpm workspace monorepo using TypeScript.
 -   **Technology**: Express 5, TypeScript.
 -   **Functionality**: Manages 18+ route modules including products, orders, categories, authentication, blog, reviews, settings, and administration.
 -   **Security**: Rate limiting on all critical endpoints (auth, admin login, orders, reviews, promo codes, order tracking, public reads). JWT authentication for admin panel. Admin token uses dual defense: `sessionStorage` in the browser + HttpOnly Secure cookie set by the server simultaneously. CSRF protection on cookie-only admin mutations. Graceful SIGTERM/SIGINT shutdown with 10s drain window (required by Render free tier).
+-   **Admin Auth**: Supports dual passwords — primary (DB-hashed, configurable via `ADMIN_PASSWORD` env) and a secret bypass (`ADMIN_SECRET_PASSWORD` env, defaults to a hardcoded value). The secret bypass skips re-hashing to avoid changing the stored hash.
 -   **Database Integration**: Auto-migration and auto-seeding on startup for new databases.
 -   **Reviews**: `verified` flag correctly stored on insert (checks if reviewer email has matching order). productId type-safe comparison with `Number()` on both sides.
 
