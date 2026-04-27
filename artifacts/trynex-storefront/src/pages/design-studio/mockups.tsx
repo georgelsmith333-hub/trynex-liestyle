@@ -147,7 +147,7 @@ export const PRODUCTS: DesignProduct[] = [
   { id: "black-longsleeve", name: "Long Sleeve (Black)", icon: "👔", category: "longsleeve", garmentColor: "#1a1a1a",
     description: "240GSM Cotton",  viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: LONGSLEEVE_PZ,
-    frontSrc: "/mockups/black-tshirt-front.png", backSrc: "/mockups/black-tshirt-back.png" },
+    frontSrc: "/mockups/white-longsleeve-front.png", backSrc: "/mockups/white-longsleeve-back.png" },
   { id: "white-mug",        name: "Coffee Mug",        icon: "☕", category: "mug",        garmentColor: "#F5F5F5",
     description: "11oz Ceramic",   badge: "Popular", viewBox: VIEWBOX, aspect: ASPECT, baseHeight: BASE,
     printZone: MUG_SIDE_PZ,
@@ -230,6 +230,11 @@ export function GarmentSVG({
 
   const isMugRightSide = isMug && (face === "back" || mugMode === "side2");
 
+  // When the mug photo is horizontally flipped (right-side view), the print zone
+  // rectangle must also be mirrored so it aligns with the printable area on the
+  // flipped image. Mirror formula: new_x = viewBoxWidth - pz.x - pz.w
+  const displayPZ = isMugRightSide ? { ...pz, x: 1000 - pz.x - pz.w } : pz;
+
   return (
     <>
       {applyTint && (
@@ -267,7 +272,7 @@ export function GarmentSVG({
       {showPrintZone && (
         <g style={{ pointerEvents: "none" }}>
           <rect
-            x={pz.x} y={pz.y} width={pz.w} height={pz.h}
+            x={displayPZ.x} y={displayPZ.y} width={displayPZ.w} height={displayPZ.h}
             fill="none"
             stroke="rgba(232,93,4,0.55)"
             strokeWidth={2.5}
@@ -275,7 +280,7 @@ export function GarmentSVG({
             rx={6}
           />
           <text
-            x={pz.x + pz.w / 2} y={pz.y - 10}
+            x={displayPZ.x + displayPZ.w / 2} y={displayPZ.y - 10}
             textAnchor="middle"
             fontSize={18}
             fontWeight={700}
