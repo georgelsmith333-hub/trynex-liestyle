@@ -563,6 +563,87 @@ export function MugBody({
 }
 useGLTF.preload("/models/mug.glb");
 
+/* ─────────────────────── PHOTO BILLBOARD 3D ─────────
+ * Used for Hoodie, Long Sleeve, and Structured Cap — products where
+ * the procedurally generated GLB geometry looked flat and unrealistic.
+ *
+ * Approach: map the REAL product photo as a texture onto a plane in the
+ * 3D scene. The R3F environment (city HDRI) adds specular highlights and
+ * ambient light, making the photo look three-dimensionally lit. A second
+ * plane slightly in front carries the design texture overlay.
+ *
+ * Two planes (front + back) are stacked back-to-back so the camera can
+ * orbit 360° and always see the correct face of the garment.
+ *────────────────────────────────────────────────────── */
+export function PhotoMockupMesh({
+  frontPhotoSrc,
+  backPhotoSrc,
+  frontTex,
+  backTex,
+  activeFace = "front",
+  planeW = 2.60,
+  planeH = 2.60,
+}: {
+  frontPhotoSrc: string;
+  backPhotoSrc?: string;
+  frontTex?: THREE.Texture | null;
+  backTex?: THREE.Texture | null;
+  activeFace?: "front" | "back";
+  planeW?: number;
+  planeH?: number;
+}) {
+  const frontPhotoTex = useUrlTexture(frontPhotoSrc);
+  const backPhotoTex  = useUrlTexture(backPhotoSrc ?? frontPhotoSrc);
+
+  const planeGeo = useMemo(
+    () => new THREE.PlaneGeometry(planeW, planeH),
+    [planeW, planeH]
+  );
+
+  // Shared physical material settings — subtle clearcoat gives the photo a
+  // slight glossy sheen under the studio light rig, making it look tangible.
+  const baseMat = (tex: THREE.Texture | null | undefined) => ({
+    map: tex ?? undefined,
+    roughness: 0.78 as number,
+    metalness: 0.03 as number,
+    clearcoat: 0.18 as number,
+    clearcoatRoughness: 0.35 as number,
+    transparent: true as const,
+    alphaTest: 0.01,
+    side: THREE.FrontSide,
+  });
+
+  return (
+    <group>
+      {/* ── FRONT face ─────────────────────────────────── */}
+      <mesh geometry={planeGeo} position={[0, 0, 0.006]} castShadow receiveShadow>
+        <meshPhysicalMaterial {...baseMat(frontPhotoTex)} />
+      </mesh>
+      {frontTex && (
+        <mesh geometry={planeGeo} position={[0, 0, 0.012]}>
+          <meshStandardMaterial
+            map={frontTex} transparent roughness={0.72} metalness={0}
+            depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+          />
+        </mesh>
+      )}
+
+      {/* ── BACK face (rotated 180° around Y) ──────────── */}
+      <mesh geometry={planeGeo} position={[0, 0, -0.006]} rotation={[0, Math.PI, 0]} castShadow receiveShadow>
+        <meshPhysicalMaterial {...baseMat(backPhotoTex)} />
+      </mesh>
+      {backTex && (
+        <mesh geometry={planeGeo} position={[0, 0, -0.012]} rotation={[0, Math.PI, 0]}>
+          <meshStandardMaterial
+            map={backTex} transparent roughness={0.72} metalness={0}
+            depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
 /* ─────────────────────── WATER BOTTLE / TUMBLER ────── */
 /**
  * Procedural tumbler shape — no GLB file required.
@@ -718,9 +799,9 @@ export const VIEWER_FRAMING: Record<ViewerCategory, {
   shadowY: number;
 }> = {
   tshirt:      { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
-  longsleeve:  { radius: 4.0, cameraY:  0.20, minDistance: 3.0, maxDistance: 6.0, shadowY: -1.55 },
-  hoodie:      { radius: 4.6, cameraY:  0.55, minDistance: 3.4, maxDistance: 6.5, shadowY: -1.55 },
-  cap:         { radius: 3.2, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.8, shadowY: -0.85 },
+  longsleeve:  { radius: 4.0, cameraY:  0.10, minDistance: 2.8, maxDistance: 5.5, shadowY: -1.30 },
+  hoodie:      { radius: 4.0, cameraY:  0.10, minDistance: 2.8, maxDistance: 5.5, shadowY: -1.30 },
+  cap:         { radius: 3.0, cameraY:  0.05, minDistance: 2.2, maxDistance: 4.5, shadowY: -1.05 },
   mug:         { radius: 3.4, cameraY:  0.40, minDistance: 2.4, maxDistance: 5.0, shadowY: -0.85 },
   waterbottle: { radius: 2.9, cameraY:  0.32, minDistance: 2.0, maxDistance: 4.6, shadowY: -1.12 },
 };

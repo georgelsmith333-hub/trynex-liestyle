@@ -457,15 +457,13 @@ export default function DesignStudio() {
     [apparelZones, activeFace]
   );
 
-  // Only t-shirt (real GLB), mug, and water bottle have good-quality 3D.
-  // Hoodie / long-sleeve / cap use procedurally generated GLBs that look flat —
-  // they are permanently removed from 3D to show the real photo mockup instead.
-  const has3DModel = (
-    selectedProduct.category === "tshirt" ||
-    selectedProduct.category === "mug" ||
-    selectedProduct.category === "waterbottle"
-  );
-  const effectiveSupports3D = supports3D && has3DModel && !isFlatZone;
+  // All products now support 3D preview:
+  //   tshirt      → real scanned GLB with design overlay
+  //   mug         → generated GLB with cylindrical wrap texture
+  //   waterbottle → procedural tumbler shape with wrap texture
+  //   hoodie / longsleeve / cap → real product PHOTO as 3D billboard (photorealistic)
+  // Only flat template zones (sleeve/neck) have no 3D equivalent.
+  const effectiveSupports3D = supports3D && !isFlatZone;
 
   /* ── Cap dark-color mockup override ─────────────────
      The cap has no transparent-bg cutout PNG, so the
@@ -2463,9 +2461,7 @@ export default function DesignStudio() {
                                 setActiveFace("front");
                               });
                               forceHistoryTick(t => t + 1);
-                              // Reset to 2D when switching to a product without a 3D model
-                              const newHas3D = prod.category === "tshirt" || prod.category === "mug" || prod.category === "waterbottle";
-                              if (!newHas3D) setViewMode("2d");
+                              // All products now support 3D — no reset needed when switching
                               setShowProductPicker(false);
                             }}
                             className="flex flex-col rounded-2xl overflow-hidden transition-all text-left group"

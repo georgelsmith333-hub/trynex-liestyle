@@ -28,6 +28,7 @@ import {
   CapBody,
   MugBody,
   WaterBottleBody,
+  PhotoMockupMesh,
   ResettableOrbitControls,
   ViewerLoadingOverlay,
   NoWebGLFallback,
@@ -447,23 +448,33 @@ export default function ProductViewer3D({
           )}
 
           {product.category === "longsleeve" && (
-            <LongSleeveBody
+            <PhotoMockupMesh
+              frontPhotoSrc={product.frontSrc}
+              backPhotoSrc={product.backSrc}
               frontTex={frontTex}
               backTex={backTex}
-              garmentColor={garmentColor}
+              activeFace={activeFace}
             />
           )}
 
           {product.category === "hoodie" && (
-            <HoodieBody
+            <PhotoMockupMesh
+              frontPhotoSrc={product.frontSrc}
+              backPhotoSrc={product.backSrc}
               frontTex={frontTex}
               backTex={backTex}
-              garmentColor={garmentColor}
+              activeFace={activeFace}
             />
           )}
 
           {product.category === "cap" && (
-            <CapBody frontTex={frontTex} garmentColor={garmentColor} />
+            <PhotoMockupMesh
+              frontPhotoSrc={product.frontSrc}
+              frontTex={frontTex}
+              activeFace={activeFace}
+              planeW={2.2}
+              planeH={2.2}
+            />
           )}
 
           {product.category === "waterbottle" && (
