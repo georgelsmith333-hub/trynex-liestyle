@@ -79,38 +79,34 @@ separate provider step; do not describe local promotion as a production deploy.
 ### Current live audit checkpoint (2026-09-06, latest)
 
 ```text
-Status: GitHub-published and locally verified; provider rollout is pending
-Last completed: Re-audited the Smart v10.3 source/runtime matrix, inspected
-  representative PNG layers, fixed fail-open color resolution, made cart fallback
-  composition resolve only through the accepted v10.3 runtime roles, and added
-  local/Cloudflare edge guards that retire every non-canonical /mockups/* URL.
-  The active public Pages API already returns exactly 188 rows with
-  releaseVersion=smart-v10.3, and the public sitemap now has 91 absolute image
-  locations.
-Stopped at: Local tests, typechecks, build, workflow restarts, proxied API/asset
-  checks, and desktop/mobile previews all passed. The release commit is present
-  locally with a clean worktree, then reconciled the newer remote main history and
-  published the merge commit to GitHub main. The currently live Pages static layer
-  predates the new 410 retired-path guard.
-Files/areas changed: Design Studio resolver, cart preview fallback, storefront
-  Vite middleware, Cloudflare Pages mockup function, focused resolver test, and
-  this handoff.
-Remaining work: Wait for the connected Pages deployment and recheck a retired URL
-  returns 410 while the canonical v10.3 URL remains 200. Do not claim the edge
-  guard is live until that provider check passes.
-Blocker: Cloudflare Pages management is provider-managed; the public Pages origin
-  is healthy but old static mockup files still answer 200 until the
-  GitHub-connected deployment consumes the new function.
-Next safe action: Monitor the provider rollout and rerun the 188-row API,
+Status: locally verified; provider rollout remains pending
+Last completed: Reconciled the Smart v10.3 editable-source contract with the
+  generated release package. The six canonical families now report verified PSD/PSB
+  source provenance when the resolver creates an approved surface, and the
+  manifest validator fails closed if a verified surface has no editable master path.
+  Added explicit contain-fit coverage for wide, tall, square, bottle, and cap art.
+Stopped at: Full storefront tests, storefront/API typechecks, production build,
+  188-surface matrix validation, 1,128-role asset audit, Smart Object release gate,
+  workflow restarts, proxied API/asset checks, and the Design Studio preview all
+  passed. The active release gate remains structurally-verified locally; do not
+  infer provider rollout or 188-surface visual acceptance from local checks.
+Files/areas changed: canonical mockup specifications, runtime mockup resolver,
+  Smart Mockup manifest validation and focused tests, studio auto-fit tests, and
+  this handoff. No PSD/PSB masters or runtime role PNGs were regenerated.
+Remaining work: Recheck the connected Cloudflare Pages deployment independently:
+  canonical Smart v10.3 URLs must return 200 and retired mockup URLs must return
+  410 before the provider rollout is called complete.
+Blocker: Cloudflare Pages deployment freshness and edge/static behavior are
+  provider-managed and cannot be certified by the local preview.
+Next safe action: Monitor the provider rollout, then rerun the 188-row API,
   1,128-role asset, sitemap, canonical asset, retired-path, and deployed-bundle
-  checks. Keep the Pages hostname and canonical SEO origin unchanged.
-Verification: Smart v10.3 manifest contains 188 surfaces and all 1,128 role files;
-  base PNGs have non-empty alpha and representative silhouettes show no baked
-  duplicate garment; storefront tests passed 18 files/54 tests; API tests passed
-  7 files/27 tests; both package typechecks passed; storefront build passed;
-  both managed workflows restarted cleanly; local API and proxy returned 188
-  canonical rows; canonical asset returned 200; retired local path returned 410;
-  desktop homepage and mobile Design Studio previews showed no browser errors.
+  checks without changing the Smart v9 fail-closed contract.
+Verification: Smart v10.3 contains 188 editable PSD/PSB masters and 1,128 runtime
+  role files; structural release gate passed 188/188; storefront tests passed
+  19 files/64 tests; storefront and API typechecks passed; storefront build
+  passed; both managed workflows restarted cleanly; local liveness/readiness,
+  products, Studio, and canonical PNG routes returned 200; desktop Design Studio
+  preview showed no browser errors; no order, payment, or production data changed.
 ```
 
 ## Latest studio correction checkpoint (2026-09-06)

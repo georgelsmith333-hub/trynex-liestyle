@@ -7,6 +7,8 @@ const validManifest = () => createSmartMockupManifest({
   face: "front",
   sourceKitKey: "hoodie:navy:front",
   manifestRevision: "smart-v10.3",
+    editableMasterPath: "dist-mockups/staging/smart-v10/masters/hoodie/hoodie-navy-front.psd",
+    masterStatus: "verified",
   baseSrc: "/mockups/psd-master-v10/runtime-roles/hoodie/navy/front-base.png",
   cutoutSrc: "/mockups/psd-master-v10/runtime-roles/hoodie/navy/front-base.png",
   alphaMode: "opaque-photo",
@@ -47,5 +49,11 @@ describe("smart mockup manifest contract", () => {
     const manifest = validManifest();
     manifest.assets.cutoutSrc = "/mockups/psd-master-v10/runtime-roles/hoodie/navy/front-shadow.png";
     expect(validateSmartMockupManifest(manifest)).toContain("opaque photo must not have a separate tintable cutout");
+  });
+
+  it("rejects a verified master without editable source provenance", () => {
+    const manifest = validManifest();
+    manifest.editableMasterPath = undefined;
+    expect(validateSmartMockupManifest(manifest)).toContain("verified master is missing its editable source path");
   });
 });

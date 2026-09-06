@@ -692,7 +692,7 @@ export function resolveMockup(
     sourceKitKey,
     manifestRevision,
     editableMasterPath: masterPath,
-    masterStatus: "manifest-only",
+    masterStatus: "verified",
     runtimeStatus,
     disabledReason,
     baseSrc: photoSrc,

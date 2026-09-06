@@ -58,6 +58,7 @@
 - [Mug print-zone geometry](mug-print-zones.md) — front/back side panels mirror around the handles; only explicit Wrap uses the wider body zone.
 - [Mockup audit roots](mockup-audit-roots.md) — editable manifest paths resolve under attached_assets while flattened previews resolve under public/mockups.
 - [Mockup runtime retirement](mockup-runtime-retirement.md) — release boundaries need resolver, persisted-cart, and edge/static URL guards together.
+- [Editable mockup source status](smart-master-status.md) — verified runtime surfaces must carry editable PSD/PSB provenance; structural release status remains separate.
 - [Render 4 main migration](render-4-main-migration.md) — 4th Render is the sole write primary; gateway merged and fails closed until PRODUCTION_ORIGINS.primary is set; workflow body lives at tools/ci/render-orchestrate.workflow.yml because the App cannot push .github/workflows
 - [Admin bypass environment gate](admin-bypass-environment-gate.md) — development emergency admin credentials require explicit NODE_ENV=development; unset/unknown environments must not enable bypass
 - [Metro image-size remediation](metro-image-size-remediation.md) — patch Metro to import a namespaced bounded parser directly; overrides keyed as image-size can still trigger scanner findings

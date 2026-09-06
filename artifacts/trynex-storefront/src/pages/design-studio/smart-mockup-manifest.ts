@@ -106,11 +106,12 @@ export function createSmartMockupManifest(args: {
   const colorSlug = args.colorSlug ?? "white";
   const baseSrc = args.baseSrc ?? "";
   const cutoutSrc = args.cutoutSrc ?? baseSrc;
+  const masterStatus = args.masterStatus ?? "manifest-only";
   return {
     schema: "trynex-smart-mockup/v3",
     manifestRevision: args.manifestRevision ?? "runtime-v3.1",
     masterFormat: args.editableMasterPath?.toLowerCase().endsWith(".psb") ? "psb" : "psd",
-    masterStatus: args.masterStatus ?? "manifest-only",
+    masterStatus,
     runtimeStatus: args.runtimeStatus ?? "approved",
     disabledReason: args.disabledReason,
     category: args.category,
@@ -158,6 +159,7 @@ export function validateSmartMockupManifest(
   if (!manifest.sourceKitKey.trim()) errors.push("missing source-kit key");
   if (manifest.runtimeStatus !== "approved" && manifest.runtimeStatus !== "disabled") errors.push("unsupported runtime status");
   if (manifest.runtimeStatus === "disabled" && !manifest.disabledReason?.trim()) errors.push("disabled surface is missing a reason");
+  if (manifest.masterStatus === "verified" && !manifest.editableMasterPath?.trim()) errors.push("verified master is missing its editable source path");
   if (!manifest.assets.baseSrc || !manifest.assets.cutoutSrc) errors.push("base and cutout assets are required");
   if (manifest.assets.alphaMode !== "opaque-photo" && manifest.assets.alphaMode !== "transparent-cutout") errors.push("unsupported alpha mode");
   if (manifest.assets.alphaMode === "opaque-photo" && manifest.runtimeStatus === "approved" && manifest.assets.cutoutSrc !== manifest.assets.baseSrc) {
