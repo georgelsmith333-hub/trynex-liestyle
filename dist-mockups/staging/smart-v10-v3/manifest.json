@@ -68,7 +68,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-white-front.psd",
-      "masterChecksum": "44e479c0979069136fed39ca9c4bb5dc9817e2426453d708805540b80f996495",
+      "masterChecksum": "2764b99a190d55537517c0dbf981d3fa187cee6855457cb40d836883e1e70e1b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/white/front.png",
       "previewChecksum": "6b8e6c4fdc40555bf6456b1bdac8f87b865964004298108056c03cc985d5fca8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/white/front.png",
@@ -135,7 +135,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-white-back.psd",
-      "masterChecksum": "f06e590f7d6eb23c9ee3c68e1706ddd3b3992760b3a214111bca8433d344ee39",
+      "masterChecksum": "b2e0dc3a716f08a6619e9d982e6a8b974a91fba9baf56abb8621c246ad9accee",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/white/back.png",
       "previewChecksum": "26b570516c2b505415349c62ee5664dc49aa628a4c4ae2ce9635e8c372a08edb",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/white/back.png",
@@ -202,7 +202,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-white-left-sleeve.psd",
-      "masterChecksum": "adc1fbd7809fcabecb74d955b07311da862e3306b7c885c6a6022188876df66e",
+      "masterChecksum": "594634d3dd26a4153e58f41d46f25c6a80b2bb23e52efd256702c3b24b2cfcd4",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/white/left-sleeve.png",
       "previewChecksum": "ab0d5bd6b138de8a5318c36c09814365c40cffc8c62c24715c27eaaf396d09fd",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/white/left-sleeve.png",
@@ -269,7 +269,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-white-right-sleeve.psd",
-      "masterChecksum": "9817115203c6bc7d5aaa0bf042f92904a2b65e15f777ec85818a6da655614826",
+      "masterChecksum": "f3698f773fc2fa6cb87999a91c2443d8976d4a2c9946f9e6a174a9174187317f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/white/right-sleeve.png",
       "previewChecksum": "b0df3553c8d45804b94d3807131b3901a1cf04d0c2c2935b6c36c2a0ad864824",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/white/right-sleeve.png",
@@ -336,7 +336,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-white-neck-label.psd",
-      "masterChecksum": "2aa5914f8aa45b16291366bad27d25d6e18bcaab0ba3c1841aae1cea6f23e85a",
+      "masterChecksum": "3dd0b925135b6dbdf49ba7166e4634b8332f3de87301fc311c5c322e8e1f0c02",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/white/neck-label.png",
       "previewChecksum": "140af4d64948650b75b39f2b6ee95057efd49dadf22ba295ebe2822de9f2d783",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/white/neck-label.png",
@@ -403,7 +403,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-black-front.psd",
-      "masterChecksum": "201fdc4415ed0b181e568c82d79b4735e45f0998f9ff913f7a5612d852b7cb9f",
+      "masterChecksum": "3e24123e75d26ac5ee4112e011b9b73a26fe67fad353e3ff99213a7b6317d9e3",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/black/front.png",
       "previewChecksum": "61dba684c6553fb159bdb46b6f3f5636d9660610f1a9ba67c8db2724c1961f06",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/black/front.png",
@@ -470,7 +470,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-black-back.psd",
-      "masterChecksum": "2b45f040856c33f19558a1b0f31a266556f1299376bfff45300b1c6be2f5a7b0",
+      "masterChecksum": "22a41c6a6ef64aa2ba78cfeba34a32509f16a41ae5aabd95f685153ffa02a011",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/black/back.png",
       "previewChecksum": "88a3fa8056dc1b8d294a001d9ce59f5392bb36c38a1b9f80f2c47ffbbab1f292",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/black/back.png",
@@ -537,7 +537,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-black-left-sleeve.psd",
-      "masterChecksum": "e0df8a65bbaf3f2ea6656eca88db26ba13365aa773fca37d2e7fd1aaf84c0ce9",
+      "masterChecksum": "53446998da62dd12b1c16337274af550c5a770e7d1bf365e4dbf5db7f9bcfbe8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/black/left-sleeve.png",
       "previewChecksum": "6f99f0deeed6c3ded78217996e1edd244d9a5024ae2c039fb63d3eded1e03b1b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/black/left-sleeve.png",
@@ -604,7 +604,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-black-right-sleeve.psd",
-      "masterChecksum": "80746db3da52845feb860effe52c62f0f3ced05c1f4ff9945c9811454a62c341",
+      "masterChecksum": "199e3fff30063ce49d455f730387d25757fd6ab52f73e2b8efaf382089400164",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/black/right-sleeve.png",
       "previewChecksum": "8d777e61ab3d08549a039c300c35dd8e8ca86a1a2db50271b8021887dcf85ab8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/black/right-sleeve.png",
@@ -671,7 +671,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-black-neck-label.psd",
-      "masterChecksum": "033c4c76561d6a7835e354b9f082501fc3df6260c3f30897783f887d0e7b52be",
+      "masterChecksum": "5d645fb66b241da114911d50850ef3160e5430c4f2958f0bd150a2ad9381822b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/black/neck-label.png",
       "previewChecksum": "37ccde02baeed90150b5d66062549a058afee901994fa6492fb552b49d5b2ceb",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/black/neck-label.png",
@@ -738,7 +738,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-navy-front.psd",
-      "masterChecksum": "c99272df98d44f08f9916975c926830f18a34547ab59493e8906a87ad58ba766",
+      "masterChecksum": "7e1174441276b79557efe871afddc78c1682ab0dcae3387278cc54eef392dc47",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/navy/front.png",
       "previewChecksum": "746fed804d5ab752a08287bdc0d68154d44324ac96bcf46e55dc75449ef4fb31",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/navy/front.png",
@@ -805,7 +805,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-navy-back.psd",
-      "masterChecksum": "ed6e8f7fd2f390cb3bdef40259bf7b8ff517f255413b9f489994720b211a6731",
+      "masterChecksum": "acfb117d4db76419af48ad751da8af72f4656926826c734362281c36fcf1fec2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/navy/back.png",
       "previewChecksum": "b85ea40ce6c6ef8c5f53def3cb6262b3af0dabe7cbbc400f018a9c6fb1e2a8ac",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/navy/back.png",
@@ -872,7 +872,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-navy-left-sleeve.psd",
-      "masterChecksum": "399e8696d10498b924f53b12d95fc292cbfc2d5fe0340e130221820007148f59",
+      "masterChecksum": "ba81a53dcdce6756a4bf5b908475a9bdbc191fcea54fead6c51581b72b7d4875",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/navy/left-sleeve.png",
       "previewChecksum": "3bf5db485a222598e9f880aad419ca47eb6ca2a7e8e1bc70ce14b49af887d996",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/navy/left-sleeve.png",
@@ -939,7 +939,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-navy-right-sleeve.psd",
-      "masterChecksum": "eeb2c4ccc6cd62f13a98d92673524ed2c4f301e185ffe465969a06583de9897a",
+      "masterChecksum": "5414089b397c8aaca545985a978d4c8bc59d131dc20cb8d39f1428ee6df5dfad",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/navy/right-sleeve.png",
       "previewChecksum": "715245de4deffbb8c571d440e8604b9a232f221a81cd249e8bd5623b1f93890f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/navy/right-sleeve.png",
@@ -1006,7 +1006,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-navy-neck-label.psd",
-      "masterChecksum": "6b863e03a1edbb06fbdd3ed2a7622a3f8211110f446b1e24e2b58f68e74997ba",
+      "masterChecksum": "d51652ea731c424c7f73a8f7d38bd240fd26647e1e12ec2e024561e25a0673a6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/navy/neck-label.png",
       "previewChecksum": "629a290269cfeb8424af0810ca0c9086e8c808b4396163a85cc631f69753ebd9",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/navy/neck-label.png",
@@ -1073,7 +1073,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-maroon-front.psd",
-      "masterChecksum": "c6c62aba0762405b61d29fc435f3bb88ae5f0a5514879473228419b26bf05b80",
+      "masterChecksum": "6879617c1bd16e58340e6413cfb8508fc87b5e8f12b1793259d66bed9fb40c90",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/maroon/front.png",
       "previewChecksum": "f1bcd2d778a8d7d3cf998de6473e5ca92e91cceb6155e0bb6635782160532d0d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/maroon/front.png",
@@ -1140,7 +1140,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-maroon-back.psd",
-      "masterChecksum": "1dcc3899cf4928ad29e42225421f6362efc7e39b397b63c7d23494dcc45d93ce",
+      "masterChecksum": "22965c359faf3d0ea458b3cd01c65fbb87d7c690c615ba6d99fa61ed352b3f9f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/maroon/back.png",
       "previewChecksum": "63158bdb4fe519609db5ebbe157ed3fbdb8ebadbe854ff877cebf9183d7c2574",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/maroon/back.png",
@@ -1207,7 +1207,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-maroon-left-sleeve.psd",
-      "masterChecksum": "1529dede1fa21a76826b78d9b4dc239a4c671abf9afb4f7e11c84f56886dcaa7",
+      "masterChecksum": "677be41601f994c2eccdd5a4c17f6fb0a63f42ab4a1d6add7c40425789f50181",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/maroon/left-sleeve.png",
       "previewChecksum": "c65d9bfc2bd875b3b61ddbcdad927c1b9a5eba29f8a8b9b3309967cd75383c58",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/maroon/left-sleeve.png",
@@ -1274,7 +1274,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-maroon-right-sleeve.psd",
-      "masterChecksum": "ce6b7817b21e09ea332e3f90eba7c8e076a92816c1bac82af5d4b1eda14d31e9",
+      "masterChecksum": "b6a10f83bacf56f2fe44d829282952b4d7e3dfb50cec66aa7045d79fecce88d5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/maroon/right-sleeve.png",
       "previewChecksum": "577f15b1d67b82c01136cfdc125d81d7543de6d0b53cb92f5b609759ed53b4c1",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/maroon/right-sleeve.png",
@@ -1341,7 +1341,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-maroon-neck-label.psd",
-      "masterChecksum": "9f2494808f5703eac15019ab5d1241ecf21e1c722c618a5162aec30a42abb416",
+      "masterChecksum": "8d33cb45513f028ee0bcd3ca0bbd7ab072b0716205c5c60ccbfa026c8f64809d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/maroon/neck-label.png",
       "previewChecksum": "2ca2179be88c0dd00338fd124963b26a96a1c28d32025a1772a8f423a43a37fb",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/maroon/neck-label.png",
@@ -1408,7 +1408,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-olive-front.psd",
-      "masterChecksum": "07d24e949c64ff62049fb9bef7099bd4b10dc13f454d247ba59104b810136648",
+      "masterChecksum": "512372e3179f0ffe9d85c9ab914952d010702118880de0098665be5fa91975aa",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/olive/front.png",
       "previewChecksum": "2f62bbd244af84e196ac68e36d416c380ec45d8b10627cf52f613788abf84252",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/olive/front.png",
@@ -1475,7 +1475,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-olive-back.psd",
-      "masterChecksum": "1884b607807b8f0306fd9713287b05386efa80f1c6d987afe0b57c77b3b0b536",
+      "masterChecksum": "1a34a7221d6276293c155e3f431c596023fc9e2108c08828a6df8fe2eb1a86a6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/olive/back.png",
       "previewChecksum": "bafc5975dac5318d7029b0917bf5d065c9f487e06d7dc96751605c1da58402b1",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/olive/back.png",
@@ -1542,7 +1542,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-olive-left-sleeve.psd",
-      "masterChecksum": "865e5a9758f96e3499164795d5c587bf6839f08dbcca3e429fffbccb399a1060",
+      "masterChecksum": "8fd169962799038bd3ab7cbfe6d1db4638748c73726f1809fa876c37c983dceb",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/olive/left-sleeve.png",
       "previewChecksum": "4d0c70fea098845eb3d8752cfaa86e3f461dca8040888a872dad87991566cde5",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/olive/left-sleeve.png",
@@ -1609,7 +1609,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-olive-right-sleeve.psd",
-      "masterChecksum": "410c1ac669973e6a2dfb881c90db5de367d52b10e12051fd5dee9c7517bbfa64",
+      "masterChecksum": "efac2c8141b3ee22012898ecf9dbfc44c32888d78a376dff46b875218da159a1",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/olive/right-sleeve.png",
       "previewChecksum": "a77c56e775f13f082b1791f95ab7c26d3468f63abb3e982d0064126aafdbfa57",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/olive/right-sleeve.png",
@@ -1676,7 +1676,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-olive-neck-label.psd",
-      "masterChecksum": "4e5525fda66423b9784b84457c157462132a62e7eb24b9413869adf2b83e80e9",
+      "masterChecksum": "238389fdeafbd69e0e6954b72ca308c48df1eb6a15cbfaeac6c5cc79a36f148a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/olive/neck-label.png",
       "previewChecksum": "5e5513d8840258e5f595f247b95fcbf3011a7895ed17fb2c9d06200e6f4de42e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/olive/neck-label.png",
@@ -1743,7 +1743,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-sky-blue-front.psd",
-      "masterChecksum": "272b31602a3be8e72f47cb18d0a09cb993f4b941d808b2b954b682f7bef5f763",
+      "masterChecksum": "62ab9bd180908c1bc919a4b6e706e993cb9da1c5664733868324926ba77818dc",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/sky-blue/front.png",
       "previewChecksum": "667b2bcfeecf4eba7af4b273736f247ff3e42a9296e273b5496a050f7b976822",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/sky-blue/front.png",
@@ -1810,7 +1810,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-sky-blue-back.psd",
-      "masterChecksum": "96e891b6159318899819a6dca073878957168d3dda56b9e7a66d30ec498a17ef",
+      "masterChecksum": "d7719602e5a2b2d6c59ac23aad2cca3f51143b79b80d0537f2cfa8ce5f394250",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/sky-blue/back.png",
       "previewChecksum": "f61f8af951a9df7c444fd59eeb6a0c21f94e1b1c5252f502d0a8e3d34bbdf2f2",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/sky-blue/back.png",
@@ -1877,7 +1877,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-sky-blue-left-sleeve.psd",
-      "masterChecksum": "8672d4b99f60a7f13269a5486a3075499bedaab1f9ae98e27332efae892cd589",
+      "masterChecksum": "dd8c61d314fa1afa75139801c6993cf15984c00cbd4b0858c51a5c5fb3a4943b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/sky-blue/left-sleeve.png",
       "previewChecksum": "4cbdb84a047b6fb16d5720c16f34b63604acdce3614a0e2ecdd47ddef37196d6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/sky-blue/left-sleeve.png",
@@ -1944,7 +1944,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-sky-blue-right-sleeve.psd",
-      "masterChecksum": "788ca83e66c74f889bb486291684e035247443bcbb51db7bec58df50e7ce4ecc",
+      "masterChecksum": "de4c0d1557a2a2640b5edacdb17a55be5077b7a47100b074c40926b9a518fc94",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/sky-blue/right-sleeve.png",
       "previewChecksum": "0df1be97fc4717897b42b42bd530278409a0aee89b092916c17b0d234aa85fc3",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/sky-blue/right-sleeve.png",
@@ -2011,7 +2011,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-sky-blue-neck-label.psd",
-      "masterChecksum": "b92ae2396a41a78bab9322b39586425a6465eb4be446833210bdfc5b3198968e",
+      "masterChecksum": "a973fd2108283f4a6826cfa71c12fb63f0efe14f00b4b44056d66fbd8536b2a0",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/sky-blue/neck-label.png",
       "previewChecksum": "27e226ccf54e46ce8fdcf7382868aca232cce7b33ee6f510355b816eab880075",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/sky-blue/neck-label.png",
@@ -2078,7 +2078,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-grey-front.psd",
-      "masterChecksum": "94ffe9bbbf57b7cc36a83f40a0efe7c06616df6e082a50bea0bd7abcccf2211d",
+      "masterChecksum": "e72a779810028ebb8766dafe6e1e3f9a6aff3e46f57c9f399a14807fdebde779",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/grey/front.png",
       "previewChecksum": "1742858a4d847fda051b5d64c88c03dfe6c837eb68fccdc4c432edfc231f7ad3",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/grey/front.png",
@@ -2145,7 +2145,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-grey-back.psd",
-      "masterChecksum": "357d4cae0b17529204c5ff4e0fe79027737f79ea111955286f446db255e8b862",
+      "masterChecksum": "22fafcf5fa6388986367857fba706ac04ae9e983958375a634992f31bb80f129",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/grey/back.png",
       "previewChecksum": "311d0b2360cc624529935545a35e680f7ec31bc9c6c3d3e4c587cd595a0fb842",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/grey/back.png",
@@ -2212,7 +2212,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-grey-left-sleeve.psd",
-      "masterChecksum": "e80a72570a0f088b608023d494b4fef07685d98751f9ad1057fb2b509aed9805",
+      "masterChecksum": "68ebe81c024555ff5f1e41ea241b9748f735454f8c99808ab55b39cc19064a40",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/grey/left-sleeve.png",
       "previewChecksum": "b47414cac777829b0970d53736c95293cf0e1a054a11a00c991a7f03cf8a5b09",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/grey/left-sleeve.png",
@@ -2279,7 +2279,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-grey-right-sleeve.psd",
-      "masterChecksum": "51be1e1ba71b7b08dc49709b5833901eeb7558802bc7f697c01a0a88067ea8ec",
+      "masterChecksum": "d432ee46e0422ce4f8534890d2e91f010f06c65b1d47a5168dc6995e901e36f2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/grey/right-sleeve.png",
       "previewChecksum": "de1ca8aca453c253fdc540923222a53ccb83fe50a14cc6a8192ee4dbfce04289",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/grey/right-sleeve.png",
@@ -2346,7 +2346,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-grey-neck-label.psd",
-      "masterChecksum": "9cdd2c7f9c02b161c36418a61eb1ae229988a463778aa65f54a6f172123eb581",
+      "masterChecksum": "ff1574f351d4dd4720c5c3d46287c3d7007dadeb91636007bec1c0f44d8f8908",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/grey/neck-label.png",
       "previewChecksum": "f832427e674b836e679c883d940c9af6238dac1fcda4772fb0c9c025a9c8100b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/grey/neck-label.png",
@@ -2413,7 +2413,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-red-front.psd",
-      "masterChecksum": "549b8681cd9f475ce441d457b841dfffe12a96f5dd6a81e5770ee8bb01fa1974",
+      "masterChecksum": "b1e8ded53c9ebee57c4cd84508dfdce9a87321920e537f9359971cd55f2bc0e2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/red/front.png",
       "previewChecksum": "7b3ae36a5ae09c070e77e39337ea9ae1e16d6b22211c68ff615196d1c3d387b5",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/red/front.png",
@@ -2480,7 +2480,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-red-back.psd",
-      "masterChecksum": "d9dacc649f6f100c0eb71dfdf5861e953d803bf0537b9fa1a5c5b834c025c6a2",
+      "masterChecksum": "46b1e9b468ff5e10fd96e5c44e10fb264cc01d538c15ebdd687cfa5f886c89fa",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/red/back.png",
       "previewChecksum": "570b4bb1ce1a27c80182cad2a4c6f54890438e1adc797f87fb3aac1b5d318941",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/red/back.png",
@@ -2547,7 +2547,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-red-left-sleeve.psd",
-      "masterChecksum": "7cf3d7c7d554114bcc37615a868a2036822026afd0d5465d7189d8c4cafdf96d",
+      "masterChecksum": "4854a320ebe82e707a96b15b889121865477226ed8b42be926fef89a9fed2ef2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/red/left-sleeve.png",
       "previewChecksum": "9b6aebe05e5109b2abe66201c849a487e59c20bb85356975dff60fc05d2706e5",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/red/left-sleeve.png",
@@ -2614,7 +2614,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-red-right-sleeve.psd",
-      "masterChecksum": "5e698f88eb2895ce3d5e1c4a03bd20674df716b3f1732fd2b638ea4d92138720",
+      "masterChecksum": "04d895a3b4dd616807d597d3a2649c1bf76d6c5f81f714d8d42de67bb02c1288",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/red/right-sleeve.png",
       "previewChecksum": "a619d470f1cf2da9414a47d5058cc24a67ce4acf71cc5b6531022598480ff252",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/red/right-sleeve.png",
@@ -2681,7 +2681,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/tshirt/tshirt-red-neck-label.psd",
-      "masterChecksum": "61bbaba066d2d89ac895d39ba8f94cebee2004e6ea258264b7bc70298b04ce6f",
+      "masterChecksum": "fe2c34c5ba0c3d2f2428334f7b1599f10c1d0bb59b8d2d17af95b699bbfc3a54",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/tshirt/red/neck-label.png",
       "previewChecksum": "d0464d311a659e1d6c17dcab7eddc4a2f10766e234df1ddf3fd38307c6f21a49",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/tshirt/red/neck-label.png",
@@ -2748,7 +2748,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-white-front.psd",
-      "masterChecksum": "7c17c26a48b2e50553939c34e1d60fee3e8a2016dc097553487e167493af83c2",
+      "masterChecksum": "d74cfc46177165af194cc06d089dd64d3d1a4f96809389a2ccd667444878b78b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/white/front.png",
       "previewChecksum": "3f07e96c5ea077353c0adcfab860761be00aa5fb80e6e6546caf0c5d327706b1",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/white/front.png",
@@ -2815,7 +2815,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-white-back.psd",
-      "masterChecksum": "43c56fb40742c26d6cde90ce8951d942ed8c64d5e4237867a9fb06af1c71b703",
+      "masterChecksum": "fccac17e8f9c77047568350c51fdb2d97d7bb802d928758c603a0b7b94bf36df",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/white/back.png",
       "previewChecksum": "05ccd8cf7c0d82e70f111ddd7bf08abd7517dcdf69ac409aa643f48c6095b366",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/white/back.png",
@@ -2882,7 +2882,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-white-left-sleeve.psd",
-      "masterChecksum": "21ab43c69bb80e8707548f152a2b610ffeae5d484d8b06de178d67ff6fe3e81d",
+      "masterChecksum": "fa35efff79d56a52d773e86ac215daf87ca26a60371273ca367de2c7654fdedd",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/white/left-sleeve.png",
       "previewChecksum": "1339bf93f1d7c276a87012acbfb8114dfe791f6a6dbc833244157e504000894b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/white/left-sleeve.png",
@@ -2949,7 +2949,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-white-right-sleeve.psd",
-      "masterChecksum": "a089acf965df9f18673dd10d2ad69accb5288a3ab9622e8a924144f70cb7e009",
+      "masterChecksum": "299d9a68015b1e18c65d245fddeda9bc5eecba6517a15e70c1b8f56fbb869339",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/white/right-sleeve.png",
       "previewChecksum": "e92cf809e4f04d9d806ca5a0c6a314ab0d3bad15cfb678f89167255aac62a9b4",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/white/right-sleeve.png",
@@ -3016,7 +3016,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-white-neck-label.psd",
-      "masterChecksum": "b6164792d01847dbdad5768973f157b60819fb33f73062c112303fbc940c7307",
+      "masterChecksum": "a5e1a3c1bccdcf8014b3846081025f095d2c9b267a8ae3e17d83f005b031f4bc",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/white/neck-label.png",
       "previewChecksum": "9f04bfc821cf0f7302bf5a424ecb8e9830e7ee0e14852bbe1db823e5de495f7a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/white/neck-label.png",
@@ -3083,7 +3083,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-black-front.psd",
-      "masterChecksum": "f355ec36fc683b5a9dcd506ff7485f1175a04f388fc500d221083932e5e7985d",
+      "masterChecksum": "ea71531c2425d5de30ff63f2eb84ee9411be65456fb6f0df2be93629220a1ed1",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/black/front.png",
       "previewChecksum": "a12be75d3edd945059ec6e3cf5d65568205e33fb5ed25a13d46ee9f30010dedb",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/black/front.png",
@@ -3150,7 +3150,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-black-back.psd",
-      "masterChecksum": "1045a17cc82b716603cd22c2d5012be87aae4e6306782af3633ec28aab7eab03",
+      "masterChecksum": "7ba700a973cc5f2fb4c7f5acf419ff51103f8260cf8208bae645ce0a5f377d83",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/black/back.png",
       "previewChecksum": "a35296c5ddaa4222bb63862216b800a08413de122ff8ed06df28fcb34a1423f0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/black/back.png",
@@ -3217,7 +3217,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-black-left-sleeve.psd",
-      "masterChecksum": "f6533b831cd6ea0947fcfe313de9c1283cc8ec61ed758634fc61a4e9259b43fe",
+      "masterChecksum": "2c6383348c976ac8c9c05b4a8e25daab25dbcf4298a875493a3a8c2bdee7c1c1",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/black/left-sleeve.png",
       "previewChecksum": "9afa625918fd07bda26d38161cb5803c7cd856cca9183f4ee9f05836496eab57",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/black/left-sleeve.png",
@@ -3284,7 +3284,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-black-right-sleeve.psd",
-      "masterChecksum": "2a2421a1674299e35009432f7e25072ede2c2c50719e75ea2929cc5394653de6",
+      "masterChecksum": "1de3d7a133c47df85e0390a5a35e7256341f5b399652e5c34085bfdda76f8c39",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/black/right-sleeve.png",
       "previewChecksum": "fa79155ce628bef6831d159773f10cd0aa3b3f1f33fb38e1ce62b32b4a1852d6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/black/right-sleeve.png",
@@ -3351,7 +3351,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-black-neck-label.psd",
-      "masterChecksum": "e192e33e562ac08bd8f88d8b6936a4b0d767e30620db68ae2e7a4e6f897c694d",
+      "masterChecksum": "db567200c95613db49c27940189127fa20571c852287df5af66d4fabe0da29b5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/black/neck-label.png",
       "previewChecksum": "342d27b9d7af1f6e680877c365878de211d7eed7493eb4512877acac72c772a9",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/black/neck-label.png",
@@ -3418,7 +3418,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-charcoal-front.psd",
-      "masterChecksum": "fea235e76c6647dc27be1767bd518516c22e3ac476256ff9c1bdebd8c94efe46",
+      "masterChecksum": "1f423fa39805039134e040d6c9344e191dcfd8f7896d73523667ffda88e7a7c6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/charcoal/front.png",
       "previewChecksum": "dde2653c0089a662012f236c278a15e5d5256de2e62f087c0f04b5612f7714b8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/charcoal/front.png",
@@ -3485,7 +3485,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-charcoal-back.psd",
-      "masterChecksum": "f281125563a8c4191765f1a36ce9cc3e9071e60a53b5e28cfd42bbfa9850fbdb",
+      "masterChecksum": "f8d33da7d04d217430a5096a9fcd8b509483602e28180d735a99894082e1c0f5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/charcoal/back.png",
       "previewChecksum": "895e4a1094184584b6ef3189f5760f3661240cba11c243e4756b2b2b6ae4659b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/charcoal/back.png",
@@ -3552,7 +3552,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-charcoal-left-sleeve.psd",
-      "masterChecksum": "4bcaa9325b2a0aa5dc167bc3666df0b4df1857c0b23bc00b47aa30a852ac6a11",
+      "masterChecksum": "eeb6c758762739fa4abc4abac6c36d3ca37f7e37d42c3f866940ad55ac3c29c8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/charcoal/left-sleeve.png",
       "previewChecksum": "f434ddcbcf4781363cc5e97e782b6d6ac9fae0577463940b81e7b2db756f4d92",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/charcoal/left-sleeve.png",
@@ -3619,7 +3619,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-charcoal-right-sleeve.psd",
-      "masterChecksum": "e3d5209d4751583b637a59c732dc177c1030ce0bcf6efbf33e7fea4a7c4a63a3",
+      "masterChecksum": "d5a62871bae5479713226921b8e48ae81cf2ba19dceeb0df1a40a7813a26ee21",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/charcoal/right-sleeve.png",
       "previewChecksum": "9483af006595203b458fdd8cb3f5f5473c2d7e583f8027f0b43d2a6fac7b9c17",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/charcoal/right-sleeve.png",
@@ -3686,7 +3686,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-charcoal-neck-label.psd",
-      "masterChecksum": "5be4d446c90c2be0e67c0d08f48974a76bd24c1085698d8251dfc59fcb350543",
+      "masterChecksum": "009ae61e2fd54bd8d6efd57143101e737e13b5eb0886f883b5103d61c95666bd",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/charcoal/neck-label.png",
       "previewChecksum": "951a3eda40781c67ce3f42ae97902262bdbca55c322e574dbdf60a172e519ba4",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/charcoal/neck-label.png",
@@ -3753,7 +3753,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-heather-grey-front.psd",
-      "masterChecksum": "5cafe497573d8a8f7e6e188b3128f48284b394dbc9e74eb57db1cb42f6b23c62",
+      "masterChecksum": "a31453df6be85cb94339ba31604e8f940b7d28d436b05b4ba6ff4d5a762eb76e",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/heather-grey/front.png",
       "previewChecksum": "34f5e59cea954eb154ff554d055eed5408a81efeefe0876a7fea96f9c79c531d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/heather-grey/front.png",
@@ -3820,7 +3820,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-heather-grey-back.psd",
-      "masterChecksum": "601d23d0296faf1194e1f1feb4b6758a0fd6374b1a03e844f10a9e1b97ce0308",
+      "masterChecksum": "4ab8f34662bd62a484a521cb331163c2997009c526b093871dc7f1488921e34a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/heather-grey/back.png",
       "previewChecksum": "453382f2031b3267df61f700db441cd204c73bf1de729bdd02995a5c63f9ffee",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/heather-grey/back.png",
@@ -3887,7 +3887,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-heather-grey-left-sleeve.psd",
-      "masterChecksum": "6d07a3f0b808950f914ea397b607609501ee8598d052bc078168424a0bd69626",
+      "masterChecksum": "73206d3d43beb967f9fb4e1829e48b36eda5ca79bd06c3f47374a71072867b1f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/heather-grey/left-sleeve.png",
       "previewChecksum": "8b7e774c1a1c52fe8a36f80d7b08f8cd6d89d2c566442a7f6ea22cb05c49e599",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/heather-grey/left-sleeve.png",
@@ -3954,7 +3954,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-heather-grey-right-sleeve.psd",
-      "masterChecksum": "523735a4d4a00abf9878b9beddefc9dbce0043829af0c2c6d20c29f32da80a2d",
+      "masterChecksum": "95668d2cfc7f405ea4e01e6c48d32c2e3da2fe33a500c46e9fe0b3c6b2166b2c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/heather-grey/right-sleeve.png",
       "previewChecksum": "03bd2bc8ad3802ac9d8956c7cba0185d52e985b3e36824fe5f1d688e97eb65e0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/heather-grey/right-sleeve.png",
@@ -4021,7 +4021,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-heather-grey-neck-label.psd",
-      "masterChecksum": "43d244aca2003b1bbcbb245ecded7a0e59c88dc575de47932ae872ca8259337f",
+      "masterChecksum": "319c3f872294987c29ce3a4b5f8e8d5509176c79d5730496e164047245ade159",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/heather-grey/neck-label.png",
       "previewChecksum": "40ffc404c9ac3d4549f07571713365aa219ba62e8eaea9adbb1f4155b722aa57",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/heather-grey/neck-label.png",
@@ -4088,7 +4088,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-navy-front.psd",
-      "masterChecksum": "0d0b153dd29795f9e17578b4b62630152e585db3dec34f5b78c19ff5cef3668a",
+      "masterChecksum": "53fe6851bed4d90c02bd47bf5f8c9d0381aa1eb3000f32abbc9d8706e3f6ca18",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/navy/front.png",
       "previewChecksum": "7c819c613386bf9a5406f28a862bc951ce5a22aba96f8604af2404909b95f3ff",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/navy/front.png",
@@ -4155,7 +4155,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-navy-back.psd",
-      "masterChecksum": "5917b377977fcb41c07415475b46bc7880dab6a2c9dbc1983e1f18fe4b631d34",
+      "masterChecksum": "37c18c81c8143f543cbae84229afa93f636bdd2782b5d9e039006fa17b8d31c1",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/navy/back.png",
       "previewChecksum": "80a76cd420076589d94477c1bdc56ba7b78c2e93096d2a62174fe22130020d28",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/navy/back.png",
@@ -4222,7 +4222,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-navy-left-sleeve.psd",
-      "masterChecksum": "3d3e60a2d47aa5f77d97f85703aac59cd06442e2232c6ea50444c7c27427d255",
+      "masterChecksum": "7abd9f5e358d770bd528facf6a104aefd85429fc14238fbb85bc3ebd97588756",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/navy/left-sleeve.png",
       "previewChecksum": "da581411eb23dec719d6237d782623ba8b925847d76fdf15f1748b1afabd3bb2",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/navy/left-sleeve.png",
@@ -4289,7 +4289,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-navy-right-sleeve.psd",
-      "masterChecksum": "6ca9a20ba1e332afd21728028cede756481a84b476fe9281854211fca860f765",
+      "masterChecksum": "bd6211ba9e96a2e720824f39e0d88273bd37900a6a0e15b93c81a4187b9792f6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/navy/right-sleeve.png",
       "previewChecksum": "a232f7630804ce2322c8958ce19e9720b2a75b4b1501c9efbf09b3b970db691f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/navy/right-sleeve.png",
@@ -4356,7 +4356,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-navy-neck-label.psd",
-      "masterChecksum": "50c8a4ad60f8941c12b104fec5fc4a1b6a7698ec17a4f7b7d1352a2a197a3b1e",
+      "masterChecksum": "f97649a34392494435c927231625387c8986d0c6abb52e16a01a0a5cd8dc6258",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/navy/neck-label.png",
       "previewChecksum": "97f061c38e0b67f356d46fa04d9d561b18bee48a8f17614ce06eea159660ca56",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/navy/neck-label.png",
@@ -4423,7 +4423,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-royal-blue-front.psd",
-      "masterChecksum": "abdd1443e31161aa637d2ab0bc9a62b7d8b603e416f6a912a55f01ece587f70e",
+      "masterChecksum": "cfafc322c2a1cd889c04e1269366c3e41b2d9babf5d2b1412dc3b79ce777cc91",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/royal-blue/front.png",
       "previewChecksum": "90aced1ede763470a7caba71e894c0486df459e007425d0242b6eef8c97b29d0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/royal-blue/front.png",
@@ -4490,7 +4490,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-royal-blue-back.psd",
-      "masterChecksum": "e280d30990805db6b83c1a87e6e87b9cee18dc80286f227738eb1f49351fa1dc",
+      "masterChecksum": "f941aa2d355b83aa8023004066a77d6fac87140520aca7214ea8b1d51ab869fd",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/royal-blue/back.png",
       "previewChecksum": "823d08e46ebf76cdd7534ab0fad0253074171c29857a669c22536c011099e56e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/royal-blue/back.png",
@@ -4557,7 +4557,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-royal-blue-left-sleeve.psd",
-      "masterChecksum": "75251ba7f636e3316ffcdbb46f44368885799740dc4987dcb78b963d32dd88bb",
+      "masterChecksum": "cc39ec822e614e65d00fe5051c12d1794b8ce790bc374aec2841fb5760ce2a6f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/royal-blue/left-sleeve.png",
       "previewChecksum": "2d6a52c2aa0b339d3e6a1071465ff0731f238146e48be6c60c34c6a69e5801ac",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/royal-blue/left-sleeve.png",
@@ -4624,7 +4624,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-royal-blue-right-sleeve.psd",
-      "masterChecksum": "827ffb240f7504de43e1d6381881f9740995127c9258cafbbe89079d5e96568f",
+      "masterChecksum": "dbfc7fcfc9f5fd027381fbf802a55097bd0a07becbfd20f929217b645a057a88",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/royal-blue/right-sleeve.png",
       "previewChecksum": "fbd46fb72fe8744970a8724adf0a8bd2068eaa35c6c628572a667bc383da3998",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/royal-blue/right-sleeve.png",
@@ -4691,7 +4691,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-royal-blue-neck-label.psd",
-      "masterChecksum": "3aa67eaf06e1441e92a848998731cb2fed6d4cb022e1107812d5f4c6fe4ace18",
+      "masterChecksum": "949929b3a6f9c8154871175f5969784143386cfb4de5fa37cfb7830bff70a535",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/royal-blue/neck-label.png",
       "previewChecksum": "1bab34bda1c8c7e835629902b62b89c06c6dd428df727bac83b50aa28704717b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/royal-blue/neck-label.png",
@@ -4758,7 +4758,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-forest-green-front.psd",
-      "masterChecksum": "eec1fd4561104f98141d29dad2ef55e89d7d94a1ade45a0d14473834645bfb61",
+      "masterChecksum": "4cc779accb378258fcec98a91324251e455020a0baf46e948dd119d157ab9138",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/forest-green/front.png",
       "previewChecksum": "5092829046ecefa69f95c26456d586893fd10eaccbed2157273afb064dab4b88",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/forest-green/front.png",
@@ -4825,7 +4825,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-forest-green-back.psd",
-      "masterChecksum": "2037ebd65374a209378ccabd7d0fc2cdd960183bf1f9b2bd8c0da19f858a5bf1",
+      "masterChecksum": "0f3807bc19ada026afd0d861ef5bd89973dca0ca3a3b3985e27fd4c62a3c836e",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/forest-green/back.png",
       "previewChecksum": "c46c82f029a2df1fcb6c60ff8a52052dc9d3f69d04d965c00a75d68c8421469d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/forest-green/back.png",
@@ -4892,7 +4892,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-forest-green-left-sleeve.psd",
-      "masterChecksum": "93ffed33396afac7da6c95d843b874b55d198c940d66ea207d599a1a136371dc",
+      "masterChecksum": "fe495b0d562617b5d25a78a087784d814e289766fd5c580183b6fcdad1d76a9d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/forest-green/left-sleeve.png",
       "previewChecksum": "0fd9581ac3602f80de7c9423b4ab019608af4353bd4d064dca83c899efd8c924",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/forest-green/left-sleeve.png",
@@ -4959,7 +4959,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-forest-green-right-sleeve.psd",
-      "masterChecksum": "5cc24365087ca6ce5982aef0014f67bac5ad0d5243f90f8dbee4a962e2c43802",
+      "masterChecksum": "f6c3385caa76cab18f8587be5174c9d5ae1620772fecdf202142a763d03a433a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/forest-green/right-sleeve.png",
       "previewChecksum": "2fdf2c033cd368bb868974514f6d1f832fe607ca872a9d26c395c2756663666b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/forest-green/right-sleeve.png",
@@ -5026,7 +5026,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-forest-green-neck-label.psd",
-      "masterChecksum": "9c5b520b8f95e7e6628ddd8afe1b3310de456cffcba92b5766cabb67558f5f02",
+      "masterChecksum": "cceea0d14bc04ff163ae04bdc76001abf549b36ecc203d4bb77c7ca5eab5b296",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/forest-green/neck-label.png",
       "previewChecksum": "65b601f22893f6b1a44dc5bb1860e8a1c13ffcc07cc1d1c225cad2eca2a62299",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/forest-green/neck-label.png",
@@ -5093,7 +5093,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-burgundy-front.psd",
-      "masterChecksum": "514c55489659307dd59747d8133bbd566d6824db799b06b31bda77767a7bd275",
+      "masterChecksum": "fc2835d030f67ddebb40b519a8b7657674f0c57d92818cde06d394edf3ee54bf",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/burgundy/front.png",
       "previewChecksum": "cb091f89de6820668d39c26ac59421e42747c6b98011815fa1637eaaa1ed9c32",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/burgundy/front.png",
@@ -5160,7 +5160,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-burgundy-back.psd",
-      "masterChecksum": "bb32eedc4eb4fd63c98128e07028d30de81a856803ade64ab5ee90ed2d6ef034",
+      "masterChecksum": "4167e4658b1508df7df1f56a8619af0cdaa083746a9ece2f3c01d8c9df0085a3",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/burgundy/back.png",
       "previewChecksum": "6a5a91a16785081cd5c23e7c998118f4d57d5c21cdc5e782ad3107b82e145fa6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/burgundy/back.png",
@@ -5227,7 +5227,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-burgundy-left-sleeve.psd",
-      "masterChecksum": "f05b6fdba3f40178a5f12f7dba97c9c1ebd9d5c7ba208fbbad1e8dc4a8667de9",
+      "masterChecksum": "bb74d17e1e18a8afaef06f4cabeb77ee38417a7a1be7c06a4efc693d73b996c3",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/burgundy/left-sleeve.png",
       "previewChecksum": "246d593e525eaa68c93ae7849a8ce6a307b17eb090ab0da14a5702917b8775c2",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/burgundy/left-sleeve.png",
@@ -5294,7 +5294,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-burgundy-right-sleeve.psd",
-      "masterChecksum": "0fe736efbb5147953d5770c17401e2bf54adaea2ab546eab7fd5d041a6c14f27",
+      "masterChecksum": "df576f97cb880b471f212ec9a85233a9fa0e24afa0a681dac847ca7ef97aea66",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/burgundy/right-sleeve.png",
       "previewChecksum": "7df0bcee40eb646950bb6be581e18de5e943df1b8648bc8dc81bcc682dc075a6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/burgundy/right-sleeve.png",
@@ -5361,7 +5361,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-burgundy-neck-label.psd",
-      "masterChecksum": "5caecd89b09826cdbe633834380f16a34da7a8bc4bfc174d9822c41cfa38adcf",
+      "masterChecksum": "8d3102af01500e7501833af7db7f7e1741d8a70e4db139785d366ac9daff81dc",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/burgundy/neck-label.png",
       "previewChecksum": "4ccb94442fe6507f2638393aaa3174d330d5641c926964b684d0e4f8db931555",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/burgundy/neck-label.png",
@@ -5428,7 +5428,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-red-front.psd",
-      "masterChecksum": "550eef0d0e1ee79179f1c130d8dac34e184a1c66eb817bb1fe9f0ddf68d79e0b",
+      "masterChecksum": "39585b119167cde085871a89ae44dbce7b428578cbadd6041112fdaac6bc6344",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/red/front.png",
       "previewChecksum": "ded87aeab1290d2bcc330e842ede0c6164e989eeea42a97070244f8cffcd8444",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/red/front.png",
@@ -5495,7 +5495,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-red-back.psd",
-      "masterChecksum": "1a20d371fcd4fc84850ae1f74b8277f57b876d0201ca586456cee64948332103",
+      "masterChecksum": "3efc6b65fc9f04d0f8d79e0e613e8f920232e318cc385be5daa41bde671f9f3d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/red/back.png",
       "previewChecksum": "fc1ec3b7302e19bce6770afb499bb57f082e8f4d7a21d0b3e1cba1d467f97ff4",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/red/back.png",
@@ -5562,7 +5562,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-red-left-sleeve.psd",
-      "masterChecksum": "df3910f28f50a967c3809f52ded61b7afed9b878e960269de72260a0ae78af24",
+      "masterChecksum": "3ff12f7eed67d49e0d90513ad15336947c5d8eb77e916841a8b3b9b72a4a098d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/red/left-sleeve.png",
       "previewChecksum": "4007f6dbc0c728889f9262f0cd1a0c8a18f28066a7dbc002fedb145a5d9db4bc",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/red/left-sleeve.png",
@@ -5629,7 +5629,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-red-right-sleeve.psd",
-      "masterChecksum": "9c50b48baffcbabb84c4fcc49f6b2245e000cf2c43d24cbc8fe18e3fe2f37d44",
+      "masterChecksum": "2d91ddd2b1cd95f273f43713cb9f886b3a9bd6d1c993cec88677b1e51c708d1c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/red/right-sleeve.png",
       "previewChecksum": "01839bed575930c908bdad272ff04cf51c17ce0369681911a886432361081969",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/red/right-sleeve.png",
@@ -5696,7 +5696,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-red-neck-label.psd",
-      "masterChecksum": "a27db3fdd764405337d4545729b92a76fbe395e1181341267debccf6128e18c8",
+      "masterChecksum": "64c45bdaea1d105023df916f5f4fa16422f26dcf1fd9f0954e3d38f37f9265b0",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/red/neck-label.png",
       "previewChecksum": "84b9ec6af8a9342c12b35c12fd8f93c831bfc266a1c7e0c54c4d91e8a8e4a677",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/red/neck-label.png",
@@ -5763,7 +5763,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-sand-front.psd",
-      "masterChecksum": "d59fad16f10b4369ef5c5e3ea09a2ebd727c64fee0558b5ab588448d7c4eaf09",
+      "masterChecksum": "29b819da0ce88ad4ab07f03a8101b3a96ba83b56fee0a8bfd259f4c062c0add6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/sand/front.png",
       "previewChecksum": "adfeded954db21e19ca5e32b132c72a24970475e5d3e359d17573c7cc748bda0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/sand/front.png",
@@ -5830,7 +5830,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-sand-back.psd",
-      "masterChecksum": "76405101cfcf66ac68a7ab191e86236f17a3c9ecaf1ed947e65bdd22fa0dc930",
+      "masterChecksum": "2a54d738a8cb4dde79cf29197cbb359386bea96ff0feff6bf8cd3fe12c698840",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/sand/back.png",
       "previewChecksum": "de06fe2cbd2eff33e945025623aab1f0bcedbea9732e15a1bda86db72a925592",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/sand/back.png",
@@ -5897,7 +5897,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-sand-left-sleeve.psd",
-      "masterChecksum": "4cca29430a8e3622db1233e988e5b8c49eb469c1de1aafcecafd3fb2c101610b",
+      "masterChecksum": "2beb35692ae926c5f6037ce1eb364eeda12caaf522bd32b1273df3bec8c0928b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/sand/left-sleeve.png",
       "previewChecksum": "54566fa7683c2905d11d3d9a52d219f39e8a93f5f3a92280ae981d1fd9de4618",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/sand/left-sleeve.png",
@@ -5964,7 +5964,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-sand-right-sleeve.psd",
-      "masterChecksum": "0bb43e69c1a7d9138895c65a869737271382c78db279d8b158717f97b0b02eb6",
+      "masterChecksum": "06a3ce49a9430d17521568d3ac0dcafb28d9034479b31ea4356b16bac1096285",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/sand/right-sleeve.png",
       "previewChecksum": "20c029edf4af3605f788c88382191c4741179177be019f0d767072ca260e82e5",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/sand/right-sleeve.png",
@@ -6031,7 +6031,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/longsleeve/longsleeve-sand-neck-label.psd",
-      "masterChecksum": "5086776cd4ea2d4583bdb67cf9dc98cfa9b57fdc3fe72e3ad9e520a2bf1b379d",
+      "masterChecksum": "617f3de7080bb71103a37a880310f08a65722873d178f716b41ea536709c3679",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/longsleeve/sand/neck-label.png",
       "previewChecksum": "274330502f0ba711546dfc3f0ee5c021c9dea0299682a4b5e7991665321260a0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/longsleeve/sand/neck-label.png",
@@ -6098,7 +6098,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-white-front.psd",
-      "masterChecksum": "8326f4a2b4e037696009a73878082c5287e39cf5aff7a979e33a95a58f40ca65",
+      "masterChecksum": "7d555d79f6552c660f426cdb0c3c238199d4730e0b500e23bba16a31b4b3c5c9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/white/front.png",
       "previewChecksum": "366f243927131cc6ae07101bde978eda8e5641298657ac1235a648bd15acd9ff",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/white/front.png",
@@ -6165,7 +6165,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-white-back.psd",
-      "masterChecksum": "fa1bbdcf1b424301337a7f00a213b9515311eb8fea235d25aeba2f58f66d7750",
+      "masterChecksum": "1703ca32dad0b3787ee5e4139f78195e2498face9f30f757234634cf4d8c93d3",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/white/back.png",
       "previewChecksum": "c532c01381e18582faee224cb14a590fb217d93c94f6c69b1a6412aebbed4318",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/white/back.png",
@@ -6232,7 +6232,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-white-left-sleeve.psd",
-      "masterChecksum": "9f36edb71141e168a6078ef168695e780751877bbb66bebe8ea3b5aa0412ab5f",
+      "masterChecksum": "2a94dc1fac1b94c453886617ab2661796d2d8dd6c35afd1078a8432dc539b161",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/white/left-sleeve.png",
       "previewChecksum": "0804d61cfbdebdbb3d7b5b8dd16bb62e43ada4959e73e8919aecc04fb747a891",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/white/left-sleeve.png",
@@ -6299,7 +6299,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-white-right-sleeve.psd",
-      "masterChecksum": "d8fd7a2cbdabf39246572bd998d3c14df771c0f2df0a687fe6a90b84a39091b3",
+      "masterChecksum": "ca34fd5ea9a4b56de7f41ae5f04796866c0f308e4505c96af1b058ceabe0146c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/white/right-sleeve.png",
       "previewChecksum": "adc75b2093beda7337572d018adead8fea1eb4f67fd406dd0a1c52d2a144a713",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/white/right-sleeve.png",
@@ -6366,7 +6366,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-white-neck-label.psd",
-      "masterChecksum": "c77e482cb51bc4f24b1b399d031cf61acb820cf15cdef8e14add30cdff5d8845",
+      "masterChecksum": "815e53f505432e1d7b056cbe43481aeeb7bfc08c13307d1b92882eea64b5352d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/white/neck-label.png",
       "previewChecksum": "4dabdda94ce7ee52729f967aa84cbac8cbe33d91a83764a1f8681abe59a6f935",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/white/neck-label.png",
@@ -6433,7 +6433,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-black-front.psd",
-      "masterChecksum": "cac2b4bb1f9ac5dd66cda427263a0ec63da8bf7587deb2501c1dfa06319cfd29",
+      "masterChecksum": "7e73e86c4084f4cf15aa59a6525f109089d2df805632b3adced228b466d0ad4b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/black/front.png",
       "previewChecksum": "ea9580d47ababc2d84bbd3af906c96c188cc17ccf9ab2891401f5c962e9794d9",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/black/front.png",
@@ -6500,7 +6500,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-black-back.psd",
-      "masterChecksum": "31b500e2df79cd34b76d8370cf7c8ba6de02826fb3722a82b35922322b814dc5",
+      "masterChecksum": "5924b9a77f925238751d0967bd2145cbf928984a6eee8d0c65ac3bcc73743e8b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/black/back.png",
       "previewChecksum": "873a0d3f155ecfcc632eafe3b268619f8bf9d20ae205683fe97fddc06f8fd5f3",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/black/back.png",
@@ -6567,7 +6567,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-black-left-sleeve.psd",
-      "masterChecksum": "1d1892bb9599098d603789db2a88362e5b33ee57b47af6144903c03299cdc8f0",
+      "masterChecksum": "e95464603250797a18f263df54aaf2d8dd3e521057969ee1e7543b9b16a956a9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/black/left-sleeve.png",
       "previewChecksum": "c60324e0aa6d594130e0e53935e20fa1b9c4545077691cf66d532bedba877b8c",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/black/left-sleeve.png",
@@ -6634,7 +6634,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-black-right-sleeve.psd",
-      "masterChecksum": "8f97eb17de9d99448b5b036a1b96b702758cc1aa3f36cdca9ff87342a2c80762",
+      "masterChecksum": "cee32c85dca4f2d35c2abad266a9e24ab4fbfd9b599b30a13c86c09cd92718a5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/black/right-sleeve.png",
       "previewChecksum": "b66e4495f65cc8f92cd5de7f59020ac672719c11507954f44ae8febc503a727e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/black/right-sleeve.png",
@@ -6701,7 +6701,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-black-neck-label.psd",
-      "masterChecksum": "8116ccdc96c5f9907352c415af307e8f22ace4a11f0638e2b7dd2730fe26756f",
+      "masterChecksum": "380d66c506a4d567d36a4cb1ecae2e108254ff3a9cac7993c877ae4afe107309",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/black/neck-label.png",
       "previewChecksum": "6458f87a3ea2509843590529bfbd46e6bfa0fcbc9b39f0411258f107b9cb6114",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/black/neck-label.png",
@@ -6768,7 +6768,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-charcoal-front.psd",
-      "masterChecksum": "53857b22e861b53e37a5aa86f0657bd846b55af55e310fd3ecb640e8891caba0",
+      "masterChecksum": "da3649d90b01a96bfa2f22c71a75d944028e4ead9ea6a5b3bd4176185d768e0c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/charcoal/front.png",
       "previewChecksum": "57560e061bdfdabf879a2aeb60dd39b138ca1f05e1e284611d8d2c3422996295",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/charcoal/front.png",
@@ -6835,7 +6835,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-charcoal-back.psd",
-      "masterChecksum": "76e496bac2e528208fcc35159820394f1bec9676375f2f685de946d17c3da79c",
+      "masterChecksum": "9a437e786e60f03f430d4f03f8308661be094b26c0237a2ab8851d4c40f32a74",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/charcoal/back.png",
       "previewChecksum": "2d79bb8385a328479eabe1ee6f6838a9a22f0a1f79da195aaabbe930521db377",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/charcoal/back.png",
@@ -6902,7 +6902,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-charcoal-left-sleeve.psd",
-      "masterChecksum": "feef5db16b273a47f87053cfb88f680e8f6fea9f853e7c0364bda8ab4e8e1510",
+      "masterChecksum": "4426d770a4931ce5f3fb20659fd811397ddeecbe721963851669c0a5758887ff",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/charcoal/left-sleeve.png",
       "previewChecksum": "1701b15d8a82e8c69a1923aecbe48b31a55326b8b18ce8ea19217898e80de44f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/charcoal/left-sleeve.png",
@@ -6969,7 +6969,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-charcoal-right-sleeve.psd",
-      "masterChecksum": "2b58d905b0a52f4763b9d7d868c1f8e54d19f36aa4d732855e67357e05192a79",
+      "masterChecksum": "20b8b368a9f233d84c93df69839e1d21d769ee1e50141e83c7534396cbeb2c9d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/charcoal/right-sleeve.png",
       "previewChecksum": "156a3249f960fd5e206554db76f3abdcbf59420be2dab5db1ea8bde3b0ce783d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/charcoal/right-sleeve.png",
@@ -7036,7 +7036,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-charcoal-neck-label.psd",
-      "masterChecksum": "bba571146019a0e8b4b01644a6406c3b6d0bff69dd4b832b69ff0ef39e87b783",
+      "masterChecksum": "0250dd22be54d7ee850e42a82296bf83845e29322504fed0fb21f8849d475eb4",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/charcoal/neck-label.png",
       "previewChecksum": "625d4a1778c9a41a967e83d64602b1b72b99cc57e5d2b363169c51c9bb2134a7",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/charcoal/neck-label.png",
@@ -7103,7 +7103,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-heather-grey-front.psd",
-      "masterChecksum": "8f8da1943e8b38d1a50947721598b5782fce2dbdd5a4766a7224cbc3c5fb1348",
+      "masterChecksum": "0dc86c2ea5b16b7c45a8fa8e0e4b34e3cfef3d972bd6a862d551870034cd0023",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/heather-grey/front.png",
       "previewChecksum": "5b878673eeb26dd2ec5c578082b4982319582e38cf0db7483403694048df2c23",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/heather-grey/front.png",
@@ -7170,7 +7170,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-heather-grey-back.psd",
-      "masterChecksum": "fbf2d8fcde6a7b34ba94d1d0deb55be75635033bfafa2ee73d8705bb3be88473",
+      "masterChecksum": "c76e630f3c3a3a89f69dc6f2411a497bd529670e3f4010c3a0cdbdb3f3aac363",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/heather-grey/back.png",
       "previewChecksum": "f0c28500a075c99def3f8399eded3b7438251a63421e3cb44a4d3e91b3dcc39a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/heather-grey/back.png",
@@ -7237,7 +7237,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-heather-grey-left-sleeve.psd",
-      "masterChecksum": "6b6d0aad4aa6792277d9ff8e2fc494fcf47e2b19d3365a0bee40f72f56989413",
+      "masterChecksum": "21608bb2cfec1861177fbdfe55c70ec13d9a8e764dc269fc444d9b34a9a8b11c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/heather-grey/left-sleeve.png",
       "previewChecksum": "97b77f26a146747b9daa1f4fa09f04131217d154fbc80e569baeb783e7c66e9d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/heather-grey/left-sleeve.png",
@@ -7304,7 +7304,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-heather-grey-right-sleeve.psd",
-      "masterChecksum": "98f09de3292f316e63b1bf1e149484a4f119a943f9c71314543752cd3fd310a8",
+      "masterChecksum": "ea0984f3f3528a6c36fb2904ea5eee14f826630f8f3d0375d5c0c8bc6a3b7641",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/heather-grey/right-sleeve.png",
       "previewChecksum": "e417bdadb53db01eae34c0d315e636dc0d1616a4577f325c15366cdf798cf727",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/heather-grey/right-sleeve.png",
@@ -7371,7 +7371,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-heather-grey-neck-label.psd",
-      "masterChecksum": "f97466bcf69f797afb7030b364e34e547467d57433299a98bbf9d5e8794004d4",
+      "masterChecksum": "c79caf0f4f950082f6a1d26f0f80580aea94e3769f142cf9303c9d4383c263f9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/heather-grey/neck-label.png",
       "previewChecksum": "ca11ae38228c99e255e6941f4014bfdcd5d24c6df605031f903ea0bb20c49f32",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/heather-grey/neck-label.png",
@@ -7438,7 +7438,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-front.psd",
-      "masterChecksum": "eb3b959c8dbc9b9dbc322b13d58764427936255856fcbd7e493c586c85b318c7",
+      "masterChecksum": "865cbff70741093f7112608a4d8796a78a0e7056fb400eb3aabb4370a5144d5d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/navy/front.png",
       "previewChecksum": "7f140b2616bbce22931580590df14fca07499e847042adf5092de168925e02d9",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/navy/front.png",
@@ -7505,7 +7505,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-back.psd",
-      "masterChecksum": "fe643bd26d22c3a08e774678128795c85c6f9be0409d2c75978622738dc4b86f",
+      "masterChecksum": "6978cf71aafaee2bd574fb137030a91b4dbda91b782f71e287b17bc26c8a6ad4",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/navy/back.png",
       "previewChecksum": "1a5914055c084c26927e8d5835060825233e5cbed334dca4e41266006418cbcf",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/navy/back.png",
@@ -7572,7 +7572,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-left-sleeve.psd",
-      "masterChecksum": "49323a3a7b69294710c5125e0798c824625ebd8acefccf00e114e72b69670741",
+      "masterChecksum": "6e649b5c09e84ff051c9083941124b4e7beb951b1f5edb65a139234fef244fc8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/navy/left-sleeve.png",
       "previewChecksum": "df6495c3b79a45de6c2ac45cd36865b1af11fd947f02bf176d484b6bc48f8302",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/navy/left-sleeve.png",
@@ -7639,7 +7639,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-right-sleeve.psd",
-      "masterChecksum": "0a622d07fd1180d9eff0ebc80c670dbf2c32a9a7fd0c7243981382cb0cd69f28",
+      "masterChecksum": "1184ff73ffb764e4b1c057827e46c821de48a6d63310ec48ff5c0eb0f9270259",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/navy/right-sleeve.png",
       "previewChecksum": "a4cb80848d4ce2bb8512e68025a8331f983f0e805e3ea5730032ef98e03e2f25",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/navy/right-sleeve.png",
@@ -7706,7 +7706,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-neck-label.psd",
-      "masterChecksum": "e45f0b03094abadaf48c188a40a9feb1e6b3bf5f88b083315098882c0a526a6b",
+      "masterChecksum": "9d19915fe9ba6b2ba20cad0497fb98ff3cb59b553d5ecc45f63ca5652566f76f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/navy/neck-label.png",
       "previewChecksum": "d9403f95bfaa79c8bc4e6a1bcc1365641e7d83eed7b56dce78567862ca5f57a5",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/navy/neck-label.png",
@@ -7773,7 +7773,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-royal-blue-front.psd",
-      "masterChecksum": "4d511592a816d8987c621851f506bcb8156a675557f2f1f9e75bd592ebdc24f6",
+      "masterChecksum": "431b5ad6990615ca0021b52305836ee18a2079bab8893230d74d6fc27c5c3e0a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/royal-blue/front.png",
       "previewChecksum": "301c50924c3ba049ff7ac4acb5af618486f8879cd3f90a24da296084e5c61d25",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/royal-blue/front.png",
@@ -7840,7 +7840,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-royal-blue-back.psd",
-      "masterChecksum": "78872e2a0180d4b22f50b23cf86c299c609e95f05e9e8a07239b00bf54deae86",
+      "masterChecksum": "8ffac661067ff74f95d11c84d4965c9893d7f4fa08351887bf218fb9c1a5fb06",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/royal-blue/back.png",
       "previewChecksum": "9b7a52c41744b137a95d1713e292c4f2ad9c77008539bd736f2232b91590f1cf",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/royal-blue/back.png",
@@ -7907,7 +7907,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-royal-blue-left-sleeve.psd",
-      "masterChecksum": "80eb5f39ed2248c3003d151e35bbc6e68fd6844a36e4b45b0e85c3a0cfd821b4",
+      "masterChecksum": "f150dc10231ba465beb92b642ac549366d96e38960e08eac0c84224868ef2ac6",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/royal-blue/left-sleeve.png",
       "previewChecksum": "df62ab369fabf0064460cd57fa99f0f395da193d72ad4c06dd59bfb23974758e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/royal-blue/left-sleeve.png",
@@ -7974,7 +7974,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-royal-blue-right-sleeve.psd",
-      "masterChecksum": "ce41ab89e14442b563dcdf36aed83b002f8bccd906566d5605e591466fef451c",
+      "masterChecksum": "c0181b4521c7302047bbe9a32641a0aad3cb51077ce878d1c48c1788e0736614",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/royal-blue/right-sleeve.png",
       "previewChecksum": "bdd7003880d98f4393d669d56ffd3ddfdb6dfef24ff5fdb9e49d6eaab6786ead",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/royal-blue/right-sleeve.png",
@@ -8041,7 +8041,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-royal-blue-neck-label.psd",
-      "masterChecksum": "f8850f26ca31365060a4cc93630d91e5a1633f47b40a7ee13801119d9ac1df0e",
+      "masterChecksum": "3f01872eded2f36087cad9ecc010da6a5d5eaefebc89db07365e99ef8500295e",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/royal-blue/neck-label.png",
       "previewChecksum": "f0b2f2ffcffd6dc827678a586cb2e85549e5584720b0d1e20ab8dc29c39697ca",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/royal-blue/neck-label.png",
@@ -8108,7 +8108,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-forest-green-front.psd",
-      "masterChecksum": "e8019cd9ba1aaade67a6c3a0c66a95318194ac292e7fcd058fef6b0efd9e0cc6",
+      "masterChecksum": "9c39361a9390a0dd71faa91ca2d1c2093d0f5195d0b1a63b31b54f2bb5b5cd8a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/forest-green/front.png",
       "previewChecksum": "33f204bc08c591f61e42a2fdb2ce0f810ff75586477cd22ce3135cafd0b0928e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/forest-green/front.png",
@@ -8175,7 +8175,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-forest-green-back.psd",
-      "masterChecksum": "c21564e7a5a4aa008f5743f57953771bee63e13743fadc965c6baeb6c51f9fa5",
+      "masterChecksum": "4a614847c5180726c6f3e7da3859278baea2f795618cbef9c3f54b4414a8168a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/forest-green/back.png",
       "previewChecksum": "12a62ea66365c2c8130426996561f66dd5c0c2199013182b3fa7c38f9d83d3c3",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/forest-green/back.png",
@@ -8242,7 +8242,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-forest-green-left-sleeve.psd",
-      "masterChecksum": "c78d5e87e2eaff5ad053acc3aab88824b471b4f1e7c37632ab39daa462a8a84e",
+      "masterChecksum": "513c2559e8d16323cbbd07df9e52557c5813948f4f3bbcb0f29be0aace0ced3c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/forest-green/left-sleeve.png",
       "previewChecksum": "53f90b38636f89caeb0fbea7d0b2078b2c9826168dd83e32d7520a0eb973330a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/forest-green/left-sleeve.png",
@@ -8309,7 +8309,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-forest-green-right-sleeve.psd",
-      "masterChecksum": "b0ee4318207cc6978cad7a0278ff23bd0ce1a6732a27ee18717f0cd255ffdcd2",
+      "masterChecksum": "78c5d20e00ea16c5c4bb7e87ea96ccb12516c2d92f3dd220ec131c7060e17423",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/forest-green/right-sleeve.png",
       "previewChecksum": "e3fd8e1d11566ca0a54f594a7a0c0984d438a6af83d4e45cf0fedfd2035f525b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/forest-green/right-sleeve.png",
@@ -8376,7 +8376,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-forest-green-neck-label.psd",
-      "masterChecksum": "901ea543b7cfb2aa22ea236cbd02c04bae3b6bb116116e76bdef9950eb645209",
+      "masterChecksum": "0aa9139572b491cc7f2041f2021c4dbcb1e3b00ffa82c9f8e0e307c781b6520b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/forest-green/neck-label.png",
       "previewChecksum": "45d8583d04ca0e220e7c8eefc4504454f46d3557a4dc52f8e5493ad1ff09dbda",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/forest-green/neck-label.png",
@@ -8443,7 +8443,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-burgundy-front.psd",
-      "masterChecksum": "be47ecfe4464e341b34411f93468150fdb92f028e43ee244cb9301cc0fb9085b",
+      "masterChecksum": "ca3d414042f82114e2efbde507b4d5fd5da5462b4778a1e8b8263802a323972d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/burgundy/front.png",
       "previewChecksum": "792002dc7929ba5af40400fea95762f9c361116b17f1535568a72a33082b14e1",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/burgundy/front.png",
@@ -8510,7 +8510,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-burgundy-back.psd",
-      "masterChecksum": "adb5fd7e210192fd8183acb86125344cef976f9343ae9f5bf5b379ccaeea2a2f",
+      "masterChecksum": "2a7514e4759c1cf39b1d41ce1330a5f7fc54235eb91c491b9e2a171ba71af009",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/burgundy/back.png",
       "previewChecksum": "12da821ba43bdf2999a99f783addb0b04e7822a0fa5106e503d44609a68931a7",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/burgundy/back.png",
@@ -8577,7 +8577,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-burgundy-left-sleeve.psd",
-      "masterChecksum": "76e364d9f8237f862e0931028cac74e2a1ad3941247b20b3e454c1ada761e7a6",
+      "masterChecksum": "bdf3ea136aeef7248e852b1de9eb2288fa089da3274abb6e1c55d12dbc1d61e8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/burgundy/left-sleeve.png",
       "previewChecksum": "8cb96148f4e921c5c8f100d5320a5ad358a04aa10b7dca8af467a314167ddbc4",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/burgundy/left-sleeve.png",
@@ -8644,7 +8644,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-burgundy-right-sleeve.psd",
-      "masterChecksum": "7da0ad7a48b3b7cdf851073b19d1488913bc0b529a553b1a8c9d0076f78365a6",
+      "masterChecksum": "98160e2d571fca54b7c1803076f67bbdc3a7642b0d13767ae2061621890e3e6d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/burgundy/right-sleeve.png",
       "previewChecksum": "28de99db5ba93246eb7a82377b04151e5062fe4d7780c855c5980f0d9fdb2c65",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/burgundy/right-sleeve.png",
@@ -8711,7 +8711,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-burgundy-neck-label.psd",
-      "masterChecksum": "a7587b0b0741d159b8ef531fa31f88a924a097e1b522fa69b17a39776b5d9d7f",
+      "masterChecksum": "9edf79b777e3c437109419fa845d63bd117b17b2d999013e7ac6f69d6c63a1f9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/burgundy/neck-label.png",
       "previewChecksum": "fad30241fe460af493f269325a3dda7322049bf93c6aa428a0fa93792a2dbac0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/burgundy/neck-label.png",
@@ -8778,7 +8778,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-red-front.psd",
-      "masterChecksum": "3d34994776afa2cf8e78842e02a88b143b113968be9e5ea2b998fc75ed04fc16",
+      "masterChecksum": "199d73a495acacf2f994cabc049e6cab5a3557d3cf03d9b16d3796543697e9ab",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/red/front.png",
       "previewChecksum": "0fbea25b0c2756e23fe6955312ac35fedf54e8604b89ff29528be30ea16e48b1",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/red/front.png",
@@ -8845,7 +8845,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-red-back.psd",
-      "masterChecksum": "eab555161741d302dbebc08bac14fbbf0234f95eea1d9d400ebed3aebbaa8b80",
+      "masterChecksum": "1a4e7d79fe2f302d4c7674c0dd4978b9cc31de72a4bcb7166ad0319b3ec3de34",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/red/back.png",
       "previewChecksum": "4e9993c40586b2408ee3653b24cfd4fbdaff486de37d54900f28b544e0b1522c",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/red/back.png",
@@ -8912,7 +8912,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-red-left-sleeve.psd",
-      "masterChecksum": "daed49f4eac85f52b041a2dced1c408209a894f253aff065f6ef15389343ca0a",
+      "masterChecksum": "3aea1d5533a1068cecd4598d2881ca643878d84425c85438062d25d6fa07602f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/red/left-sleeve.png",
       "previewChecksum": "2f3d9d9f52f4cf07fcf3bc9192b6df9da1b210d4a9ece28f46e46bc397d77129",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/red/left-sleeve.png",
@@ -8979,7 +8979,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-red-right-sleeve.psd",
-      "masterChecksum": "10c935ebd01d5ba38635ba21d2d53e9cc96b4adae6cc55e311164249539be4be",
+      "masterChecksum": "d2f756571e5b32460a78420c48ab4f9878e16bdc3884046c2ab7f7ac8bbd3b92",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/red/right-sleeve.png",
       "previewChecksum": "9f93cc756dbc51861e7c3f8a933d91c5b03010196248e7507ac47c877a6db32e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/red/right-sleeve.png",
@@ -9046,7 +9046,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-red-neck-label.psd",
-      "masterChecksum": "1cbcf777f8df3131993322e22628f1e6b3cad3866f526d1d9538fac5f3df30b8",
+      "masterChecksum": "d2476f5ea56dcc6cbcfd642479cdae4e54df3f14b9f4b7abee9901b760a70f6b",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/red/neck-label.png",
       "previewChecksum": "51f46a1c9bce8ab1ced2352732d507b4d8c998f168582f9a9cd587411dcd3f6d",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/red/neck-label.png",
@@ -9113,7 +9113,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-sand-front.psd",
-      "masterChecksum": "8fe84071b87cb165ff4f356269910d1a856852f795e50e01482ad25d8b857b31",
+      "masterChecksum": "83f23c20f0377f1fb6a7a12a115a0d22d74ed1fb0182cfde2942091871773058",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/sand/front.png",
       "previewChecksum": "18f9fc03508ed714669730f46e6105b0fa86451e25f8f7964d9274f4a3e2a67f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/sand/front.png",
@@ -9180,7 +9180,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-sand-back.psd",
-      "masterChecksum": "f058a9713554f0b1c8c0d97d5f65d3b88f03453a0e580906214cb7320a757852",
+      "masterChecksum": "6ff86c5d8c52f6a89e71847c58bbf63e07a51b64fee2f93567df2f818b15aac5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/sand/back.png",
       "previewChecksum": "4c94ba5acff36a2a94ce49ce33772b87586564bd13594bcaf9d90f0509e32ad0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/sand/back.png",
@@ -9247,7 +9247,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-sand-left-sleeve.psd",
-      "masterChecksum": "fb059fa285dcbb7f5976c07ad07836d44da9f184a997c61219e1c90c6b0e2cbb",
+      "masterChecksum": "1cfa25a491a64bdbb022ab0f03a916a70e88f9e343c719a1a7a905d958808d32",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/sand/left-sleeve.png",
       "previewChecksum": "fcf613553ee8b62d9a66d6998dffab422829f7ca1f251c0523dfb22d6f72449e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/sand/left-sleeve.png",
@@ -9314,7 +9314,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-sand-right-sleeve.psd",
-      "masterChecksum": "17f859a6ec5e5d108d3f3f9d06063971c71329db894aaa982d652807f2294dcf",
+      "masterChecksum": "b7a98572da62a0e1ad259b5d884132a2f318d3dd9e529e0cbf0c0aaf52026371",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/sand/right-sleeve.png",
       "previewChecksum": "009fab79c271f21ae71bb285762635eb4bb0aaf8a5e275cda9209ce8715fb2c0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/sand/right-sleeve.png",
@@ -9381,7 +9381,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-sand-neck-label.psd",
-      "masterChecksum": "fc7a3d9474df290577f3f26ec2054bff0fba8af5a144076a2af54b111619378d",
+      "masterChecksum": "2486503dd1ebc4019894bcb3874c9f4eb8a81c88a918d7a1c363584a3de5fff0",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/hoodie/sand/neck-label.png",
       "previewChecksum": "d6c64bdc281fadfc1bb51785cac1f74ad7c08af7dce3337af9afa3a81f5e779a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/hoodie/sand/neck-label.png",
@@ -9448,7 +9448,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-white-front.psb",
-      "masterChecksum": "307008697ce271de67e0b5d71906f0b4bd1e7cba9cdc7caad37a15b7df11b8d8",
+      "masterChecksum": "0180e2cd075a08dd3f145dc2bdd7ac8b8583a8f77421ce990ab72fd84fd7b8ee",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/white/front.png",
       "previewChecksum": "b767c5fe96115a59cfe82d629d69d6e5455e45dfff7703f82c399b105dea56a6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/white/front.png",
@@ -9515,7 +9515,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-white-back.psb",
-      "masterChecksum": "ab04715fbb4d327e1bc4033b0e0c263b7f866e577052530765bf4dbc91c95d04",
+      "masterChecksum": "0f1d57015a392e006366bad150b3e8ab1c0de5fa5da653a50e283339248c4d9c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/white/back.png",
       "previewChecksum": "a44332eabafccc99439f2c7a370ff4e57e366fc3902ae3beb9b63e5165ae9b2b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/white/back.png",
@@ -9582,7 +9582,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-white-wrap.psb",
-      "masterChecksum": "2a1d62caf3e96775c55006a871bfc0e561bfa27dbd03db2638c7f330bc38d7d3",
+      "masterChecksum": "ccb01e70baa2cb83cb278c268b1efef5783c39e1ba2d9000ef8edcf27bb6f29f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/white/wrap.png",
       "previewChecksum": "c7c908bec01dc97a4baae3dde243128799d9a1f8d004290c7744a17af5f8cb77",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/white/wrap.png",
@@ -9649,7 +9649,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-black-front.psb",
-      "masterChecksum": "fbba54c2e4dd44abadcc8ccf84cf4568baa36a1433cef9ab58436cad49afc21e",
+      "masterChecksum": "6f1ea6cb32ae6de665a889f6d927e397e91bc4a232db338113df6240d8e413d3",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/black/front.png",
       "previewChecksum": "ee0b9ce87237d64a3b40686342c574298a6f258c400babedb62b1e11e8b6dc82",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/black/front.png",
@@ -9716,7 +9716,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-black-back.psb",
-      "masterChecksum": "7a95b9bc31027cf4df30bd2df05a1b31002b43593c25c0a84766e2cdd2404ec0",
+      "masterChecksum": "2d65ccfd09e33fd5e69bdc15cda9b61512c8431f0c4f1b200d6459975a309c6a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/black/back.png",
       "previewChecksum": "01d8bb317178ed10f20a49665b8459567a997738cfa8761c12cc7d5aba78d058",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/black/back.png",
@@ -9783,7 +9783,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-black-wrap.psb",
-      "masterChecksum": "dcff7bf1b5a7edd519cc584a736c2d91990e3f15b033598891aaea8d65cd41af",
+      "masterChecksum": "dfa42faa6945b9672346cbb8a27d0a1678d681e6f840987283e9756d2c0af6ea",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/black/wrap.png",
       "previewChecksum": "f0ffd3b2762f42779dd9b7050afedf10d1fedf45c8cc35655cb01765592253b6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/black/wrap.png",
@@ -9850,7 +9850,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-navy-front.psb",
-      "masterChecksum": "056151ab512367b55bd93e8be1fabcfbd11f99f4ef03a64ee1f3c43ebd5e0ca1",
+      "masterChecksum": "8a58629fb4b5ea9b0a4e37d647b6af65762f988abb7a6f6ff351d3a5b7d267c0",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/navy/front.png",
       "previewChecksum": "40bc18d52f1418db1b53173223f81409c30fcb6c5514f59b7adacfea1b40be3e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/navy/front.png",
@@ -9917,7 +9917,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-navy-back.psb",
-      "masterChecksum": "efa744a5b49736a58ba11159eeb0efc78a797a891736a826291da13715c818ed",
+      "masterChecksum": "970e92432e9166d9c2b79c352eda8f53c536f192cf92a8a09f922fc6605dc692",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/navy/back.png",
       "previewChecksum": "1ae659bbdab8b79f3dfbad79bb3cd3395f8b8d36248cd349b7e2bbab527fbb2e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/navy/back.png",
@@ -9984,7 +9984,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-navy-wrap.psb",
-      "masterChecksum": "59a29b07e861973f983f088a3555ef2f0fc23190e27e8d4a36706712ad605399",
+      "masterChecksum": "a3692508efff6d3a1030d96263d5997444f1d269e7c6e89d2e1d1182ef95feec",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/navy/wrap.png",
       "previewChecksum": "57ca780b52d75a148b16206b2dd6bbdf15afc5c34c4b3a514722afdaf0c7e7f8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/navy/wrap.png",
@@ -10051,7 +10051,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-red-front.psb",
-      "masterChecksum": "1d91f25bb948ee28e672ea0d942257a366346ef6d5cb7570ba67a5f6ac14d1fc",
+      "masterChecksum": "b8ac067542c118267e6a026b7048e99260ba0916bc300d5af935301a172fad61",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/red/front.png",
       "previewChecksum": "05b5dcc753ad255564f0f76245111e036d48fc0c84e1fd41e924a30e3c965212",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/red/front.png",
@@ -10118,7 +10118,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-red-back.psb",
-      "masterChecksum": "93bd5c70381937e10f6477b311da3ffb1fe86144bba1134817adcc2bee37415f",
+      "masterChecksum": "da3dcf14da15cbbfb51a74db0c3240a8feec81fd7b58dfad84b77921c57d8055",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/red/back.png",
       "previewChecksum": "10bf7e35fceea36cc3fe146b30be55263c488ebb6e34c06e356b4a589ecb8a54",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/red/back.png",
@@ -10185,7 +10185,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-red-wrap.psb",
-      "masterChecksum": "29dfe8cce5cf7378b593be8d2119a6e3d4c6a9bbce031314c1b9b3e06ba101af",
+      "masterChecksum": "7dd71232fbad9788d367105689a2cfe796b7aab1c18c347cddf32cc8e0845cb7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/red/wrap.png",
       "previewChecksum": "5cdc1580dfbcd90cff34e6d404cc34ba5509ec904d306ab08f30420612c8ce74",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/red/wrap.png",
@@ -10252,7 +10252,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-green-front.psb",
-      "masterChecksum": "21377158c758163a29cfda5ae6704f4e477cedd583ac53fe1121a7b31cfb5344",
+      "masterChecksum": "a9cf0f5a3722e210d6e5612b89064f4c4c29bdd553a9d35479d6683228497116",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/green/front.png",
       "previewChecksum": "3fe80000b69b601e190a5a4ceb9e6aa5c0afac725f2945eda2d65a88dae34364",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/green/front.png",
@@ -10319,7 +10319,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-green-back.psb",
-      "masterChecksum": "e640d0bfdcefc8bc1e85febaa86326d92b5c269915fa844a130329cdcf673fa2",
+      "masterChecksum": "5b415935de16ca952288e2821e84a1aa35f750199a8d8539bf228b860ed8eee9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/green/back.png",
       "previewChecksum": "a577a81cbee1fbbcf35601ab85d772360ae14419f30c476f7b31f3532a20ff49",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/green/back.png",
@@ -10386,7 +10386,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-green-wrap.psb",
-      "masterChecksum": "26e1475ff3f9b18e52ef209a5e224d17188fd9184ac957881d9b7613b536d896",
+      "masterChecksum": "64bea124dacfc8142f72c567f18a2ca42f83362035521bfb6575e08c48faba1d",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/green/wrap.png",
       "previewChecksum": "1c78571c46e6708b3e702520ee43ca79beb22b4daf31d77139e609c72a6f4c48",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/green/wrap.png",
@@ -10453,7 +10453,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-purple-front.psb",
-      "masterChecksum": "3f235523dc83ea7ffaa54aed250399d9d4eec8b49034eb6be7940bc25ea638d6",
+      "masterChecksum": "b575cb8ac6db9965f5094fcb2675ab43b0e5260750973b8c3b85075c5c2b57d4",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/purple/front.png",
       "previewChecksum": "6c38343381d4412b2ab720be0ebd72869a3ae04158ed292bccc2247ee73ddc46",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/purple/front.png",
@@ -10520,7 +10520,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-purple-back.psb",
-      "masterChecksum": "4a8d6c236945785d1c09ef269052a59b66744f928fc8848c0c2e9a5592aba91e",
+      "masterChecksum": "ea60390528de984bdbaf94f5637c95595a3f6ad20dd9473638c25ed789155879",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/purple/back.png",
       "previewChecksum": "ab63cc01370900d62d49942b21531845380a9c6c851d032545237fcda2bdea41",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/purple/back.png",
@@ -10587,7 +10587,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-purple-wrap.psb",
-      "masterChecksum": "bfb4809ef1f14098b61e7cf0aec3d64a853a3eed90e2e8f5d7b28f3ea89edf64",
+      "masterChecksum": "aec2ad08115828d1d1111569565fb706e9d8b616ed97ebd99e1b6639f5daed07",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/purple/wrap.png",
       "previewChecksum": "8ef4396c936278cad60f4562707d09ba5dc28601eabaf835b2983547527689bb",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/purple/wrap.png",
@@ -10654,7 +10654,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-sky-blue-front.psb",
-      "masterChecksum": "6836f54b6dace859d7f6c3e7ce22c290840ddb3f19a13ada40fe4431e6673cb6",
+      "masterChecksum": "712973e316675f5bd09c6fd7707c2a504100ac63d520d330900392975c3a6229",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/sky-blue/front.png",
       "previewChecksum": "f448cea6a9bb42e58201b973f871e89808e7e0fcf206221175b3f3ff0ce51529",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/sky-blue/front.png",
@@ -10721,7 +10721,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-sky-blue-back.psb",
-      "masterChecksum": "ae03076342ed5035427e2f6b613bc6128cf5694ee88af944f00ab40d681d4712",
+      "masterChecksum": "b77b4db5b05f937f7caaf1c4ed95bf6e4f32fe60a72833b424dd214cd76ad4a8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/sky-blue/back.png",
       "previewChecksum": "c3c9f71301c57536cdf4bcb13325f78206e55f8361a4198714e85a29808b43dd",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/sky-blue/back.png",
@@ -10788,7 +10788,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-sky-blue-wrap.psb",
-      "masterChecksum": "b787ff2275fcda5c83089f873b78791ba8b580f68e2f52e2533e336c790c9f1a",
+      "masterChecksum": "5b8888cd2a78c31cf5f9813897506832d38f11c83b7eda4b32daf7a29689b5b2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/sky-blue/wrap.png",
       "previewChecksum": "04ce296fe28c0d60dcfeb71b798c5f31f2a84b0e6134253277be01428078907a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/sky-blue/wrap.png",
@@ -10855,7 +10855,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-pink-front.psb",
-      "masterChecksum": "9eb20fa62393a6b775bf219d6a1973cbafce9588cf0341e4f63d4ba7f7bb3aae",
+      "masterChecksum": "e648f96a6c34b8c8f7f7b49e1623e9629db7e05d8e14fd52726d75c8248a22e7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/pink/front.png",
       "previewChecksum": "d34c3e894be692df3d32999430225e6562eaa4f5625ec7ed07a5348ed2ac4b8f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/pink/front.png",
@@ -10922,7 +10922,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-pink-back.psb",
-      "masterChecksum": "c7bc660f214440dd212ed24a4e2e2de0290c1f59a19dba8d754fe292cfeeff6d",
+      "masterChecksum": "5aed0eb656117a5f6f6ea179bd98de79db1bcd8243574a820a168caf385f45d9",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/pink/back.png",
       "previewChecksum": "65b4d9c373b2a58b02e296bf56ab381933bac5079ad3d39c670cbd1e90a88399",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/pink/back.png",
@@ -10989,7 +10989,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-pink-wrap.psb",
-      "masterChecksum": "f570439fb8d1f61d651d703eaf00577bb7ca03e53ca9795847514980a4ffb66a",
+      "masterChecksum": "86cf3b62a2c7917817a2a4217b2bb950df290085239a03173ede40d1df1524e7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/pink/wrap.png",
       "previewChecksum": "ff01846d4cb63e4b1cd978e70d5766cd70cf1c2227e9294068b2775ed8a0b844",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/pink/wrap.png",
@@ -11056,7 +11056,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-maroon-front.psb",
-      "masterChecksum": "502b12c90b4f9c7f368f5af0ce50b1f5238b1cd30cda0250ec9d2876749ff2ca",
+      "masterChecksum": "77bc179f0eea10100bb5500e760cc42567262a1c3d34e2c5712d7a5e912ea72a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/maroon/front.png",
       "previewChecksum": "1bcdaf6bcbafdcd68477e4276ef7544f04cd37bc886c0f9bd06c2e1421beec63",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/maroon/front.png",
@@ -11123,7 +11123,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-maroon-back.psb",
-      "masterChecksum": "a3c3dc819e228fbb6a4f16f346d33da39dc6ecaff2bf329af3df3c92362305ce",
+      "masterChecksum": "dff1fb881f31e69ec3ce0b4b955dd048771189fd26147901e0187db3efcfd3aa",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/maroon/back.png",
       "previewChecksum": "a210fa3fd3091e93c86e178a9ed5f6b2b36df068d7079b887c068e522d18745b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/maroon/back.png",
@@ -11190,7 +11190,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-maroon-wrap.psb",
-      "masterChecksum": "681d66d0bf24c2a17e23d39d8f4d748291f05b959759143b23cc122f218f1983",
+      "masterChecksum": "ce3280e2ad1a42d884b03d19e7d7d7a53a0f1e2e22434d40a664ab0a05f5427f",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/maroon/wrap.png",
       "previewChecksum": "f03150f9640f5b1b8c6b20bc75175242df29885c4344124bbaffb1329367ad5b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/maroon/wrap.png",
@@ -11257,7 +11257,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-orange-front.psb",
-      "masterChecksum": "d9afa5e34f76968aaa8621890c4c13c5b541252030284f8d8b7473b773893925",
+      "masterChecksum": "f5a7f8f9b418aaa68d339103af33d11dbf0b7faf4dfe126c2ef655398ff3c850",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/orange/front.png",
       "previewChecksum": "d6d2cb913da8067d33b3552f0977c9172f829743b2bf28d33c8828284817ed84",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/orange/front.png",
@@ -11324,7 +11324,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-orange-back.psb",
-      "masterChecksum": "142ae7445fd5d2191f0936270c9ae72e6688ee87ee21d05f3321fd7974cb0eba",
+      "masterChecksum": "a90d57b28c5734a8dbb811099c79c674738178a6768ab7b94ba3cbf21705b353",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/orange/back.png",
       "previewChecksum": "10b6d9021df6997c4f1d71951929e465fa597536fca5e7d19743bc8bf1a101ee",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/orange/back.png",
@@ -11391,7 +11391,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/mug/mug-orange-wrap.psb",
-      "masterChecksum": "b3e6125efc66c712a9328e548a9e51dc47b7238cc74c9c56ac475c48d77e9f57",
+      "masterChecksum": "bb5aa50ea28016a9dbba9e4e4283e1e66272663906df91ac6b25f515a7203fea",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/mug/orange/wrap.png",
       "previewChecksum": "06f52225760ae6eea9960aa62acf0fe6a054ddab3699d40a58a39c5d42b620d8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/mug/orange/wrap.png",
@@ -11458,7 +11458,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-white-front.psd",
-      "masterChecksum": "d1fdd6a0ea2543973b000da4fd7df7454685c5b23bc389fa7590afcc89af0354",
+      "masterChecksum": "8e660b96558e5d7a25206bb9cc6dbf441dc5e0fcf4ee728ed7c348677bcb6ab1",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/white/front.png",
       "previewChecksum": "00f78813fbe4fbe2fe9bb382f310ed49836fbc424278c58cbfc7c7bf779eb0fd",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/white/front.png",
@@ -11525,7 +11525,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-white-back.psd",
-      "masterChecksum": "4f3386fcb234dca405ac72ae4d2223b66a8c6cb7d5f55be35382db9c80be5eed",
+      "masterChecksum": "7517fad74c7ea626f3404658985bb347920f540f87008c16e5a290b29fdbe4e2",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/white/back.png",
       "previewChecksum": "9d4940133ef4146b732bbf4ebd3bc6a3acd39d95d1ba65f19fd7c6f98d2669a8",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/white/back.png",
@@ -11592,7 +11592,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-black-front.psd",
-      "masterChecksum": "db919864d4bd930349280b316cb2db1aa254918fc2cd6a69d785e4555bf2e2ac",
+      "masterChecksum": "3d3876b095b4a6cbab271a3d226d95ae21cd87adc826c9e25cd5dd786fc231c5",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/black/front.png",
       "previewChecksum": "19b22ca375d48fc3743dec96179ca4c7da3ae6d38736aa6a2e43ac17927efe8f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/black/front.png",
@@ -11659,7 +11659,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-black-back.psd",
-      "masterChecksum": "75f88007e472f491c7c8bee855c2b931dfc32a86f470bc2ac3b5043eab75f71d",
+      "masterChecksum": "49a6e25a7d9671f0e927db44928189f7883f89a2eb95043ceb1cd62ff86e5d1c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/black/back.png",
       "previewChecksum": "09583c18f3f1a2bf62aa5cdf502d31a2293abe4e4b6757edaf288dbc3d3a72a9",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/black/back.png",
@@ -11726,7 +11726,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-navy-front.psd",
-      "masterChecksum": "13b3262d7e63c42fc59c973c2fe96c42725f51a4437d4ebb4fae81d5a7c385a9",
+      "masterChecksum": "cfd5b8b46f93e302a75219a9c89b1a85564704ce1e94c2e4276bd06a3d1330bb",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/navy/front.png",
       "previewChecksum": "3f1a419f2f6c600a0ec1e7e45c90c236f7bcbd1ce99e5c0f98ebaa64bccf1f8c",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/navy/front.png",
@@ -11793,7 +11793,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-navy-back.psd",
-      "masterChecksum": "030adb510bc0451ebf1a932ac2050caa6ca67b7474dba5e90533cc6b87b05a82",
+      "masterChecksum": "718287407370808b6c054c871d45bf2b5b529a2312d8f5eb18f4a1bcedf47465",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/navy/back.png",
       "previewChecksum": "9ebcdfa428d132381dbe3be631013f48c770751cdeffd9298bcdc7789857eaef",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/navy/back.png",
@@ -11860,7 +11860,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-maroon-front.psd",
-      "masterChecksum": "3b20494314ea53689ff90193a32d3ba863667ca57a06c048d46d9ddd981b2b1a",
+      "masterChecksum": "ac39e5912ae7d9fd61bc5c1b3e2d80daf39ae72024e9abcb83611d64b3291cd7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/maroon/front.png",
       "previewChecksum": "d1433425eb22544b05da5b7ce48cd55fbf7ab42fc8797e44f3257520412457f6",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/maroon/front.png",
@@ -11927,7 +11927,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-maroon-back.psd",
-      "masterChecksum": "377b54edf43a119b15c4185c4d9209815c855ead27ba03b09fde02f4c6d64a5a",
+      "masterChecksum": "a99fc922ff4c23e50a48c479e882a827c0f825475442a9a99f1a42b16316ddb7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/maroon/back.png",
       "previewChecksum": "dccd9aa2d55654c4a76256cabe103449e715778e475de8313be43647e6babc4a",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/maroon/back.png",
@@ -11994,7 +11994,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-olive-front.psd",
-      "masterChecksum": "11509bb00c90e2f2cbbf0d3eb89ceddc694ef56c72aff8b5a6387345f1eb1a11",
+      "masterChecksum": "720d75cc857b6db19104af2e06a3ac61c7b63e19f94fb0a73357971412259292",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/olive/front.png",
       "previewChecksum": "896be6eaddb3e1109b44fe288cb90210820685fe28c0dfeae50cb3af0de6f926",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/olive/front.png",
@@ -12061,7 +12061,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-olive-back.psd",
-      "masterChecksum": "32ba413d0c2f759d79554076ea3b1405d0c9c9254e669b3c99124a873635435a",
+      "masterChecksum": "71f674d05753ebea95184500afaa180d3dd58b97fdbb9235a2df19a1af3a5074",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/olive/back.png",
       "previewChecksum": "7aff2cea7caa0cf49f17a7d3cca5c7ad7264898485a14d690aba7b6331c7b23e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/olive/back.png",
@@ -12128,7 +12128,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-red-front.psd",
-      "masterChecksum": "c38168c73e71ed553335f949b7b4253c6ba731681a89009e130e5dce682b2611",
+      "masterChecksum": "36aff0147b915628467d41470b75897baf84964247f5d06a99578f52f88e9f90",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/red/front.png",
       "previewChecksum": "c2f5c05a3e4d0d0bb4de7e988d6d7fa6cb0a491a1833a5220cd7bf0445311ee0",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/red/front.png",
@@ -12195,7 +12195,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-red-back.psd",
-      "masterChecksum": "3f1ed5edb4e759081c50ed8aea6ef9aad3bfd1b453f3fe9eaa7b5465137bcade",
+      "masterChecksum": "874322ee19231ea0abc7acd220163fc52bd4edfcc23eaeb4f582dea6c97a8cf7",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/red/back.png",
       "previewChecksum": "b9069d10ff20e0a6ce69026e81f8937a5f3fcb4a1f1d27c60e9974a559ec9e7f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/red/back.png",
@@ -12262,7 +12262,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-grey-front.psd",
-      "masterChecksum": "5769fff0ab07192ba26df7c1466273aaa302b8ca0698024c7cecb9395f2fcfa0",
+      "masterChecksum": "e10f88e6ebcf978963be332a0ac8a6fc0c2694b519ad4e72057068946088bb80",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/grey/front.png",
       "previewChecksum": "7d64260b5287e892c50ae0db7444514f1b488ac70786cd54cad57d249334db05",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/grey/front.png",
@@ -12329,7 +12329,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-grey-back.psd",
-      "masterChecksum": "114e76d1e1d8231a86a9227c1da4a40b93d4cd4789c7c022d5c65beb77bcc7cc",
+      "masterChecksum": "f693bad41d1881461fed7514ec0d073a68e30a151c7ef956d071ae9afe26cc05",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/grey/back.png",
       "previewChecksum": "b391ae3e414718215ba2d5c8051babea26643a19382688366fc5448dba38d12b",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/grey/back.png",
@@ -12396,7 +12396,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-forest-front.psd",
-      "masterChecksum": "ef48efe8c922859e35398ac4c19cba8968a690a79c9ee9b0a67ca98273d5a865",
+      "masterChecksum": "c13b31a66b311585725ec11c4a8e15282408b3c063fcab6a1c115c73b028c4c8",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/forest/front.png",
       "previewChecksum": "8726eb7998b966159c8542bca06b3069d8b80a336422d7eb14420d4b298f4e39",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/forest/front.png",
@@ -12463,7 +12463,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/cap/cap-forest-back.psd",
-      "masterChecksum": "54106afeb1f2490d15b7525650dfce541302a2c582f6a81382ff78971d3e8658",
+      "masterChecksum": "9b7a8118a95e8c4c132c4a6ead225489538eb5f049b6f8079fbea0e5c9aea92a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/cap/forest/back.png",
       "previewChecksum": "24f1cba92fae5ddd9a25c11ad4bf4e4bcd0018cffe8984984a9b5abac078aad2",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/cap/forest/back.png",
@@ -12530,7 +12530,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/waterbottle/waterbottle-white-front.psb",
-      "masterChecksum": "a1a2acfc8286611fcbd78467301ef3a2731950944a4281d847ae412e13522542",
+      "masterChecksum": "8909b47ec3f3a93f3d7f016979c4974505028949af59e20dfc1b7bd2fb92eb6a",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/waterbottle/white/front.png",
       "previewChecksum": "87e49ab4ba4b378243c3c8b1bbfdf0585035185dd824596bf85c77c0ddbaec7f",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/waterbottle/white/front.png",
@@ -12597,7 +12597,7 @@
         "proofDesign": "embedded-linked-file"
       },
       "masterPath": "dist-mockups/staging/smart-v10-v3/masters/waterbottle/waterbottle-white-back.psb",
-      "masterChecksum": "7b648b96258c3efab22b448bb11b8df8758d4af579dbce76926d2b34c2f17f51",
+      "masterChecksum": "2b8f705add30242e8a056f9173b964e1f9f78d3844fd96743229be04b301fa3c",
       "previewPath": "dist-mockups/staging/smart-v10-v3/previews/waterbottle/white/back.png",
       "previewChecksum": "ecadf46de1616dc79686c54faba6604e28a5607c2d5afb63083afcc0d143c53e",
       "proofPreviewPath": "dist-mockups/staging/smart-v10-v3/proof-previews/waterbottle/white/back.png",

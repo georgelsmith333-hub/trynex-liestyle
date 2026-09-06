@@ -4,6 +4,8 @@ import Konva from "konva";
 import { useDesignStore, useSelectedLayer } from "@/hooks/useDesignStore";
 import { DesignLayer } from "./DesignLayer";
 import { Layer as LayerType, PrintZone } from "./types";
+import { LiveCompositorPreview } from "./LiveCompositorPreview";
+import type { ComposerLayer, UnifiedMockupSurface } from "../design-studio/composer";
 import { X } from "lucide-react";
 
 interface CanvasPoint {
@@ -20,6 +22,15 @@ interface Props {
   overlay?: React.ReactNode;
   /** Optional native image element to use as the mockup background inside Konva. */
   mockupImg?: HTMLImageElement;
+  /** Shared compositor input for the live visual preview. */
+  liveSurface?: UnifiedMockupSurface;
+  liveGarmentColor?: string;
+  liveLayers?: ComposerLayer[];
+  liveCurvature?: number;
+  liveFabricTexture?: boolean;
+  liveEnabled?: boolean;
+  /** Keep the legacy Konva artwork visible for local PSD staging only. */
+  interactionOnly?: boolean;
   /** Print zone in the 1000×1000 coordinate space. CanvasArea maps it to the stage size. */
   printZone: PrintZone;
   /** Scale the design layer rendering so it aligns with the mockup print zone. */
@@ -61,7 +72,27 @@ function getArtworkDimensions(layer: LayerType, scale: number) {
   };
 }
 
-export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZone, onCanvasAction, onDrawStart, onDrawMove, onDrawEnd, onPickColor, onOpenImageTools }: Props) {
+export function CanvasArea({
+  width,
+  height,
+  mockup,
+  overlay,
+  mockupImg,
+  liveSurface,
+  liveGarmentColor,
+  liveLayers,
+  liveCurvature,
+  liveFabricTexture,
+  liveEnabled = true,
+  interactionOnly = false,
+  printZone,
+  onCanvasAction,
+  onDrawStart,
+  onDrawMove,
+  onDrawEnd,
+  onPickColor,
+  onOpenImageTools,
+}: Props) {
   const trRef = useRef<Konva.Transformer>(null);
   const drawingRef = useRef(false);
   const { layers, selectedIds, activeTool, selectLayer, clearSelection, setActiveTool, deleteLayer } = useDesignStore();
@@ -126,6 +157,18 @@ export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZon
       }}
     >
       {mockup}
+      {liveSurface && liveGarmentColor && liveLayers && (
+        <LiveCompositorPreview
+          width={width}
+          height={height}
+          surface={liveSurface}
+          garmentColor={liveGarmentColor}
+          layers={liveLayers}
+          curvature={liveCurvature}
+          fabricTexture={liveFabricTexture}
+          enabled={liveEnabled}
+        />
+      )}
       {layers.length === 0 && (
         <div
           className="absolute inset-x-0 bottom-3 z-10 flex justify-center pointer-events-none px-4"
@@ -226,6 +269,7 @@ export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZon
               isSelected={selectedIds.includes(layer.id)}
               onSelect={() => selectLayer(layer.id)}
               onOpenImageTools={layer.type === "image" ? onOpenImageTools : undefined}
+              interactionOnly={interactionOnly}
               stageScale={scale}
               printZoneCenter={center}
               printZoneSize={{ w: pz.w, h: pz.h }}

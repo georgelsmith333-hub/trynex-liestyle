@@ -116,7 +116,7 @@ function sourceSurface(family, color, view, manifest = readSourceManifest()) {
   return row;
 }
 
-function readPng(file) {
+export function readPng(file) {
   const png = PNG.sync.read(readFileSync(file));
   return { data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length), width: png.width, height: png.height };
 }
@@ -136,7 +136,7 @@ function mirrorPng(source) {
   return { data, width: source.width, height: source.height };
 }
 
-function pngBytes({ data, width, height }) {
+export function pngBytes({ data, width, height }) {
   const png = new PNG({ width, height });
   Buffer.from(data.buffer, data.byteOffset, data.length).copy(png.data);
   return PNG.sync.write(png);
@@ -313,7 +313,7 @@ function deriveSurfaceBase({ family, color, view, source, sourceBack, faceTempla
 }
 
 /** Solid RGBA canvas. */
-function solid(w, h, r, g, b, a = 255) {
+export function solid(w, h, r, g, b, a = 255) {
   const data = new Uint8Array(w * h * 4);
   for (let i = 0; i < w * h; i++) {
     data[i * 4] = r; data[i * 4 + 1] = g; data[i * 4 + 2] = b; data[i * 4 + 3] = a;
@@ -355,7 +355,7 @@ function stableSoId(family, color, view) {
   return `${doubled.slice(0, 8)}-${doubled.slice(8, 12)}-${doubled.slice(12, 16)}-${doubled.slice(16, 20)}-${doubled.slice(20, 32)}`;
 }
 
-function shadowMap(base) {
+export function shadowMap(base) {
   const data = new Uint8Array(base.data.length);
   for (let i = 0; i < base.data.length; i += 4) {
     const luminance = 0.2126 * base.data[i] + 0.7152 * base.data[i + 1] + 0.0722 * base.data[i + 2];
@@ -368,7 +368,7 @@ function shadowMap(base) {
   return { data, width: base.width, height: base.height };
 }
 
-function highlightMap(base) {
+export function highlightMap(base) {
   const data = new Uint8Array(base.data.length);
   for (let i = 0; i < base.data.length; i += 4) {
     const luminance = 0.2126 * base.data[i] + 0.7152 * base.data[i + 1] + 0.0722 * base.data[i + 2];
@@ -377,6 +377,87 @@ function highlightMap(base) {
     data[i + 1] = 255;
     data[i + 2] = 255;
     data[i + 3] = alpha;
+  }
+  return { data, width: base.width, height: base.height };
+}
+
+/**
+ * Extract only source-photo detail pixels that must sit above artwork.
+ *
+ * The base pass already owns the complete product silhouette. Repeating that
+ * silhouette in the protected layer would make the runtime brittle and would
+ * hide artwork instead of preserving seams and hardware. This pass therefore
+ * keeps local contrast edges from the reviewed source photo, which captures
+ * collars, hood cords, stitching, rims, handles, cap seams, and bottle
+ * hardware while remaining transparent over ordinary body fabric.
+ */
+export function protectedDetails(base, family, view, zone) {
+  const data = new Uint8Array(base.data.length);
+  const isApparel = family === "tshirt" || family === "longsleeve" || family === "hoodie";
+  const threshold = family === "cap" ? 8 : family === "mug" ? 9 : family === "waterbottle" ? 10 : 11;
+  const edgeGain = family === "cap" ? 22 : family === "waterbottle" ? 20 : 18;
+  let luminanceTotal = 0;
+  let visiblePixels = 0;
+  for (let index = 0; index < base.data.length; index += 4) {
+    if (base.data[index + 3] === 0) continue;
+    luminanceTotal += 0.2126 * base.data[index] + 0.7152 * base.data[index + 1] + 0.0722 * base.data[index + 2];
+    visiblePixels++;
+  }
+  // colorizePhoto scales contrast with the target garment colour. Normalize
+  // the edge signal back toward the reviewed white source so black/navy
+  // surfaces do not lose their collar/stitch detail during extraction.
+  const averageLuminance = visiblePixels ? luminanceTotal / visiblePixels : 255;
+  const contrastScale = Math.min(10, Math.max(1, 220 / Math.max(averageLuminance, 22)));
+  const luminanceAt = (x, y) => {
+    const px = Math.max(0, Math.min(base.width - 1, x));
+    const py = Math.max(0, Math.min(base.height - 1, y));
+    const i = (py * base.width + px) * 4;
+    return 0.2126 * base.data[i] + 0.7152 * base.data[i + 1] + 0.0722 * base.data[i + 2];
+  };
+  const alphaAt = (x, y) => base.data[(y * base.width + x) * 4 + 3];
+  const inZone = (x, y) => x >= zone.x && x < zone.x + zone.w && y >= zone.y && y < zone.y + zone.h;
+
+  for (let y = 0; y < base.height; y++) {
+    for (let x = 0; x < base.width; x++) {
+      const sourceIndex = (y * base.width + x) * 4;
+      if (base.data[sourceIndex + 3] === 0) continue;
+
+      // A protected role may include detail outside the print zone (handles,
+      // rims, brims, and hardware), but never turns into a second full base.
+      const localEdge = Math.max(
+        Math.abs(luminanceAt(x, y) - luminanceAt(x - 2, y)),
+        Math.abs(luminanceAt(x, y) - luminanceAt(x + 2, y)),
+        Math.abs(luminanceAt(x, y) - luminanceAt(x, y - 2)),
+        Math.abs(luminanceAt(x, y) - luminanceAt(x, y + 2)),
+      );
+      const normalizedEdge = localEdge * contrastScale;
+
+      // Keep hardware's broad dark material, not just its outline. This is
+      // important for the bottle lid/loop and the dark adjustment hardware on
+      // the rear cap, whose interiors have intentionally low local contrast.
+      const bottleHardware = family === "waterbottle" && y < 330 && luminanceAt(x, y) < 105;
+      const rearCapHardware = family === "cap" && view === "back" && y > 420 && luminanceAt(x, y) < 120;
+
+      // Ordinary body edges outside the printable region are safe to retain
+      // and make the role useful for handles, hems, and outer seams. Inside
+      // the zone only the edge/detail signal is allowed through.
+      const allowed = normalizedEdge >= threshold || bottleHardware || rearCapHardware;
+      if (!allowed) continue;
+      const inside = inZone(x, y);
+      const detailAlpha = bottleHardware || rearCapHardware
+        ? 210
+        : Math.max(0, Math.min(235, Math.round((normalizedEdge - threshold) * edgeGain)));
+      if (inside && isApparel && view === "neck-label") {
+        // Neck-label is a flat detail crop; keep its seam signal slightly
+        // stronger so the label boundary survives artwork placed on it.
+        data[sourceIndex + 3] = Math.max(detailAlpha, Math.min(180, Math.round(normalizedEdge * 10)));
+      } else {
+        data[sourceIndex + 3] = detailAlpha;
+      }
+      data[sourceIndex] = base.data[sourceIndex];
+      data[sourceIndex + 1] = base.data[sourceIndex + 1];
+      data[sourceIndex + 2] = base.data[sourceIndex + 2];
+    }
   }
   return { data, width: base.width, height: base.height };
 }
@@ -483,10 +564,10 @@ export function buildMaster({ family, color, view, zone, basePng, proofLabel = "
     },
   });
 
-  // 5. Protected details remain a separate layer for future reviewed masks.
+  // 5. Protected source-photo details stay above artwork.
   layers.push({
-    name: "40 Protected Details - source silhouette",
-    imageData: solid(CANVAS, CANVAS, 0, 0, 0, 0),
+    name: "40 Protected Details - reviewed source edges",
+    imageData: protectedDetails(base, family, view, zone),
   });
 
   // 6. Source-derived highlight response

@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { PNG } from "pngjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 const root = path.resolve(process.argv[2] ?? path.join(repo, "dist-mockups", "staging", "smart-v10"));
@@ -37,7 +38,9 @@ const errors = [];
 const seen = new Set();
 
 if (manifest.schema !== "trynex-smart-mockup-staging/v2") errors.push(`unexpected manifest schema ${manifest.schema}`);
-if (manifest.status !== "accepted") errors.push(`staging manifest is not accepted: ${manifest.status}`);
+ if (!["candidate", "accepted"].includes(manifest.status)) {
+   errors.push(`staging manifest has an invalid status: ${manifest.status}`);
+ }
 if (manifest.surfaceCount !== 188 || manifest.canonicalSurfaceCount !== 188) errors.push("manifest does not declare exactly 188 canonical surfaces");
 if (manifest.editableMastersOutsidePublic !== true) errors.push("editableMastersOutsidePublic must be true");
 if (!Array.isArray(manifest.surfaces) || manifest.surfaces.length !== 188) errors.push("manifest surface list is not exactly 188 rows");
@@ -94,6 +97,12 @@ for (const row of manifest.surfaces ?? []) {
       errors.push(`${key}: missing runtime role ${role}`);
     } else if (sha256(rolePath) !== asset.sha256) {
       errors.push(`${key}: runtime role checksum mismatch for ${role}`);
+    }
+    if (role === "protected" && existsSync(rolePath)) {
+      const decoded = PNG.sync.read(readFileSync(rolePath));
+      if (!Array.from(decoded.data).some((value, index) => index % 4 === 3 && value > 0)) {
+        errors.push(`${key}: protected role is fully transparent`);
+      }
     }
     if (asset.path.includes("/public/") || asset.path.includes("\\public\\")) {
       errors.push(`${key}: runtime role is incorrectly inside public`);

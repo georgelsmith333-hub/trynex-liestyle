@@ -876,3 +876,35 @@ The project owner has approved this handoff protocol:
 > **Files/areas changed**, **Remaining work**, **Blocker**, **Next safe action**,
 > and **Verification** in `AGENT_HANDOFF.md`. If work stops early, provide the
 > same handoff instead of leaving the next Agent to infer anything from chat.
+
+## Runtime-role regeneration checkpoint (2026-09-06)
+
+```text
+Status: ready for review — local structural release verified
+Last completed: Finished the pending Smart v10.3 runtime-role generation from the
+  regenerated 188 PSD/source surfaces, promoted only the six reviewed PNG roles
+  plus manifest into the public runtime tree, and repaired the release validator
+  to accept the generator's intentional candidate staging status while keeping
+  the release output structurally-verified.
+Stopped at: After restarting both managed services and completing the local
+  non-mutating verification pass.
+Files/areas changed: tools/build-smartobject-mockups.mjs,
+  tools/build-smartobject-runtime-roles.mjs,
+  tools/validate-smartobject-release.mjs, the v10-v3 staging/runtime-role
+  outputs, and the active public v10 runtime-role PNG/manifest tree.
+Remaining work: Publish/commit this verified local continuation through the
+  normal owner-controlled GitHub/hosting rollout if desired; do not mark visual
+  approval from this checkpoint alone.
+Blocker: None for local structural verification. Production/public rollout is a
+  separate provider step and was not performed in this continuation.
+Next safe action: Review or publish the verified runtime-role continuation, then
+  repeat the non-mutating public canonical/retired-path checks after deployment.
+Verification: Smart matrix 188/188; Smart Object release gate
+  structurally-verified 188/188; public runtime matrix 188 surfaces and 1,128
+  roles; protected roles non-empty; storefront typecheck passed; storefront
+  tests passed (19 files/64 tests); storefront production build passed; API
+  typecheck passed; proxied root, Design Studio, health, readiness, products,
+  mockups, and settings routes returned 200; both managed workflows are
+  running; desktop preview rendered without browser-console errors. No order,
+  payment, or production data was changed.
+```

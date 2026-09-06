@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
+import { PNG } from "pngjs";
 
 const projectRoot = process.cwd();
 const runtimeRoot = join(projectRoot, "artifacts/trynex-storefront/public/mockups/psd-master-v10/runtime-roles");
@@ -64,6 +65,16 @@ for (const surface of manifest.surfaces ?? []) {
       errors.push(`${surface.surfaceKey}: ${role} is not a PNG`);
     } else if (png.readUInt32BE(16) !== 1024 || png.readUInt32BE(20) !== 1024) {
       errors.push(`${surface.surfaceKey}: ${role} is not 1024x1024`);
+    } else if (role === "protected") {
+      const decoded = PNG.sync.read(png);
+      let visible = false;
+      for (let index = 3; index < decoded.data.length; index += 4) {
+        if (decoded.data[index] > 0) {
+          visible = true;
+          break;
+        }
+      }
+      if (!visible) errors.push(`${surface.surfaceKey}: protected role is fully transparent`);
     }
   }
 }
