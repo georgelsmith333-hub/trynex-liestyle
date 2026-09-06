@@ -113,6 +113,45 @@ Verification: Smart v10.3 manifest contains 188 surfaces and all 1,128 role file
   desktop homepage and mobile Design Studio previews showed no browser errors.
 ```
 
+## Latest studio correction checkpoint (2026-09-06)
+
+```text
+Status: locally verified; GitHub publication of this continuation is still pending
+Last completed: Added deterministic selection-aware undo/redo coverage, grouped
+  drag/resize/rotate history transactions, the shared red 44px delete control,
+  grouped product and mug-view switching, and removed the redundant post-switch
+  transform loop. Fixed the compositor canvas-reset regression so artwork no
+  longer erases the already-drawn studio background/base. Runtime shadow and
+  highlight roles now use the reviewed grayscale print mask, and 3D artwork
+  textures receive the same protected/detail role pass as the 2D compositor.
+  Updated the asset audit script to inspect the active v10.3 runtime tree.
+Stopped at: Local storefront/API workflows are running cleanly. Storefront
+  typecheck, 18 test files/59 tests, production build, API typecheck, 188-surface
+  matrix validation, 1,128-role validation, route/API smoke checks, and desktop
+  plus mobile Design Studio previews passed. The water-bottle preview visibly
+  retains the cap key-ring loop from the reviewed base asset.
+Files/areas changed: Design Studio history/store, CanvasArea/DesignLayer controls,
+  product and mug routing, shared 2D/3D compositor role handling, focused store
+  tests, and the active mockup audit script.
+Remaining work: Commit and push only these verified source changes, then recheck
+  the GitHub-connected Cloudflare Pages rollout independently. The current public
+  Pages host returns healthy 200 responses, but its current HTML bundle has not
+  exposed a new Smart v10.3 marker and the edge rollout must not be called
+  complete without checking canonical and retired mockup URLs.
+Blocker: Replit publishing is not configured for this workspace. Cloudflare
+  management API access is provider-managed; public Pages health is available,
+  but rollout freshness is separate from the local/GitHub result.
+Next safe action: Commit/push the verified continuation, re-run the public
+  Pages API/asset/sitemap/robots and retired-path checks, then record the result
+  without changing the Smart v9 fail-closed contract.
+Verification: storefront typecheck/build/tests passed; API typecheck passed;
+  both managed workflows restarted cleanly; local route/API checks returned 200;
+  protected admin probes returned 401; active matrix validators passed 188/188
+  and 1,128/1,128; desktop and mobile previews showed no browser console errors;
+  Cloudflare Pages root, Design Studio, liveness, sitemap, and robots returned
+  200; no order, payment, or production data was mutated.
+```
+
 ## Current studio correction plan (2026-09-06)
 
 ```text

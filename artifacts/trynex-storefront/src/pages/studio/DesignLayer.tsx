@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Image as KonvaImage, Text as KonvaText, Rect, Circle, Star, Line, RegularPolygon, Transformer } from "react-konva";
+import { Image as KonvaImage, Text as KonvaText, Rect, Circle, Star, Line, RegularPolygon } from "react-konva";
 import Konva from "konva";
 import type { Layer, ImageLayer, TextLayer, ShapeLayer } from "./types";
 import { useDesignStore } from "@/hooks/useDesignStore";
@@ -25,8 +25,9 @@ export function DesignLayer({
   printZoneSize,
 }: Props) {
   const shapeRef = useRef<Konva.Shape>(null);
-  const trRef = useRef<Konva.Transformer>(null);
   const updateLayer = useDesignStore((s) => s.updateLayer);
+  const beginHistoryGroup = useDesignStore((s) => s.beginHistoryGroup);
+  const commit = useDesignStore((s) => s.commit);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
@@ -38,15 +39,10 @@ export function DesignLayer({
     }
   }, [layer.type, layer.type === "image" ? (layer as ImageLayer).src : null]);
 
-  useEffect(() => {
-    if (isSelected && shapeRef.current && trRef.current) {
-      trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer()?.batchDraw();
-    }
-  }, [isSelected]);
-
   const cx = printZoneCenter.x + layer.transform.x * stageScale;
   const cy = printZoneCenter.y + layer.transform.y * stageScale;
+  const scaleX = Math.max(0.01, Math.abs(layer.transform.scaleX ?? layer.transform.scale)) * stageScale;
+  const scaleY = Math.max(0.01, Math.abs(layer.transform.scaleY ?? layer.transform.scale)) * stageScale;
   const baseScale = layer.transform.scale * stageScale;
 
   const dragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -57,8 +53,11 @@ export function DesignLayer({
         x: (node.x() - printZoneCenter.x) / stageScale,
         y: (node.y() - printZoneCenter.y) / stageScale,
       },
-    });
+    }, { history: false });
+    commit();
   };
+
+  const startGesture = () => beginHistoryGroup();
 
   const editText = () => {
     if (layer.type !== "text" || layer.locked) return;
@@ -78,27 +77,27 @@ export function DesignLayer({
         x: (node.x() - printZoneCenter.x) / stageScale,
         y: (node.y() - printZoneCenter.y) / stageScale,
         rotation: node.rotation(),
-        scale: node.scaleX() / stageScale,
-        scaleX: node.scaleX() / stageScale,
-        scaleY: node.scaleY() / stageScale,
+        scale: Math.max(0.01, Math.min(Math.abs(node.scaleX()), Math.abs(node.scaleY())) / stageScale),
+        scaleX: Math.max(0.01, Math.abs(node.scaleX()) / stageScale),
+        scaleY: Math.max(0.01, Math.abs(node.scaleY()) / stageScale),
       },
-    });
+    }, { history: false });
+    commit();
   };
 
   const common = {
+    layerId: layer.id,
     rotation: layer.transform.rotation,
     opacity: layer.transform.opacity,
     draggable: !layer.locked,
     visible: layer.visible,
     onClick: onSelect,
     onTap: onSelect,
+    onDragStart: startGesture,
     onDragEnd: dragEnd,
+    onTransformStart: startGesture,
     onTransformEnd: transformEnd,
   };
-
-  const transformer = isSelected ? (
-    <Transformer ref={trRef} rotateEnabled flipEnabled anchorSize={8} borderStroke="#E85D04" />
-  ) : null;
 
   if (layer.type === "image" && image) {
     const imgLayer = layer as ImageLayer;
@@ -111,16 +110,18 @@ export function DesignLayer({
           height={imgLayer.naturalH}
           x={cx}
           y={cy}
-          scaleX={baseScale * (imgLayer.flipH ? -1 : 1)}
-          scaleY={baseScale * (imgLayer.flipV ? -1 : 1)}
+           scaleX={scaleX * (imgLayer.flipH ? -1 : 1)}
+           scaleY={scaleY * (imgLayer.flipV ? -1 : 1)}
           offsetX={imgLayer.naturalW / 2}
           offsetY={imgLayer.naturalH / 2}
+           layerId={layer.id}
           rotation={layer.transform.rotation}
           opacity={layer.transform.opacity}
           draggable={!layer.locked}
           visible={layer.visible}
           onClick={onSelect}
           onTap={onSelect}
+           onDragStart={startGesture}
           onDblClick={() => {
             onSelect();
             onOpenImageTools?.();
@@ -130,6 +131,7 @@ export function DesignLayer({
             onOpenImageTools?.();
           }}
           onDragEnd={dragEnd}
+           onTransformStart={startGesture}
           onTransformEnd={transformEnd}
           filters={[
             Konva.Filters.Brighten,
@@ -140,7 +142,6 @@ export function DesignLayer({
           contrast={(imgLayer.contrast ?? 100) / 100}
           saturation={(imgLayer.saturation ?? 100) / 100}
         />
-        {transformer}
       </>
     );
   }
@@ -170,18 +171,22 @@ export function DesignLayer({
           letterSpacing={(textLayer.letterSpacing || 0) * baseScale}
           x={cx}
           y={cy}
+           layerId={layer.id}
+           scaleX={scaleX / Math.max(0.01, baseScale)}
+           scaleY={scaleY / Math.max(0.01, baseScale)}
           rotation={layer.transform.rotation}
           opacity={layer.transform.opacity}
           draggable={!layer.locked}
           visible={layer.visible}
           onClick={onSelect}
           onTap={onSelect}
+           onDragStart={startGesture}
           onDblClick={editText}
           onDblTap={editText}
           onDragEnd={dragEnd}
+           onTransformStart={startGesture}
           onTransformEnd={transformEnd}
         />
-        {transformer}
       </>
     );
   }
@@ -195,8 +200,8 @@ export function DesignLayer({
       : getGradientFill(shape.fill, printZoneCenter, stageScale);
     const stroke = shape.strokeColor || "#111111";
     const strokeWidth = (shape.strokeWidth || 0) * baseScale;
-    const w = shape.width * baseScale;
-    const h = shape.height * baseScale;
+    const w = shape.width * scaleX;
+    const h = shape.height * scaleY;
 
     switch (shape.shapeType) {
       case "line": {
@@ -214,45 +219,43 @@ export function DesignLayer({
               lineCap="round"
               lineJoin="round"
               hitStrokeWidth={Math.max(18, 26 * baseScale)}
+               layerId={layer.id}
               rotation={layer.transform.rotation}
               opacity={layer.transform.opacity}
               draggable={!layer.locked}
               visible={layer.visible}
               onClick={onSelect}
               onTap={onSelect}
+               onDragStart={startGesture}
               onDragEnd={dragEnd}
+               onTransformStart={startGesture}
               onTransformEnd={transformEnd}
             />
-            {transformer}
           </>
         );
       }
       case "rect":
         return (
           <>
-            <Rect ref={shapeRef as any} width={w} height={h} x={cx} y={cy} offsetX={w / 2} offsetY={h / 2} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
-            {transformer}
+             <Rect ref={shapeRef as any} width={w} height={h} x={cx} y={cy} offsetX={w / 2} offsetY={h / 2} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
           </>
         );
       case "circle":
         return (
           <>
-            <Circle ref={shapeRef as any} radius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
-            {transformer}
+             <Circle ref={shapeRef as any} radius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
           </>
         );
       case "star":
         return (
           <>
-            <Star ref={shapeRef as any} numPoints={5} innerRadius={w / 4} outerRadius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
-            {transformer}
+             <Star ref={shapeRef as any} numPoints={5} innerRadius={w / 4} outerRadius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
           </>
         );
       case "polygon":
         return (
           <>
-            <RegularPolygon ref={shapeRef as any} sides={shape.sides || 6} radius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
-            {transformer}
+             <RegularPolygon ref={shapeRef as any} sides={shape.sides || 6} radius={w / 2} x={cx} y={cy} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
           </>
         );
       case "arrow":
@@ -267,16 +270,18 @@ export function DesignLayer({
               lineJoin="round"
               x={cx}
               y={cy}
+               layerId={layer.id}
               rotation={layer.transform.rotation}
               opacity={layer.transform.opacity}
               draggable={!layer.locked}
               visible={layer.visible}
               onClick={onSelect}
               onTap={onSelect}
+               onDragStart={startGesture}
               onDragEnd={dragEnd}
+               onTransformStart={startGesture}
               onTransformEnd={transformEnd}
             />
-            {transformer}
           </>
         );
       default:

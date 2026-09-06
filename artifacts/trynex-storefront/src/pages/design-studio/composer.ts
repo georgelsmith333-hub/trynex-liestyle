@@ -470,8 +470,12 @@ export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasEle
     outW, outH, imageCache, clipToPrintZone = true, blendMode = "source-over",
     curvature = 0, fabricTexture = false, clearCanvas = true, textBlendMode = blendMode,
   } = opts;
-  canvas.width = outW;
-  canvas.height = outH;
+  // Resizing a canvas clears it. Preserve an existing base pass when the
+  // unified compositor asks composeLayers to add artwork on top of it.
+  if (canvas.width !== outW || canvas.height !== outH) {
+    canvas.width = outW;
+    canvas.height = outH;
+  }
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
@@ -544,6 +548,75 @@ export async function composeLayers(opts: ComposeOptions): Promise<HTMLCanvasEle
 
   if (clipToPrintZone) ctx.restore();
   return canvas;
+}
+
+async function drawRuntimeRoles(opts: {
+  ctx: CanvasRenderingContext2D;
+  runtimeRoles: SmartMockupRuntimeRoles;
+  printZone: ComposerPrintZone;
+  outSize: number;
+  imageCache?: Map<string, HTMLImageElement>;
+  scale: number;
+}) {
+  const { ctx, runtimeRoles, printZone, outSize, imageCache, scale } = opts;
+  const effectCanvas = document.createElement("canvas");
+  effectCanvas.width = outSize;
+  effectCanvas.height = outSize;
+  const effectCtx = effectCanvas.getContext("2d");
+  if (!effectCtx) return;
+
+  const shadow = await loadImage(runtimeRoles.shadow, imageCache);
+  const highlight = await loadImage(runtimeRoles.highlight, imageCache);
+  const printMask = await loadImage(runtimeRoles.printMask, imageCache);
+
+  // Keep the geometric clip as a defensive guard, then apply the reviewed
+  // grayscale print mask as an alpha mask. The mask is grayscale (not alpha),
+  // so destination-in alone would incorrectly leave black outside pixels in
+  // the effect layer.
+  effectCtx.save();
+  effectCtx.beginPath();
+  tracePrintZone(effectCtx, printZone, scale, scale);
+  effectCtx.clip();
+  effectCtx.globalCompositeOperation = "multiply";
+  effectCtx.drawImage(shadow, 0, 0, outSize, outSize);
+  effectCtx.globalCompositeOperation = "screen";
+  effectCtx.drawImage(highlight, 0, 0, outSize, outSize);
+  effectCtx.restore();
+
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = outSize;
+  maskCanvas.height = outSize;
+  const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+  if (maskCtx) {
+    maskCtx.drawImage(printMask, 0, 0, outSize, outSize);
+    const maskData = maskCtx.getImageData(0, 0, outSize, outSize);
+    for (let index = 0; index < maskData.data.length; index += 4) {
+      const luminance = maskData.data[index];
+      maskData.data[index] = 255;
+      maskData.data[index + 1] = 255;
+      maskData.data[index + 2] = 255;
+      maskData.data[index + 3] = luminance;
+    }
+    maskCtx.putImageData(maskData, 0, 0);
+    effectCtx.save();
+    effectCtx.globalCompositeOperation = "destination-in";
+    effectCtx.drawImage(maskCanvas, 0, 0);
+    effectCtx.restore();
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(effectCanvas, 0, 0);
+  ctx.restore();
+
+  // This pass deliberately stays outside the artwork clip. Reviewed alpha
+  // detail exports keep collars, seams, handles, cuffs, and bottle hardware
+  // above artwork without ever redrawing a second full product silhouette.
+  const protectedDetails = await loadImage(runtimeRoles.protected, imageCache);
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(protectedDetails, 0, 0, outSize, outSize);
+  ctx.restore();
 }
 
 export async function composeGarmentMockup(opts: {
@@ -637,38 +710,14 @@ export async function composeGarmentMockup(opts: {
   });
 
   if (runtimeRoles && layers.some((layer) => layer.visible)) {
-    // Role exports are already alpha-isolated and are clipped to the reviewed
-    // print mask boundary by the source contract. The print-zone clip here is
-    // an additional guard against artwork shading outside the printable area.
-    ctx.save();
-    ctx.beginPath();
-    tracePrintZone(ctx, printZone, s, s);
-    ctx.clip();
-
-    const drawRole = async (
-      src: string,
-      blend: GlobalCompositeOperation,
-      opacity: number,
-    ) => {
-      const role = await loadImage(src, imageCache);
-      ctx.save();
-      ctx.globalCompositeOperation = blend;
-      ctx.globalAlpha = opacity;
-      ctx.drawImage(role, 0, 0, outSize, outSize);
-      ctx.restore();
-    };
-
-    await drawRole(runtimeRoles.shadow, "multiply", 1);
-    await drawRole(runtimeRoles.highlight, "screen", 1);
-    ctx.restore();
-
-    // Protected details are intentionally outside the print-zone clip so
-    // collars, seams, cuffs, and handles remain above artwork at their edges.
-    const protectedDetails = await loadImage(runtimeRoles.protected, imageCache);
-    ctx.save();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.drawImage(protectedDetails, 0, 0, outSize, outSize);
-    ctx.restore();
+    await drawRuntimeRoles({
+      ctx,
+      runtimeRoles,
+      printZone,
+      outSize,
+      imageCache,
+      scale: s,
+    });
   }
 
   // Do not redraw the full garment over the artwork here. A whole-frame
@@ -746,7 +795,7 @@ export async function composeMockupSurface(request: UnifiedMockupRenderRequest):
  * an unrelated face or legacy photo. */
 export async function composeMockupSurfaceTexture(opts: {
   canvas: HTMLCanvasElement;
-  surface: Pick<UnifiedMockupSurface, "sourceKitKey" | "manifestRevision" | "runtimeStatus" | "disabledReason" | "contractErrors" | "alphaMode" | "printZone">;
+  surface: Pick<UnifiedMockupSurface, "sourceKitKey" | "manifestRevision" | "runtimeStatus" | "disabledReason" | "contractErrors" | "alphaMode" | "printZone" | "runtimeRoles">;
   layers: ComposerLayer[];
   outSize: number;
   imageCache?: Map<string, HTMLImageElement>;
@@ -764,6 +813,7 @@ export async function composeMockupSurfaceTexture(opts: {
     curvature: opts.curvature,
     fabricTexture: opts.fabricTexture,
     clipToPrintZone: opts.clipToPrintZone,
+    runtimeRoles: opts.surface.runtimeRoles,
   });
 }
 
@@ -776,8 +826,9 @@ export async function composeDesignTexture(opts: {
   clipToPrintZone?: boolean;
   curvature?: number;
   fabricTexture?: boolean;
+  runtimeRoles?: SmartMockupRuntimeRoles;
 }): Promise<HTMLCanvasElement> {
-  return composeLayers({
+  const result = await composeLayers({
     canvas: opts.canvas,
     baseHeight: 1000,
     printZone: opts.printZone,
@@ -792,6 +843,20 @@ export async function composeDesignTexture(opts: {
     blendMode: "source-over",
     textBlendMode: "source-over",
   });
+  if (opts.runtimeRoles && opts.layers.some((layer) => layer.visible)) {
+    const ctx = result.getContext("2d");
+    if (ctx) {
+      await drawRuntimeRoles({
+        ctx,
+        runtimeRoles: opts.runtimeRoles,
+        printZone: opts.printZone,
+        outSize: opts.outSize,
+        imageCache: opts.imageCache,
+        scale: opts.outSize / 1000,
+      });
+    }
+  }
+  return result;
 }
 
 /** Analyse a small downscaled copy of the image and return suggested

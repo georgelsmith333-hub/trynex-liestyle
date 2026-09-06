@@ -69,7 +69,13 @@ function useFaceTexture(
         g: garmentColor,
         z: face.printZone,
         h: face.baseHeight,
-         r: [face.surface.sourceKitKey, face.surface.manifestRevision, face.surface.runtimeStatus, face.surface.contractErrors],
+         r: [
+           face.surface.sourceKitKey,
+           face.surface.manifestRevision,
+           face.surface.runtimeStatus,
+           face.surface.contractErrors,
+           face.surface.runtimeRoles,
+         ],
         l: face.layers.map((l) =>
             l.type === "image"
             ? [

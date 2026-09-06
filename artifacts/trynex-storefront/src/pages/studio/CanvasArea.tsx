@@ -4,6 +4,7 @@ import Konva from "konva";
 import { useDesignStore, useSelectedLayer } from "@/hooks/useDesignStore";
 import { DesignLayer } from "./DesignLayer";
 import { Layer as LayerType, PrintZone } from "./types";
+import { X } from "lucide-react";
 
 interface CanvasPoint {
   x: number;
@@ -40,10 +41,30 @@ function rgbaToHex(r: number, g: number, b: number, a: number) {
   return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
+function getArtworkDimensions(layer: LayerType, scale: number) {
+  if (layer.type === "image") {
+    return {
+      width: Math.max(28, layer.naturalW * Math.abs(layer.transform.scaleX ?? layer.transform.scale) * scale),
+      height: Math.max(28, layer.naturalH * Math.abs(layer.transform.scaleY ?? layer.transform.scale) * scale),
+    };
+  }
+  if (layer.type === "text") {
+    const fontSize = layer.fontSize * Math.abs(layer.transform.scale) * scale;
+    return {
+      width: Math.max(48, layer.text.length * fontSize * 0.62),
+      height: Math.max(32, fontSize * 1.35),
+    };
+  }
+  return {
+    width: Math.max(28, layer.width * Math.abs(layer.transform.scaleX ?? layer.transform.scale) * scale),
+    height: Math.max(28, layer.height * Math.abs(layer.transform.scaleY ?? layer.transform.scale) * scale),
+  };
+}
+
 export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZone, onCanvasAction, onDrawStart, onDrawMove, onDrawEnd, onPickColor, onOpenImageTools }: Props) {
   const trRef = useRef<Konva.Transformer>(null);
   const drawingRef = useRef(false);
-  const { layers, selectedIds, activeTool, selectLayer, clearSelection, setActiveTool } = useDesignStore();
+  const { layers, selectedIds, activeTool, selectLayer, clearSelection, setActiveTool, deleteLayer } = useDesignStore();
   const selectedLayer = useSelectedLayer();
   const [img, setImg] = useState<HTMLImageElement | null>(mockupImg ?? null);
 
@@ -60,6 +81,19 @@ export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZon
     h: printZone.h * scale,
   };
   const center = { x: pz.x + pz.w / 2, y: pz.y + pz.h / 2 };
+  const deleteButtonPosition = (() => {
+    if (!selectedLayer || selectedIds.length !== 1 || !selectedLayer.visible) return null;
+    const dimensions = getArtworkDimensions(selectedLayer, scale);
+    const angle = (selectedLayer.transform.rotation * Math.PI) / 180;
+    const localX = dimensions.width / 2 + 22;
+    const localY = -dimensions.height / 2 - 22;
+    const x = center.x + selectedLayer.transform.x * scale + localX * Math.cos(angle) - localY * Math.sin(angle) - 22;
+    const y = center.y + selectedLayer.transform.y * scale + localX * Math.sin(angle) + localY * Math.cos(angle) - 22;
+    return {
+      left: Math.max(4, Math.min(width - 48, x)),
+      top: Math.max(4, Math.min(height - 48, y)),
+    };
+  })();
 
   // Sync transformer with the selected layer(s).
   useEffect(() => {
@@ -209,6 +243,37 @@ export function CanvasArea({ width, height, mockup, overlay, mockupImg, printZon
         </Layer>
       </Stage>
       {overlay}
+      {deleteButtonPosition && (
+        <button
+          type="button"
+          aria-label={`Delete ${selectedLayer?.name || "selected artwork"}`}
+          title="Delete selected artwork"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (selectedLayer) deleteLayer(selectedLayer.id);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
+              if (selectedLayer) deleteLayer(selectedLayer.id);
+            }
+          }}
+          className="absolute z-30 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-red-600 text-white shadow-[0_4px_14px_rgba(185,28,28,0.4)] transition hover:bg-red-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200 active:scale-95"
+          style={{
+            left: deleteButtonPosition.left,
+            top: deleteButtonPosition.top,
+            touchAction: "manipulation",
+          }}
+        >
+          <X className="h-5 w-5" strokeWidth={3} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }

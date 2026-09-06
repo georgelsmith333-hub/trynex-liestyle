@@ -79,14 +79,11 @@ export function ProductSwitcher() {
   const showProductPicker = useDesignStore((s) => s.showProductPicker);
   const productSearch = useDesignStore((s) => s.productSearch);
   const productPickerCategory = useDesignStore((s) => s.productPickerCategory);
-  const setProduct = useDesignStore((s) => s.setProduct);
+  const switchProduct = useDesignStore((s) => s.switchProduct);
   const setLinkedStoreProduct = useDesignStore((s) => s.setLinkedStoreProduct);
   const setQuantity = useDesignStore((s) => s.setQuantity);
-  const setFace = useDesignStore((s) => s.setFace);
-  const setMugMode = useDesignStore((s) => s.setMugMode);
   const mugMode = useDesignStore((s) => s.mugMode);
   const layers = useDesignStore((s) => s.layers);
-  const updateLayer = useDesignStore((s) => s.updateLayer);
   const selectedColor = useDesignStore((s) => s.selectedColor);
   const setShowProductPicker = useDesignStore((s) => s.setShowProductPicker);
   const setProductSearch = useDesignStore((s) => s.setProductSearch);
@@ -125,21 +122,13 @@ export function ProductSwitcher() {
           },
         };
       });
-      // setProduct captures the complete pre-switch frame. Apply the geometry
-      // remap only after that snapshot so one undo restores the original art.
-      setProduct(product);
-      // Keep the artwork, but scale its position and size into the new product's
-      // active print geometry so switching from (for example) a T-shirt to a
-      // hoodie never leaves artwork outside the target zone.
-      layerTransforms.forEach(({ id, transform }) => {
-        updateLayer(id, { transform }, { history: false });
-      });
+      // Product, colour, face, mug mode, and refitted artwork are one history
+      // transaction so one undo restores the complete previous design state.
+      switchProduct(product, nextColor, layerTransforms, nextMugMode);
       // Preserve artwork for the apply-to-product workflow, but reset product-specific
       // commerce identity, quantity, and incompatible face/mug state.
       setLinkedStoreProduct(null);
       setQuantity(1);
-      setFace("front");
-      if (product.category !== "mug") setMugMode("side1");
     }
     setProductSearch("");
     setProductPickerCategory("all");

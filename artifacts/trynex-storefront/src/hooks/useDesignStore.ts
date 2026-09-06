@@ -21,6 +21,7 @@ export interface HistoryFrame {
   color: { name: string; hex: string };
   activeFace: Face;
   mugMode: MugMode;
+  selectedIds: string[];
 }
 
 export interface DesignStoreState {
@@ -35,6 +36,7 @@ export interface DesignStoreState {
   selectedIds: string[];
   history: HistoryFrame[];
   future: HistoryFrame[];
+  historyGroup: HistoryFrame | null;
 
   activeTool: ToolType;
   zoom: number;
@@ -65,6 +67,13 @@ export interface DesignStoreActions {
   setColor: (color: { name: string; hex: string }) => void;
   setFace: (face: Face) => void;
   setMugMode: (mode: MugMode) => void;
+  setMugView: (mode: MugMode) => void;
+  switchProduct: (
+    product: DesignProduct,
+    color: { name: string; hex: string },
+    transforms: Array<{ id: string; transform: Layer["transform"] }>,
+    mugMode: MugMode,
+  ) => void;
   setSize: (size: string) => void;
   setQuantity: (qty: number | ((prev: number) => number)) => void;
 
@@ -86,6 +95,7 @@ export interface DesignStoreActions {
 
   undo: () => void;
   redo: () => void;
+  beginHistoryGroup: () => void;
   commit: () => void;
 
   setActiveTool: (tool: ToolType) => void;
@@ -128,6 +138,7 @@ const initialState: DesignStoreState = {
   selectedIds: [],
   history: [],
   future: [],
+  historyGroup: null,
 
   activeTool: "select",
   zoom: 1,
@@ -159,14 +170,29 @@ const initialState: DesignStoreState = {
 
 type DS = Draft<DesignStoreState>;
 
-function captureHistory(state: DS) {
-  state.history.push({
+function makeHistoryFrame(state: DS): HistoryFrame {
+  return {
     layers: JSON.parse(JSON.stringify(state.layers)) as Layer[],
     productId: state.selectedProduct.id,
     color: { ...state.selectedColor },
     activeFace: state.activeFace,
     mugMode: state.mugMode,
-  });
+    selectedIds: [...state.selectedIds],
+  };
+}
+
+function historyFrameMatchesState(frame: HistoryFrame, state: DS) {
+  return (
+    frame.productId === state.selectedProduct.id
+    && frame.color.hex.toLowerCase() === state.selectedColor.hex.toLowerCase()
+    && frame.activeFace === state.activeFace
+    && frame.mugMode === state.mugMode
+    && JSON.stringify(frame.layers) === JSON.stringify(state.layers)
+  );
+}
+
+function captureHistory(state: DS) {
+  state.history.push(makeHistoryFrame(state));
   if (state.history.length > 50) state.history.shift();
   state.future = [];
 }
@@ -193,12 +219,45 @@ export const useDesignStore = create<DesignStore>()(
     },
     setFace: (face) => {
       set((state: DS) => {
+        if (state.activeFace !== face) captureHistory(state);
         state.activeFace = face;
       });
     },
     setMugMode: (mode) => {
       set((state: DS) => {
+        if (state.mugMode !== mode) captureHistory(state);
         state.mugMode = mode;
+      });
+    },
+    setMugView: (mode) => {
+      set((state: DS) => {
+        const nextFace = mode === "side2" ? "back" : "front";
+        if (state.mugMode !== mode || state.activeFace !== nextFace) captureHistory(state);
+        state.mugMode = mode;
+        state.activeFace = nextFace;
+      });
+    },
+    switchProduct: (product, color, transforms, mugMode) => {
+      set((state: DS) => {
+        const nextFace = product.category === "mug" && mugMode === "side2" ? "back" : "front";
+        const changed = state.selectedProduct.id !== product.id
+          || state.selectedColor.hex.toLowerCase() !== color.hex.toLowerCase()
+          || state.activeFace !== nextFace
+          || state.mugMode !== (product.category === "mug" ? mugMode : "side1")
+          || transforms.some(({ id, transform }) => {
+            const current = state.layers.find((layer: Layer) => layer.id === id);
+            return current && JSON.stringify(current.transform) !== JSON.stringify(transform);
+          });
+        if (!changed) return;
+        captureHistory(state);
+        state.selectedProduct = product;
+        state.selectedColor = color;
+        state.activeFace = nextFace;
+        state.mugMode = product.category === "mug" ? mugMode : "side1";
+        for (const { id, transform } of transforms) {
+          const layer = state.layers.find((item: Layer) => item.id === id);
+          if (layer) layer.transform = transform;
+        }
       });
     },
     setSize: (size) => {
@@ -222,13 +281,15 @@ export const useDesignStore = create<DesignStore>()(
       set((state: DS) => {
         const idx = state.layers.findIndex((l: Layer) => l.id === id);
         if (idx === -1) return;
-        if (options?.history !== false) captureHistory(state);
         const next = typeof patch === "function" ? patch(state.layers[idx]) : { ...state.layers[idx], ...patch };
+        if (JSON.stringify(next) === JSON.stringify(state.layers[idx])) return;
+        if (options?.history !== false && !state.historyGroup) captureHistory(state);
         state.layers[idx] = next as Layer;
       });
     },
     deleteLayer: (id) => {
       set((state: DS) => {
+        if (!state.layers.some((layer: Layer) => layer.id === id)) return;
         captureHistory(state);
         state.layers = state.layers.filter((l: Layer) => l.id !== id);
         state.selectedIds = state.selectedIds.filter((sid: string) => sid !== id);
@@ -317,44 +378,51 @@ export const useDesignStore = create<DesignStore>()(
       });
     },
 
-    // Kept as a compatibility action for callers that finish a grouped update.
-    // Each meaningful update already captures its pre-change frame; pushing the
-    // post-change frame here would make the first undo a no-op.
-    commit: () => {},
+    beginHistoryGroup: () => {
+      set((state: DS) => {
+        if (state.historyGroup) return;
+        state.historyGroup = makeHistoryFrame(state);
+        state.future = [];
+      });
+    },
+    // Finish a gesture transaction. Updates made while the group was open are
+    // represented by one pre-gesture frame, regardless of pointer frequency.
+    commit: () => {
+      set((state: DS) => {
+        const frame = state.historyGroup;
+        if (!frame) return;
+        state.historyGroup = null;
+        if (historyFrameMatchesState(frame, state)) return;
+        state.history.push(frame);
+        if (state.history.length > 50) state.history.shift();
+      });
+    },
     undo: () => {
       set((state: DS) => {
+        state.historyGroup = null;
         if (state.history.length === 0) return;
         const frame = state.history.pop()!;
-        state.future.push({
-          layers: state.layers,
-          productId: state.selectedProduct.id,
-          color: state.selectedColor,
-          activeFace: state.activeFace,
-          mugMode: state.mugMode,
-        });
+        state.future.push(makeHistoryFrame(state));
         state.layers = frame.layers;
         state.selectedProduct = PRODUCTS.find((p: DesignProduct) => p.id === frame.productId) ?? state.selectedProduct;
         state.selectedColor = frame.color;
         state.activeFace = frame.activeFace;
         state.mugMode = frame.mugMode;
+        state.selectedIds = frame.selectedIds;
       });
     },
     redo: () => {
       set((state: DS) => {
+        state.historyGroup = null;
         if (state.future.length === 0) return;
         const frame = state.future.pop()!;
-        state.history.push({
-          layers: state.layers,
-          productId: state.selectedProduct.id,
-          color: state.selectedColor,
-          activeFace: state.activeFace,
-          mugMode: state.mugMode,
-        });
+        state.history.push(makeHistoryFrame(state));
         state.layers = frame.layers;
         state.selectedProduct = PRODUCTS.find((p: DesignProduct) => p.id === frame.productId) ?? state.selectedProduct;
         state.selectedColor = frame.color;
         state.activeFace = frame.activeFace;
         state.mugMode = frame.mugMode;
+        state.selectedIds = frame.selectedIds;
       });
     },
 
