@@ -1167,3 +1167,34 @@ Verification: Storefront typecheck passed; storefront tests passed (19 files,
   errors; Design Studio status card reported 6/6 runtime roles ready; and no
   order, payment, production data, or deployment state changed.
 ```
+
+## Print-area selection controls checkpoint (2026-09-07)
+
+```text
+Status: complete — non-destructive print-area editing controls implemented
+Last completed: Replaced the selected-image raw bitmap rectangle with a fixed
+  active-face print-area frame. The frame dims the outside area, shows eight
+  edge/corner scale handles and a rotation control, and keeps the source image
+  draggable underneath the non-destructive print mask. Image layers use the
+  print-area controls while text and shape layers retain their existing
+  transformer behavior.
+Stopped at: After restarting the storefront workflow and completing typecheck
+  plus the storefront regression suite.
+Files/areas changed: artifacts/trynex-storefront/src/pages/studio/CanvasArea.tsx,
+  studio-regressions.test.ts, and the interaction specification at
+  docs/superpowers/specs/2026-09-07-print-area-selection-design.md.
+Remaining work: Perform a manual upload-and-select visual check on mobile and
+  desktop, including hoodie, T-shirt, long sleeve, cap, mug, and bottle faces.
+  The browser-use CLI is not installed in this workspace, so that interaction
+  could not be automated in this continuation. The underlying product print
+  zones and Smart Object compositor remain the source of truth.
+Blocker: None for implementation. Only the authenticated browser interaction
+  proof remains.
+Next safe action: Upload a real artwork fixture in the Design Studio, confirm
+  the fixed frame follows the active print zone, drag each handle, rotate, and
+  verify live preview/export clipping before public rollout.
+Verification: Storefront typecheck passed; storefront tests passed (19 files,
+  66 tests); the storefront workflow restarted successfully; Design Studio
+  route loaded at mobile size without browser-console errors; and no order,
+  payment, production data, or deployment state changed.
+```

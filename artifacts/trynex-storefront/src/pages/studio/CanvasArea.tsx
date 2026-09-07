@@ -6,12 +6,29 @@ import { DesignLayer } from "./DesignLayer";
 import { Layer as LayerType, PrintZone } from "./types";
 import { LiveCompositorPreview } from "./LiveCompositorPreview";
 import type { ComposerLayer, UnifiedMockupSurface } from "../design-studio/composer";
-import { X } from "lucide-react";
+import { RotateCw, X } from "lucide-react";
 
 interface CanvasPoint {
   x: number;
   y: number;
 }
+
+type PrintFrameHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+type SelectionGesture =
+  | {
+      kind: "scale";
+      handle: PrintFrameHandle;
+      startPoint: CanvasPoint;
+      startTransform: LayerType["transform"];
+    }
+  | {
+      kind: "rotate";
+      startAngle: number;
+      startTransform: LayerType["transform"];
+    };
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 interface Props {
   width: number;
@@ -128,6 +145,7 @@ export function CanvasArea({
   const trRef = useRef<Konva.Transformer>(null);
   const drawingRef = useRef(false);
   const pinchRef = useRef<{ distance: number; angle: number; scale: number; rotation: number } | null>(null);
+  const selectionGestureRef = useRef<SelectionGesture | null>(null);
   const {
     layers,
     selectedIds,
@@ -160,6 +178,12 @@ export function CanvasArea({
   const center = { x: pz.x + pz.w / 2, y: pz.y + pz.h / 2 };
   const deleteButtonPosition = (() => {
     if (!selectedLayer || selectedIds.length !== 1 || (selectedLayer.face ?? "front") !== activeFace) return null;
+    if (selectedLayer.type === "image") {
+      return {
+        left: Math.max(4, Math.min(width - 48, pz.x + pz.w - 22)),
+        top: Math.max(4, Math.min(height - 48, pz.y - 22)),
+      };
+    }
     const dimensions = getArtworkDimensions(selectedLayer, scale);
     const angle = (selectedLayer.transform.rotation * Math.PI) / 180;
     const localX = dimensions.width / 2 + 22;
@@ -194,15 +218,109 @@ export function CanvasArea({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeFace, clearSelection, deleteLayer, selectedLayer]);
 
-  const getCanvasPoint = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const getViewPoint = (source: { clientX: number; clientY: number }) => {
     const bounds = viewRef.current?.getBoundingClientRect();
     if (!bounds) return null;
-    const { clientX, clientY } = getClientPoint(event);
     return {
-      x: (clientX - bounds.left) / Math.max(0.01, zoom),
-      y: (clientY - bounds.top) / Math.max(0.01, zoom),
+      x: (source.clientX - bounds.left) / Math.max(0.01, zoom),
+      y: (source.clientY - bounds.top) / Math.max(0.01, zoom),
     };
   };
+
+  const getCanvasPoint = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    return getViewPoint(getClientPoint(event));
+  };
+
+  const startSelectionGesture = (
+    event: React.PointerEvent,
+    kind: SelectionGesture["kind"],
+    handle?: PrintFrameHandle,
+  ) => {
+    if (!selectedLayer || selectedLayer.type !== "image" || selectedLayer.locked) return;
+    const point = getViewPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginHistoryGroup();
+    if (kind === "rotate") {
+      selectionGestureRef.current = {
+        kind,
+        startAngle: Math.atan2(point.y - center.y, point.x - center.x),
+        startTransform: { ...selectedLayer.transform },
+      };
+      return;
+    }
+    if (!handle) return;
+    selectionGestureRef.current = {
+      kind,
+      handle,
+      startPoint: point,
+      startTransform: { ...selectedLayer.transform },
+    };
+  };
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      const gesture = selectionGestureRef.current;
+      const layer = selectedLayer;
+      if (!gesture || !layer || layer.type !== "image" || layer.locked) return;
+      const point = getViewPoint(event);
+      if (!point) return;
+      event.preventDefault();
+
+      if (gesture.kind === "rotate") {
+        const nextAngle = Math.atan2(point.y - center.y, point.x - center.x);
+        const delta = ((nextAngle - gesture.startAngle) * 180) / Math.PI;
+        updateLayer(layer.id, {
+          transform: {
+            ...gesture.startTransform,
+            rotation: gesture.startTransform.rotation + delta,
+          },
+        }, { history: false });
+        return;
+      }
+
+      const { handle, startPoint, startTransform } = gesture;
+      const horizontalDirection = handle.includes("e") ? 1 : handle.includes("w") ? -1 : 0;
+      const verticalDirection = handle.includes("s") ? 1 : handle.includes("n") ? -1 : 0;
+      const horizontalDelta = horizontalDirection
+        ? (point.x - startPoint.x) * horizontalDirection / Math.max(1, pz.w)
+        : 0;
+      const verticalDelta = verticalDirection
+        ? (point.y - startPoint.y) * verticalDirection / Math.max(1, pz.h)
+        : 0;
+      const isCorner = horizontalDirection !== 0 && verticalDirection !== 0;
+      const cornerFactor = clamp(1 + (horizontalDelta + verticalDelta) / 2, 0.15, 8);
+      const factorX = isCorner ? cornerFactor : clamp(1 + horizontalDelta, 0.15, 8);
+      const factorY = isCorner ? cornerFactor : clamp(1 + verticalDelta, 0.15, 8);
+      const startScaleX = Math.max(0.01, startTransform.scaleX ?? startTransform.scale);
+      const startScaleY = Math.max(0.01, startTransform.scaleY ?? startTransform.scale);
+
+      updateLayer(layer.id, {
+        transform: {
+          ...startTransform,
+          scaleX: startScaleX * factorX,
+          scaleY: startScaleY * factorY,
+        },
+      }, { history: false });
+    };
+
+    const finishSelectionGesture = () => {
+      if (!selectionGestureRef.current) return;
+      selectionGestureRef.current = null;
+      commit();
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", finishSelectionGesture);
+    window.addEventListener("pointercancel", finishSelectionGesture);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", finishSelectionGesture);
+      window.removeEventListener("pointercancel", finishSelectionGesture);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLayer, zoom, pz.w, pz.h, center.x, center.y]);
 
   // Sync transformer with the selected layer(s).
   useEffect(() => {
@@ -400,8 +518,10 @@ export function CanvasArea({
             ))}
             <Transformer
               ref={trRef}
-              rotateEnabled
+              rotateEnabled={selectedLayer?.type !== "image"}
               flipEnabled
+              borderEnabled={selectedLayer?.type !== "image"}
+              enabledAnchors={selectedLayer?.type === "image" ? [] : undefined}
               anchorSize={8}
               borderStroke="#E85D04"
               anchorStroke="#E85D04"
@@ -410,7 +530,7 @@ export function CanvasArea({
           </Layer>
         </Stage>
         {overlay}
-        {selectedLayer && selectedIds.length === 1 && (selectedLayer.face ?? "front") === activeFace && (
+        {selectedLayer && selectedIds.length === 1 && (selectedLayer.face ?? "front") === activeFace && selectedLayer.type !== "image" && (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute z-20 border-2 border-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.8)]"
@@ -424,6 +544,55 @@ export function CanvasArea({
               borderStyle: selectedLayer.visible ? "solid" : "dashed",
             }}
           />
+        )}
+        {selectedLayer && selectedIds.length === 1 && (selectedLayer.face ?? "front") === activeFace && selectedLayer.type === "image" && (
+          <div
+            aria-label="Printable area controls"
+            className="pointer-events-none absolute z-20"
+            style={{
+              left: pz.x,
+              top: pz.y,
+              width: pz.w,
+              height: pz.h,
+            }}
+          >
+            <div
+              className="absolute inset-0 border-2 border-dashed border-orange-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.13)]"
+              style={{ background: "rgba(255,255,255,0.035)" }}
+            />
+            <span className="absolute -top-6 left-0 rounded-full bg-orange-600 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white shadow-sm">
+              Print area
+            </span>
+            {([
+              ["nw", "-left-2 -top-2 cursor-nwse-resize"],
+              ["n", "left-1/2 -top-2 -translate-x-1/2 cursor-ns-resize"],
+              ["ne", "-right-2 -top-2 cursor-nesw-resize"],
+              ["e", "-right-2 top-1/2 -translate-y-1/2 cursor-ew-resize"],
+              ["se", "-bottom-2 -right-2 cursor-nwse-resize"],
+              ["s", "-bottom-2 left-1/2 -translate-x-1/2 cursor-ns-resize"],
+              ["sw", "-bottom-2 -left-2 cursor-nesw-resize"],
+              ["w", "-left-2 top-1/2 -translate-y-1/2 cursor-ew-resize"],
+            ] as Array<[PrintFrameHandle, string]>).map(([handle, className]) => (
+              <button
+                key={handle}
+                type="button"
+                aria-label={`Scale artwork from ${handle}`}
+                className={`pointer-events-auto absolute h-4 w-4 rounded-full border-2 border-white bg-orange-600 shadow-md transition-transform hover:scale-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${className}`}
+                onPointerDown={(event) => startSelectionGesture(event, "scale", handle)}
+              />
+            ))}
+            <button
+              type="button"
+              aria-label="Rotate artwork"
+              className="pointer-events-auto absolute left-1/2 -top-14 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-md transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+              onPointerDown={(event) => startSelectionGesture(event, "rotate")}
+            >
+              <RotateCw className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
+              Drag artwork to reposition · handles to scale
+            </span>
+          </div>
         )}
         {deleteButtonPosition && (
           <button
