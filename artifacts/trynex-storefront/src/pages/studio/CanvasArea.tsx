@@ -176,20 +176,22 @@ export function CanvasArea({
     h: printZone.h * scale,
   };
   const center = { x: pz.x + pz.w / 2, y: pz.y + pz.h / 2 };
+  const selectedArtworkDimensions = selectedLayer
+    ? getArtworkDimensions(selectedLayer, scale)
+    : { width: pz.w, height: pz.h };
+  const selectedCenter = selectedLayer
+    ? {
+      x: center.x + selectedLayer.transform.x * scale,
+      y: center.y + selectedLayer.transform.y * scale,
+    }
+    : center;
   const deleteButtonPosition = (() => {
     if (!selectedLayer || selectedIds.length !== 1 || (selectedLayer.face ?? "front") !== activeFace) return null;
-    if (selectedLayer.type === "image") {
-      return {
-        left: Math.max(4, Math.min(width - 48, pz.x + pz.w - 22)),
-        top: Math.max(4, Math.min(height - 48, pz.y - 22)),
-      };
-    }
-    const dimensions = getArtworkDimensions(selectedLayer, scale);
     const angle = (selectedLayer.transform.rotation * Math.PI) / 180;
-    const localX = dimensions.width / 2 + 22;
-    const localY = -dimensions.height / 2 - 22;
-    const x = center.x + selectedLayer.transform.x * scale + localX * Math.cos(angle) - localY * Math.sin(angle) - 22;
-    const y = center.y + selectedLayer.transform.y * scale + localX * Math.sin(angle) + localY * Math.cos(angle) - 22;
+    const localX = selectedArtworkDimensions.width / 2 + 22;
+    const localY = -selectedArtworkDimensions.height / 2 - 22;
+    const x = selectedCenter.x + localX * Math.cos(angle) - localY * Math.sin(angle) - 22;
+    const y = selectedCenter.y + localX * Math.sin(angle) + localY * Math.cos(angle) - 22;
     return {
       left: Math.max(4, Math.min(width - 48, x)),
       top: Math.max(4, Math.min(height - 48, y)),
@@ -241,11 +243,16 @@ export function CanvasArea({
     if (!point) return;
     event.preventDefault();
     event.stopPropagation();
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Window-level pointer listeners still handle browsers without capture.
+      }
     beginHistoryGroup();
     if (kind === "rotate") {
       selectionGestureRef.current = {
         kind,
-        startAngle: Math.atan2(point.y - center.y, point.x - center.x),
+          startAngle: Math.atan2(point.y - selectedCenter.y, point.x - selectedCenter.x),
         startTransform: { ...selectedLayer.transform },
       };
       return;
@@ -269,7 +276,7 @@ export function CanvasArea({
       event.preventDefault();
 
       if (gesture.kind === "rotate") {
-        const nextAngle = Math.atan2(point.y - center.y, point.x - center.x);
+        const nextAngle = Math.atan2(point.y - selectedCenter.y, point.x - selectedCenter.x);
         const delta = ((nextAngle - gesture.startAngle) * 180) / Math.PI;
         updateLayer(layer.id, {
           transform: {
@@ -284,10 +291,10 @@ export function CanvasArea({
       const horizontalDirection = handle.includes("e") ? 1 : handle.includes("w") ? -1 : 0;
       const verticalDirection = handle.includes("s") ? 1 : handle.includes("n") ? -1 : 0;
       const horizontalDelta = horizontalDirection
-        ? (point.x - startPoint.x) * horizontalDirection / Math.max(1, pz.w)
+        ? (point.x - startPoint.x) * horizontalDirection / Math.max(1, selectedArtworkDimensions.width)
         : 0;
       const verticalDelta = verticalDirection
-        ? (point.y - startPoint.y) * verticalDirection / Math.max(1, pz.h)
+        ? (point.y - startPoint.y) * verticalDirection / Math.max(1, selectedArtworkDimensions.height)
         : 0;
       const isCorner = horizontalDirection !== 0 && verticalDirection !== 0;
       const cornerFactor = clamp(1 + (horizontalDelta + verticalDelta) / 2, 0.15, 8);
@@ -320,7 +327,7 @@ export function CanvasArea({
       window.removeEventListener("pointercancel", finishSelectionGesture);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLayer, zoom, pz.w, pz.h, center.x, center.y]);
+  }, [selectedArtworkDimensions.height, selectedArtworkDimensions.width, selectedCenter.x, selectedCenter.y, selectedLayer, zoom]);
 
   // Sync transformer with the selected layer(s).
   useEffect(() => {
@@ -550,48 +557,62 @@ export function CanvasArea({
             aria-label="Printable area controls"
             className="pointer-events-none absolute z-20"
             style={{
-              left: pz.x,
-              top: pz.y,
-              width: pz.w,
-              height: pz.h,
+              left: 0,
+              top: 0,
+              width,
+              height,
             }}
           >
             <div
-              className="absolute inset-0 border-2 border-dashed border-orange-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.13)]"
-              style={{ background: "rgba(255,255,255,0.035)" }}
+              className="absolute border-2 border-dashed border-orange-400/70"
+              style={{ left: pz.x, top: pz.y, width: pz.w, height: pz.h }}
             />
             <span className="absolute -top-6 left-0 rounded-full bg-orange-600 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white shadow-sm">
               Print area
             </span>
-            {([
-              ["nw", "-left-2 -top-2 cursor-nwse-resize"],
-              ["n", "left-1/2 -top-2 -translate-x-1/2 cursor-ns-resize"],
-              ["ne", "-right-2 -top-2 cursor-nesw-resize"],
-              ["e", "-right-2 top-1/2 -translate-y-1/2 cursor-ew-resize"],
-              ["se", "-bottom-2 -right-2 cursor-nwse-resize"],
-              ["s", "-bottom-2 left-1/2 -translate-x-1/2 cursor-ns-resize"],
-              ["sw", "-bottom-2 -left-2 cursor-nesw-resize"],
-              ["w", "-left-2 top-1/2 -translate-y-1/2 cursor-ew-resize"],
-            ] as Array<[PrintFrameHandle, string]>).map(([handle, className]) => (
-              <button
-                key={handle}
-                type="button"
-                aria-label={`Scale artwork from ${handle}`}
-                className={`pointer-events-auto absolute h-4 w-4 rounded-full border-2 border-white bg-orange-600 shadow-md transition-transform hover:scale-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${className}`}
-                onPointerDown={(event) => startSelectionGesture(event, "scale", handle)}
-              />
-            ))}
-            <button
-              type="button"
-              aria-label="Rotate artwork"
-              className="pointer-events-auto absolute left-1/2 -top-14 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-md transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-              onPointerDown={(event) => startSelectionGesture(event, "rotate")}
+            <div
+              className="pointer-events-none absolute border-2 border-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.8)]"
+              style={{
+                left: selectedCenter.x,
+                top: selectedCenter.y,
+                width: selectedArtworkDimensions.width,
+                height: selectedArtworkDimensions.height,
+                transform: `translate(-50%, -50%) rotate(${selectedLayer.transform.rotation}deg)`,
+                transformOrigin: "center center",
+              }}
             >
-              <RotateCw className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
-              Drag artwork to reposition · handles to scale
-            </span>
+              {([
+                ["nw", "-left-6 -top-6 cursor-nwse-resize"],
+                ["n", "left-1/2 -top-6 -translate-x-1/2 cursor-ns-resize"],
+                ["ne", "-right-6 -top-6 cursor-nesw-resize"],
+                ["e", "-right-6 top-1/2 -translate-y-1/2 cursor-ew-resize"],
+                ["se", "-bottom-6 -right-6 cursor-nwse-resize"],
+                ["s", "-bottom-6 left-1/2 -translate-x-1/2 cursor-ns-resize"],
+                ["sw", "-bottom-6 -left-6 cursor-nesw-resize"],
+                ["w", "-left-6 top-1/2 -translate-y-1/2 cursor-ew-resize"],
+              ] as Array<[PrintFrameHandle, string]>).map(([handle, className]) => (
+                <button
+                  key={handle}
+                  type="button"
+                  aria-label={`Scale artwork from ${handle}`}
+                  className={`pointer-events-auto absolute h-11 w-11 rounded-full border-2 border-white bg-orange-600 shadow-md transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${className}`}
+                  style={{ touchAction: "none" }}
+                  onPointerDown={(event) => startSelectionGesture(event, "scale", handle)}
+                />
+              ))}
+              <button
+                type="button"
+                aria-label="Rotate artwork"
+                className="pointer-events-auto absolute left-1/2 -top-[4.5rem] flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-md transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                style={{ touchAction: "none" }}
+                onPointerDown={(event) => startSelectionGesture(event, "rotate")}
+              >
+                <RotateCw className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-2 py-1 text-[10px] font-bold text-slate-600 shadow-sm">
+                Drag artwork · handles resize
+              </span>
+            </div>
           </div>
         )}
         {deleteButtonPosition && (

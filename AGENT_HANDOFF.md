@@ -64,6 +64,29 @@ mobile app, promotional experience, and brand-system artifact.
 
 ## Current open work
 
+### Current Design Studio correction pass (2026-09-07)
+
+```text
+Status: complete — approved customer-facing correction pass implemented
+Last completed: Established a single visible photoreal preview path, made uploads
+  paint before auto-fix, aligned image controls to artwork bounds, tightened
+  touch targets and pointer capture, compacted mobile guidance, added the
+  safe-area sticky purchase dock, and shortened server background-removal waits.
+Files/areas changed: customer Design Studio preview, upload/processing flow,
+  CanvasArea interaction controls, mobile guidance/layout, sticky purchase bar,
+  regression coverage, and approved design spec under docs/superpowers/specs.
+Remaining work: None within the approved customer-facing scope.
+Blocker: None. Redis is unavailable in development, but the documented in-process
+  cache fallback is active and API/database health is still serving normally.
+Next safe action: If desired, publish this verified storefront build; admin
+  mockup screens and the separate mobile app remain outside this pass.
+Verification: storefront typecheck passed; storefront production build passed;
+  all 19 storefront test files and 67 tests passed; API typecheck/build passed;
+  API health/products/settings smoke checks passed; desktop and 402px mobile
+  preview captures show the canonical photoreal surface; runtime asset audit
+  found 188 complete surfaces across all six mockup families.
+```
+
 The approved Design Studio V2 reliability pass is complete and has been pushed
 through the GitHub-connected external rollout. The public `/design-studio` route is
 the active V2 implementation; `/design-studio-v1` and `/design-studio-v2`

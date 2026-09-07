@@ -7,6 +7,8 @@ const imagePanel = readFileSync(new URL("./panels/ImagePanel.tsx", import.meta.u
 const productSwitcher = readFileSync(new URL("./toolbar/ProductSwitcher.tsx", import.meta.url), "utf8");
 const clipArt = readFileSync(new URL("./ClipArtBrowser.tsx", import.meta.url), "utf8");
 const qrPanel = readFileSync(new URL("./QRCodePanel.tsx", import.meta.url), "utf8");
+const stickyPurchase = readFileSync(new URL("./StudioStickyPurchaseBar.tsx", import.meta.url), "utf8");
+const livePreview = readFileSync(new URL("./LiveCompositorPreview.tsx", import.meta.url), "utf8");
 
 describe("Design Studio reliability contracts", () => {
   it("exposes deterministic local image improvement as an explicit image action", () => {
@@ -36,9 +38,21 @@ describe("Design Studio reliability contracts", () => {
 
   it("keeps image selection aligned to the printable area", () => {
     expect(canvasArea).toContain('aria-label="Printable area controls"');
-    expect(canvasArea).toContain("shadow-[0_0_0_9999px_rgba(15,23,42,0.13)]");
+    expect(canvasArea).toContain("border-orange-400/70");
     expect(canvasArea).toContain("Scale artwork from");
     expect(canvasArea).toContain("Rotate artwork");
     expect(canvasArea).toContain('borderEnabled={selectedLayer?.type !== "image"}');
+    expect(canvasArea).toContain("selectedArtworkDimensions");
+    expect(canvasArea).toContain("h-11 w-11");
+  });
+
+  it("keeps the photoreal compositor and mobile purchase action available", () => {
+    expect(studio).toContain("<StudioStickyPurchaseBar");
+    expect(studio).toContain('className="flex flex-1 min-w-0 flex-col"');
+    expect(studio).toContain("void autoFixImage(src)");
+    expect(stickyPurchase).toContain('data-testid="studio-sticky-purchase"');
+    expect(stickyPurchase).toContain("env(safe-area-inset-bottom");
+    expect(livePreview).toContain("data-preview-state={renderState}");
+    expect(livePreview).toContain("Loading photoreal preview");
   });
 });

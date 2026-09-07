@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   composeMockupSurface,
   type ComposerLayer,
@@ -35,11 +35,14 @@ export function LiveCompositorPreview({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
   const renderIdRef = useRef(0);
+  const hasFrameRef = useRef(false);
+  const [renderState, setRenderState] = useState<"idle" | "rendering" | "ready" | "error">("idle");
 
   useEffect(() => {
     if (!enabled) return;
     const renderId = ++renderIdRef.current;
     const scratch = document.createElement("canvas");
+    setRenderState(hasFrameRef.current ? "rendering" : "idle");
 
     const render = async () => {
       try {
@@ -62,10 +65,13 @@ export function LiveCompositorPreview({
         target.width = Math.max(1, Math.round(width));
         target.height = Math.max(1, Math.round(height));
         context.drawImage(scratch, 0, 0, target.width, target.height);
+        hasFrameRef.current = true;
+        setRenderState("ready");
       } catch (error) {
         // Keep the last successful frame visible. The surrounding surface
         // availability state is responsible for explaining hard failures.
         console.warn("[studio] live compositor frame was not updated", error);
+        setRenderState("error");
       }
     };
 
@@ -76,11 +82,24 @@ export function LiveCompositorPreview({
   }, [curvature, enabled, fabricTexture, garmentColor, height, layers, surface, width]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
-      style={{ width, height }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        data-preview-state={renderState}
+        className="pointer-events-none absolute inset-0 z-[1] h-full w-full"
+        style={{ width, height }}
+      />
+      {!hasFrameRef.current && renderState !== "ready" && (
+        <span
+          className={`pointer-events-none absolute right-3 top-3 z-[3] rounded-full px-2.5 py-1 text-[10px] font-bold shadow-sm backdrop-blur ${
+            renderState === "error" ? "bg-red-50/95 text-red-700" : "bg-white/90 text-slate-500"
+          }`}
+          role="status"
+        >
+          {renderState === "error" ? "Preview retrying" : "Loading photoreal preview…"}
+        </span>
+      )}
+    </>
   );
 }
