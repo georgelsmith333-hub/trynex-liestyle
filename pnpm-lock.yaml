@@ -218,6 +218,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.38.0
         version: 1.38.0
+      ag-psd:
+        specifier: ^31.0.2
+        version: 31.0.2
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod

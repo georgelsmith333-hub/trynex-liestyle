@@ -7,7 +7,7 @@ const validManifest = () => createSmartMockupManifest({
   face: "front",
   sourceKitKey: "hoodie:navy:front",
   manifestRevision: "smart-v10.3",
-    editableMasterPath: "dist-mockups/staging/smart-v10/masters/hoodie/hoodie-navy-front.psd",
+    editableMasterPath: "dist-mockups/staging/smart-v10-v3/masters/hoodie/hoodie-navy-front.psd",
     masterStatus: "verified",
   baseSrc: "/mockups/psd-master-v10/runtime-roles/hoodie/navy/front-base.png",
   cutoutSrc: "/mockups/psd-master-v10/runtime-roles/hoodie/navy/front-base.png",

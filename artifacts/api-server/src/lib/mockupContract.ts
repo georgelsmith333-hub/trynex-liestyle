@@ -53,6 +53,10 @@ export type SmartMockupIngestionManifest = {
     sha256: string;
     provenance: "catalog-psd-smart-object";
     smartObjectLayer: string;
+    smartObjectId?: string;
+    smartObjectType?: string;
+    smartObjectBounds?: { x: number; y: number; w: number; h: number };
+    smartObjectTransform?: number[];
     geometry: {
       canvasWidth: number;
       canvasHeight: number;
@@ -190,6 +194,15 @@ export function validateSmartMockupIngestionManifest(
     if (metadata.masterFileSha256 !== master.sha256) errors.push("master checksum does not match the uploaded file checksum");
     if (master.provenance !== "catalog-psd-smart-object") errors.push("master provenance must be catalog-psd-smart-object");
     if (typeof master.smartObjectLayer !== "string" || !master.smartObjectLayer.trim()) errors.push("master.smartObjectLayer is required");
+    if (master.smartObjectBounds !== undefined) validateGeometry(master.smartObjectBounds, "master.smartObjectBounds", errors);
+    if (
+      master.smartObjectTransform !== undefined &&
+      (!Array.isArray(master.smartObjectTransform) ||
+        master.smartObjectTransform.length !== 8 ||
+        master.smartObjectTransform.some((value) => !isFiniteNumber(value)))
+    ) {
+      errors.push("master.smartObjectTransform must contain eight finite values");
+    }
     validateGeometry(master.geometry, "master.geometry", errors);
   }
 

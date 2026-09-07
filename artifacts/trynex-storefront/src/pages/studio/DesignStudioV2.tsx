@@ -127,12 +127,21 @@ function detectColorFromProduct(prod: any): string {
 function SmartObjectStatusCard({ surface }: { surface: MockupResolution }) {
   const approved = surface.runtimeStatus === "approved" && surface.contractErrors.length === 0;
   const format = surface.smartObject.masterFormat.toUpperCase();
-  const roleCount = surface.smartObject.assets.runtimeRoles
-    ? Object.keys(surface.smartObject.assets.runtimeRoles).length
-    : 0;
+  const runtimeRoles = surface.smartObject.assets.runtimeRoles;
+  const roleLabels: Array<[keyof NonNullable<typeof runtimeRoles>, string]> = [
+    ["studioBackground", "Background"],
+    ["base", "Base"],
+    ["shadow", "Shadow"],
+    ["protected", "Protected"],
+    ["highlight", "Highlight"],
+    ["printMask", "Print mask"],
+  ];
+  const roleCount = runtimeRoles ? roleLabels.filter(([role]) => Boolean(runtimeRoles[role])).length : 0;
+  const sourceState = surface.smartObject.masterStatus === "verified" ? "source linked" : "metadata only";
   return (
     <section
       aria-label="Smart Object surface status"
+      aria-live="polite"
       className={`rounded-2xl border px-3.5 py-3 shadow-sm ${approved ? "border-emerald-200 bg-emerald-50/70" : "border-amber-300 bg-amber-50"}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -140,8 +149,8 @@ function SmartObjectStatusCard({ surface }: { surface: MockupResolution }) {
           <ShieldCheck className={`h-4 w-4 shrink-0 ${approved ? "text-emerald-600" : "text-amber-700"}`} />
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">Smart Object surface</p>
-            <p className="truncate text-xs font-black text-gray-900">
-              {format} master · {approved ? "verified runtime" : "blocked"}
+             <p className="truncate text-xs font-black text-gray-900">
+               {format} master · {approved ? "verified runtime" : "blocked"}
             </p>
           </div>
         </div>
@@ -150,15 +159,32 @@ function SmartObjectStatusCard({ surface }: { surface: MockupResolution }) {
         </span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-gray-600 sm:grid-cols-4">
-        <span><strong className="text-gray-900">Source:</strong> {surface.sourceKitKey}</span>
-        <span><strong className="text-gray-900">Master:</strong> {surface.smartObject.masterStatus}</span>
+         <span><strong className="text-gray-900">Source:</strong> {surface.sourceKitKey}</span>
+         <span><strong className="text-gray-900">Master:</strong> {sourceState}</span>
         <span><strong className="text-gray-900">Roles:</strong> {roleCount}/6 ready</span>
-        <span><strong className="text-gray-900">Object:</strong> linked</span>
+         <span><strong className="text-gray-900">Print zone:</strong> protected</span>
       </div>
+       <div className="mt-2 flex flex-wrap gap-1" aria-label="Runtime role health">
+         {roleLabels.map(([role, label]) => {
+           const ready = Boolean(runtimeRoles?.[role]);
+           return (
+             <span
+               key={role}
+               className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${ready ? "bg-white/80 text-emerald-700" : "bg-amber-100 text-amber-800"}`}
+             >
+               <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-500" : "bg-amber-500"}`} />
+               {label}
+             </span>
+           );
+         })}
+       </div>
       {!approved && (
-        <p role="alert" className="mt-2 text-[10px] font-semibold text-amber-900">
-          {surface.disabledReason ?? (surface.contractErrors.join(", ") || "This Smart Object surface is not ready.")}
-        </p>
+         <div role="alert" className="mt-2 space-y-0.5 text-[10px] font-semibold text-amber-900">
+           <p>{surface.disabledReason ?? surface.contractErrors[0] ?? "This Smart Object surface is not ready."}</p>
+           {surface.contractErrors.length > 1 && (
+             <p className="font-medium text-amber-800">+{surface.contractErrors.length - 1} more contract checks need attention.</p>
+           )}
+         </div>
       )}
     </section>
   );

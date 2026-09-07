@@ -63,13 +63,13 @@ function isMasterFile(file: File): boolean {
 }
 
 function contentTypeFor(file: File): string {
-  if (file.type) return file.type;
   if (/\.psb$/i.test(file.name)) return "application/vnd.adobe.photoshop";
   if (/\.psd$/i.test(file.name)) return "image/vnd.adobe.photoshop";
+  if (file.type) return file.type;
   return "application/octet-stream";
 }
 
-async function uploadFile(file: File): Promise<string> {
+async function uploadFile(file: File, visibility: "public" | "private" = "public"): Promise<string> {
   const contentType = contentTypeFor(file);
   const { uploadURL, objectPath } = await apiFetch("/api/storage/uploads/request-url", {
     method: "POST",
@@ -81,6 +81,7 @@ async function uploadFile(file: File): Promise<string> {
   });
   const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
   if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
+  if (visibility === "private") return objectPath;
   return getApiUrl(`/api/storage/public-objects/${objectPath}`);
 }
 
@@ -103,6 +104,8 @@ async function buildIngestionManifest(masterFile: File | null, sourceKitKey: str
         masterPath: string;
         masterChecksum: string;
         printZone: { x: number; y: number; w: number; h: number };
+        normalizedFrame?: { canvasWidth: number; canvasHeight: number };
+        smartObject?: { layerName: string };
         roles: Record<string, { path: string; sha256: string; sourceLayerPrefix: string }>;
       }>;
     };
@@ -128,13 +131,20 @@ async function buildIngestionManifest(masterFile: File | null, sourceKitKey: str
         fileName: masterFile.name,
         mime: contentTypeFor(masterFile),
         size: masterFile.size,
-        // Keep the catalog checksum in the manifest so the API can compare the
-        // uploaded bytes against the reviewed PSD master, rather than trusting
-        // a preview or an administrator-selected ready state.
-        sha256: surface.masterChecksum,
+        // The server recomputes and binds this checksum to the uploaded bytes.
+        // Never use the catalog checksum here: an uploaded replacement master
+        // must be validated from its actual contents.
+        sha256: masterFileSha256,
         provenance: "catalog-psd-smart-object",
-        smartObjectLayer: "Artwork",
-        geometry: { canvasWidth: 1024, canvasHeight: 1024, x: surface.printZone.x, y: surface.printZone.y, w: surface.printZone.w, h: surface.printZone.h },
+         smartObjectLayer: surface.smartObject?.layerName ?? "",
+         geometry: {
+           canvasWidth: surface.normalizedFrame?.canvasWidth ?? 1024,
+           canvasHeight: surface.normalizedFrame?.canvasHeight ?? 1024,
+           x: surface.printZone.x,
+           y: surface.printZone.y,
+           w: surface.printZone.w,
+           h: surface.printZone.h,
+         },
       },
       runtimeRoles,
       printZone: {
@@ -231,9 +241,9 @@ export default function AdminMockups() {
       for (let i = 0; i < Math.max(previewFiles.length, masters.length || 1); i++) {
         const previewFile = previewFiles[i] ?? previewFiles[0] ?? null;
         const masterFile = masters[i] ?? masters[0] ?? null;
-        const imageUrl = previewFile ? await uploadFile(previewFile) : target?.imageUrl;
+        const imageUrl = previewFile ? await uploadFile(previewFile, "public") : target?.imageUrl;
         if (!imageUrl) throw new Error("A preview image is required for every gallery record.");
-        const masterFileUrl = masterFile ? await uploadFile(masterFile) : null;
+        const masterFileUrl = masterFile ? await uploadFile(masterFile, "private") : null;
         const masterFileSha256 = masterFile ? await sha256File(masterFile) : null;
         const manifestJson = await buildIngestionManifest(masterFile, target?.sourceKitKey, masterFileSha256);
         const fileName = (masterFile ?? previewFile)?.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") ?? "Mockup";

@@ -104,6 +104,42 @@ Verification: The deployed `/api/mockups` response contains exactly 188 rows,
   production data changed.
 ```
 
+## PSD/PSB server ingestion and Design Studio diagnostics checkpoint (2026-09-07)
+
+```text
+Status: complete — local server-side ingestion and studio UX verified
+Last completed: Added a real ag-psd-backed PSD/PSB parser that reads private
+  object-storage bytes, verifies Photoshop magic/version, extension/MIME,
+  dimensions, exactly one named Smart Object layer, placement metadata, and
+  SHA-256. Admin mockup creation/update now fails closed on parser or source-kit
+  contract errors and persists the server-derived file metadata and normalized
+  manifest. Editable masters remain private /objects paths; previews remain
+  public image URLs.
+Stopped at: After rebuilding/restarting the API and confirming the public API,
+  readiness, workflows, Design Studio preview, focused parser/contract tests,
+  full API tests, storefront typecheck/build, and git diff validation.
+Files/areas changed: artifacts/api-server/src/lib/psdMasterParser.ts and its
+  tests, mockupContract.ts, routes/mockups.ts, api-server package/lock metadata,
+  AdminMockups.tsx, the active Smart v10-v3 manifest test path, and the
+  DesignStudioV2 Smart Object status card.
+Remaining work: Authenticated admin visual review of real upload success/failure
+  states and owner-controlled hosting/GitHub publication remain separate release
+  gates. The browser continues to render approved PNG runtime roles; private
+  editable masters are diagnostics/provenance only.
+Blocker: None for the local implementation. The running API reports the existing
+  optional Redis degradation while DB-backed readiness remains healthy.
+Next safe action: Exercise one authenticated canonical PSD override and one PSB
+  override in Admin Mockups, then repeat the non-mutating public Smart v10.3
+  runtime smoke checks before any provider rollout.
+Verification: Real PSD and PSB parser fixtures passed; invalid bytes and
+  signature/extension/MIME mismatch tests passed; API typecheck/build passed;
+  full API suite passed (10 files, 36 tests); storefront typecheck/build passed;
+  focused storefront manifest/product/composer tests passed; both managed
+  workflows restarted cleanly; /api/mockups and /api/health/readiness returned
+  200; Design Studio screenshot rendered without browser-console errors; and
+  git diff --check passed. No order, payment, or production data changed.
+```
+
 ## Latest Smart v10.3 API ingestion boundary checkpoint (2026-09-07)
 
 ```text
