@@ -1129,3 +1129,41 @@ Verification: Smart matrix 188/188; Smart Object release gate
   running; desktop preview rendered without browser-console errors. No order,
   payment, or production data was changed.
 ```
+
+## Full-canvas Smart Object compositor checkpoint (2026-09-07)
+
+```text
+Status: complete — shared runtime compositor implemented and locally verified
+Last completed: Rewired the live Design Studio 3D viewer, mug wrap preview, and
+  WebGL-less fallback to consume a full-canvas PSD-derived composite instead of
+  an artwork-only texture. The shared order is studio background → base →
+  artwork in the Smart Object print zone → shadow multiply → highlight screen →
+  protected source-over. Protected runtime roles therefore remain above artwork,
+  including hoodie drawstrings, hood seams, collars, cuffs, pockets, handles,
+  and bottle hardware. The API renderer now uses the same order with protected
+  as its final foreground pass.
+Stopped at: After restarting the storefront workflow, capturing the Design
+  Studio preview, and completing the final API/storefront validation pass.
+Files/areas changed: artifacts/trynex-storefront/src/pages/design-studio/composer.ts,
+  ProductViewer3D.tsx, garment3d.tsx, composer.contract.test.ts,
+  artifacts/api-server/src/routes/mockupRender.ts, and the approved design
+  specification at docs/superpowers/specs/2026-09-07-smart-object-runtime-
+  compositor-design.md.
+Remaining work: A browser-interaction upload proof with a non-empty design
+  still needs to be performed if visual release approval requires testing a
+  real uploaded image over the hoodie ropes. The screenshot tool could load the
+  studio and confirm 6/6 roles, but the browser-use interaction binary was not
+  available in this workspace to dismiss the onboarding guide or upload an
+  artwork fixture. Provider deployment/GitHub promotion remains separate.
+Blocker: None for implementation or local structural verification. Redis emits
+  its existing optional-cache credential degradation while DB-backed API
+  readiness remains healthy.
+Next safe action: Perform the authenticated visual upload proof on the Design
+  Studio, then review the same output in cart/export before any public rollout.
+Verification: Storefront typecheck passed; storefront tests passed (19 files,
+  65 tests); storefront production build passed; API typecheck passed; API tests
+  passed (10 files, 36 tests); API build passed; both managed workflows are
+  running; root and Design Studio previews rendered with no browser-console
+  errors; Design Studio status card reported 6/6 runtime roles ready; and no
+  order, payment, production data, or deployment state changed.
+```

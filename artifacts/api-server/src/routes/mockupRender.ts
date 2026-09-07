@@ -131,8 +131,8 @@ router.post("/mockup/render", async (req: Request, res: Response) => {
       { input: roles.base, left: 0, top: 0 },
       { input: maskedArtwork, left, top },
       { input: await sharp(roles.shadow).resize(canvasW, canvasH, { fit: "fill" }).ensureAlpha().png().toBuffer(), left: 0, top: 0, blend: "multiply" },
-      { input: await sharp(roles.protected).resize(canvasW, canvasH, { fit: "fill" }).ensureAlpha().png().toBuffer(), left: 0, top: 0 },
       { input: await sharp(roles.highlight).resize(canvasW, canvasH, { fit: "fill" }).ensureAlpha().png().toBuffer(), left: 0, top: 0, blend: "screen" },
+      { input: await sharp(roles.protected).resize(canvasW, canvasH, { fit: "fill" }).ensureAlpha().png().toBuffer(), left: 0, top: 0 },
     ];
 
     const output = await sharp(background, { limitInputPixels: MAX_OUTPUT_PIXELS })
