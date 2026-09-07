@@ -1334,6 +1334,7 @@ export default function DesignStudioV2() {
                               onUpscale={() => void handleUpscale()}
                               onAutoFix={() => void handleAutoFix()}
                               onOpenAiReference={() => setActiveTab("ai")}
+                              onApplyImage={(dataUrl) => replaceSelectedImage(dataUrl)}
                               busyAction={imageAction}
                             />
                           )}

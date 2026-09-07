@@ -143,6 +143,32 @@ Verification: storefront typecheck/build/tests passed; API typecheck passed;
   200; no order, payment, or production data was mutated.
 ```
 
+### Current image-tools continuation checkpoint (2026-09-07)
+
+```text
+Status: locally verified — GitHub publication pending
+Last completed: Implemented the selected Tools-first image interaction. A successful
+  upload selects the image and opens the Upload image-tools panel immediately;
+  one click on an image only selects it; double-click/double-tap opens the same
+  full tools surface; and the panel now provides functional crop-frame handles
+  plus transparent canvas extension controls for desktop and mobile.
+Stopped at: The storefront and API workflows are running cleanly after the final
+  build and proxied smoke checks.
+Files/areas changed: DesignStudioV2 upload/tool routing, ImagePanel controls, and
+  the new ImageCropExtendDialog editor.
+Remaining work: Commit and push this verified continuation, then let the connected
+  hosting rollout publish it normally.
+Blocker: The browser-use helper is not installed in this checkout, so direct
+  file-chooser automation was unavailable; static preview, build, tests, and
+  route/API checks all passed.
+Next safe action: Push the focused storefront change and verify the published
+  Design Studio bundle after the normal hosting rollout.
+Verification: Storefront typecheck passed; storefront tests passed (19 files/64
+  tests); storefront production build passed; both managed workflows are running;
+  `/design-studio`, `/api/healthz`, and `/api/products` returned 200; and
+  `git diff --check` passed. No order, payment, or production data changed.
+```
+
 ## Current studio correction plan (2026-09-06)
 
 ```text
