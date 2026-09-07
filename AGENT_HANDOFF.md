@@ -104,6 +104,51 @@ Verification: The deployed `/api/mockups` response contains exactly 188 rows,
   production data changed.
 ```
 
+## Latest Smart v10.3 API ingestion boundary checkpoint (2026-09-07)
+
+```text
+Status: complete — local Option A ingestion and server-render contract implemented
+Last completed: Added fail-closed Smart v10.3 manifest validation for admin PSD/PSB
+  records, including source-kit identity, PSD/PSB metadata, SHA-256 binding,
+  Smart Object provenance, print geometry, and all six runtime role paths,
+  provenance labels, and checksums. Invalid or incomplete master records are
+  persisted as failed with actionable ingestion errors instead of being marked
+  ready from a preview alone. The admin upload flow now derives the reviewed
+  runtime manifest for canonical overrides and displays the server result/error.
+  `/api/mockup/render` now accepts only the validated surface contract and six
+  checksum-matching role images; the previous arbitrary base/mask/texture shape
+  is rejected.
+Stopped at: After rebuilding/restarting the API, passing route-level render
+  tests, confirming `/api/healthz` and `/api/mockups` through the running service,
+  confirming the renderer rejects the legacy payload at `/api/mockup/render`, and
+  capturing a clean storefront preview.
+Files/areas changed: `artifacts/api-server/src/lib/mockupContract.ts`,
+  `artifacts/api-server/src/lib/mockupContract.test.ts`,
+  `artifacts/api-server/src/routes/mockups.ts`,
+  `artifacts/api-server/src/routes/mockupRender.ts`,
+  `artifacts/api-server/src/routes/mockupRender.test.ts`, and
+  `artifacts/trynex-storefront/src/pages/admin/AdminMockups.tsx`.
+Remaining work: Owner-controlled GitHub/hosting promotion remains separate from
+  this local implementation. Authenticated admin visual review of the upload
+  error/ready states and visual approval of all 188 surfaces are still release
+  gates; this checkpoint does not claim either one.
+Blocker: None for local implementation. Health reports the existing optional
+  Upstash Redis degradation while DB-backed readiness remains healthy.
+Next safe action: Review the authenticated admin mockup upload state, then
+  publish the verified local source through the owner-controlled rollout if
+  desired. Do not bypass the manifest gate for arbitrary PSD/PSB uploads.
+Verification: API typecheck passed; API build passed; API tests passed (9 files,
+  33 tests); focused Smart v10.3 contract/render tests passed (3 files, 7
+  tests); storefront typecheck passed; storefront tests passed (19 files,
+  64 tests); storefront production build passed before the final manifest-form
+  wiring and focused typecheck passed after it; active runtime matrix passed
+  (188 surfaces, 1,128 roles); correct v10-v3 release gate passed
+  structurally-verified 188/188; both managed workflows restarted cleanly;
+  health/mockups/root routes returned 200; legacy renderer payload returned
+  400; storefront screenshot had no browser-console errors; `git diff --check`
+  passed. No order, payment, or production data was changed.
+```
+
 ## Latest studio correction checkpoint (2026-09-06)
 
 ```text

@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, mockupsTable } from "@workspace/db";
 import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { validateSmartMockupIngestionManifest } from "../lib/mockupContract";
 
 const router = Router();
 
@@ -97,6 +98,38 @@ const MASTER_MIMES = new Set([
   "image/x-photoshop",
 ]);
 const INGESTION_STATUSES = new Set(["preview-only", "pending", "ready", "failed"]);
+
+function resolveIngestionState(args: {
+  masterFileUrl: unknown;
+  manifestJson: unknown;
+  requestedStatus: unknown;
+  metadata: {
+    masterFileName?: unknown;
+    masterFileMime?: unknown;
+    masterFileSize?: unknown;
+    masterFileSha256?: unknown;
+    sourceKitKey?: unknown;
+    face?: unknown;
+    color?: unknown;
+  };
+}) {
+  if (!args.masterFileUrl) {
+    return {
+      status: args.requestedStatus === "failed" ? "failed" : "preview-only",
+      error: args.requestedStatus === "failed" ? "Marked failed by administrator." : null,
+    };
+  }
+
+  const validation = validateSmartMockupIngestionManifest(args.manifestJson, args.metadata);
+  if (validation.errors.length > 0) {
+    return {
+      status: "failed",
+      error: `Smart v10.3 ingestion rejected: ${validation.errors.join("; ")}`,
+    };
+  }
+
+  return { status: "ready", error: null };
+}
 
 function isValidMasterUrl(value: unknown): value is string {
   return value === undefined || value === null || isValidImageUrl(value);
@@ -195,6 +228,20 @@ router.post("/admin/mockups", requireAdmin, async (req: Request, res: Response) 
       res.status(400).json({ error: "validation_error", message: "invalid ingestionStatus" });
       return;
     }
+    const ingestion = resolveIngestionState({
+      masterFileUrl,
+      manifestJson,
+      requestedStatus: ingestionStatus,
+      metadata: {
+        masterFileName,
+        masterFileMime,
+        masterFileSize: parsedMasterFileSize,
+        masterFileSha256,
+        sourceKitKey,
+        face,
+        color,
+      },
+    });
     const [row] = await db.insert(mockupsTable).values({
       name: name.trim(),
       description: description ?? null,
@@ -211,8 +258,8 @@ router.post("/admin/mockups", requireAdmin, async (req: Request, res: Response) 
       face: face ?? null,
       color: color ?? null,
       manifestJson: manifestJson ?? null,
-      ingestionStatus: ingestionStatus ?? (masterFileUrl ? "pending" : "preview-only"),
-      ingestionError: ingestionError ?? null,
+      ingestionStatus: ingestion.status,
+      ingestionError: ingestion.error ?? (ingestionStatus === "failed" ? ingestionError ?? "Marked failed by administrator." : null),
       tags: Array.isArray(tags) ? tags : [],
       isActive: isActive !== false,
       sortOrder: parsedSortOrder ?? 0,
@@ -236,6 +283,11 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
       masterFileUrl, masterFileName, masterFileMime, masterFileSize, masterFileSha256,
       sourceKitKey, face, color, manifestJson, ingestionStatus, ingestionError,
     } = req.body;
+    const [existing] = await db.select().from(mockupsTable).where(eq(mockupsTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Mockup not found" });
+      return;
+    }
     const update: Partial<typeof mockupsTable.$inferInsert> = { updatedAt: new Date() };
     if (name !== undefined) {
       if (typeof name !== "string" || !name.trim()) {
@@ -302,9 +354,26 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
         res.status(400).json({ error: "validation_error", message: "invalid ingestionStatus" });
         return;
       }
-      update.ingestionStatus = ingestionStatus;
     }
-    if (ingestionError !== undefined) update.ingestionError = ingestionError;
+    const mergedMasterFileUrl = masterFileUrl !== undefined ? masterFileUrl : existing.masterFileUrl;
+    const mergedManifestJson = manifestJson !== undefined ? manifestJson : existing.manifestJson;
+    const mergedMetadata = {
+      masterFileName: masterFileName !== undefined ? masterFileName : existing.masterFileName,
+      masterFileMime: masterFileMime !== undefined ? masterFileMime : existing.masterFileMime,
+      masterFileSize: masterFileSize !== undefined ? update.masterFileSize : existing.masterFileSize,
+      masterFileSha256: masterFileSha256 !== undefined ? masterFileSha256 : existing.masterFileSha256,
+      sourceKitKey: sourceKitKey !== undefined ? sourceKitKey : existing.sourceKitKey,
+      face: face !== undefined ? face : existing.face,
+      color: color !== undefined ? color : existing.color,
+    };
+    const ingestion = resolveIngestionState({
+      masterFileUrl: mergedMasterFileUrl,
+      manifestJson: mergedManifestJson,
+      requestedStatus: ingestionStatus !== undefined ? ingestionStatus : existing.ingestionStatus,
+      metadata: mergedMetadata,
+    });
+    update.ingestionStatus = ingestion.status;
+    update.ingestionError = ingestion.error ?? (ingestionStatus === "failed" ? ingestionError ?? "Marked failed by administrator." : null);
     if (isActive !== undefined) update.isActive = isActive;
     if (sortOrder !== undefined) {
       const parsed = parseOptionalPositiveInt(sortOrder);
@@ -316,10 +385,6 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
     }
 
     const [row] = await db.update(mockupsTable).set(update).where(eq(mockupsTable.id, id)).returning();
-    if (!row) {
-      res.status(404).json({ error: "not_found", message: "Mockup not found" });
-      return;
-    }
     res.json(row);
   } catch (err) {
     req.log.error({ err }, "Failed to update mockup");

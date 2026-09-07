@@ -65,3 +65,4 @@
 - [Metro image-size remediation](metro-image-size-remediation.md) — patch Metro to import a namespaced bounded parser directly; overrides keyed as image-size can still trigger scanner findings
 - [Admin destructive-action safety](admin-destructive-action-safety.md) — admin mutations should confirm destructive intent, show per-item pending state, and expose retryable failures
 - [Local preview CORS and viewer heartbeat](preview-cors-viewer-heartbeat.md) — ALLOWED_ORIGINS must not block known development preview origins or the public viewer heartbeat
+- [Smart v10.3 API ingestion boundary](smart-v10-api-boundary.md) — uploaded PSD/PSB masters stay failed until source identity, provenance, geometry, and all six checksummed roles validate
