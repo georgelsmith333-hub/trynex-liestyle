@@ -240,6 +240,116 @@ Acceptance gates:
   - Public rollout is not called complete until the Pages checks pass.
 ```
 
+## Latest studio correction checkpoint (2026-09-06)
+
+```text
+Status: locally verified; GitHub publication of this continuation is still pending
+Last completed: Added deterministic selection-aware undo/redo coverage, grouped
+  drag/resize/rotate history transactions, the shared red 44px delete control,
+  grouped product and mug-view switching, and removed the redundant post-switch
+  transform loop. Fixed the compositor canvas-reset regression so artwork no
+  longer erases the already-drawn studio background/base. Runtime shadow and
+  highlight roles now use the reviewed grayscale print mask, and 3D artwork
+  textures receive the same protected/detail role pass as the 2D compositor.
+  Updated the asset audit script to inspect the active v10.3 runtime tree.
+Stopped at: Local storefront/API workflows are running cleanly. Storefront
+  typecheck, 18 test files/59 tests, production build, API typecheck, 188-surface
+  matrix validation, 1,128-role validation, route/API smoke checks, and desktop
+  plus mobile Design Studio previews passed. The water-bottle preview visibly
+  retains the cap key-ring loop from the reviewed base asset.
+Files/areas changed: Design Studio history/store, CanvasArea/DesignLayer controls,
+  product and mug routing, shared 2D/3D compositor role handling, focused store
+  tests, and the active mockup audit script.
+Remaining work: Commit and push only these verified source changes, then recheck
+  the GitHub-connected Cloudflare Pages rollout independently. The current public
+  Pages host returns healthy 200 responses, but its current HTML bundle has not
+  exposed a new Smart v10.3 marker and the edge rollout must not be called
+  complete without checking canonical and retired mockup URLs.
+Blocker: Replit publishing is not configured for this workspace. Cloudflare
+  management API access is provider-managed; public Pages health is available,
+  but rollout freshness is separate from the local/GitHub result.
+Next safe action: Commit/push the verified continuation, re-run the public
+  Pages API/asset/sitemap/robots and retired-path checks, then record the result
+  without changing the Smart v9 fail-closed contract.
+Verification: storefront typecheck/build/tests passed; API typecheck passed;
+  both managed workflows restarted cleanly; local route/API checks returned 200;
+  protected admin probes returned 401; active matrix validators passed 188/188
+  and 1,128/1,128; desktop and mobile previews showed no browser console errors;
+  Cloudflare Pages root, Design Studio, liveness, sitemap, and robots returned
+  200; no order, payment, or production data was mutated.
+```
+
+## Current studio correction plan (2026-09-06)
+
+```text
+Goal: make the Design Studio trustworthy for real customer editing and photoreal
+  product previews, using the reviewed Smart v10.3 runtime without overlapping
+  controls, duplicate garment passes, or silent fallback assets.
+
+Stage 1 — Selection and editing controls
+  - Add a clearly visible red circular remove button at the selected artwork
+    bounds, positioned outside the top-right edge and kept above the artwork.
+  - Make the remove control a 44px minimum touch target with an accessible label,
+    keyboard activation, pointer capture isolation, and a delete action that
+    records exactly one undo frame.
+  - Make selection hit areas transparent and reliable for mouse, touch, and
+    stylus; prevent the rotate/resize/delete controls from starting a drag.
+  - Verify the control on desktop and mobile, including rotated artwork and
+    artwork near the canvas edge.
+
+Stage 2 — History correctness
+  - Audit every meaningful mutation path: add, delete, drag, resize, rotate,
+    text edits, visibility/lock changes, reorder, product/color/face changes.
+  - Group pointer gestures into one history entry on pointer-up rather than one
+    entry per movement; preserve redo only until a new edit occurs.
+  - Preserve selection state and product/face context across undo/redo without
+    restoring stale runtime asset URLs.
+  - Add focused store tests for one-step delete undo/redo, grouped transforms,
+    redo invalidation, product/face restoration, and empty-stack no-ops.
+
+Stage 3 — Photoreal composition and protected details
+  - Trace the v10.3 print mask/role order so artwork is clipped to the real print
+    area and garment details remain above it.
+  - Ensure hoodie drawstrings, collar, pocket seam, sleeve seams, mug handles,
+    cap brim/panel seams, and bottle cap/key-ring hardware are protected details,
+    never painted over by artwork.
+  - Remove any remaining full-frame duplicate base/shadow pass; keep one base
+    silhouette plus intentional role layers only.
+  - Compare browser SVG, canvas export, cart preview, and 3D preview for the
+    same surface and artwork placement.
+
+Stage 4 — Product-specific surface routing
+  - Fix mug side1/side2/front/back mapping so the visible handle orientation,
+    print zone, and runtime surface agree; keep Wrap explicit and wider.
+  - Verify long sleeve/hoodie sleeve faces route to the corresponding canonical
+    v10.3 role files rather than reusing the front.
+  - Repair the water-bottle front/back source/role composition and restore the
+    cap key-ring detail from reviewed source assets or a reviewed runtime role;
+    fail closed if the required detail source is absent rather than inventing it.
+  - Add route/asset contract tests for all curved-product faces and representative
+    apparel protected details.
+
+Stage 5 — Runtime/source audit and rollout
+  - Audit the source manifests, role PNG alpha bounds, protected/detail layers,
+    and representative photoreal composites for all six product families.
+  - Keep editable PSD/PSB masters outside public/ and expose only reviewed v10.3
+    runtime derivatives.
+  - Run storefront/API typechecks, focused/full tests, production build, local
+    proxy checks, desktop/mobile browser previews, and no-legacy-path checks.
+  - Commit/push the verified source, wait for Cloudflare Pages deployment, then
+    verify public API=188 canonical rows, canonical assets=200, retired paths=410,
+    sitemap/robots, and deployed bundle markers.
+
+Acceptance gates:
+  - No selection control overlaps artwork or is swallowed by the canvas edge.
+  - Delete/undo/redo works deterministically for mouse and touch gestures.
+  - No hoodie strings, collars, seams, handles, or bottle hardware are painted
+    over by artwork in browser, cart, export, or 3D previews.
+  - Mug side routing and water-bottle detail are visually and structurally
+    verified; missing source data fails loudly.
+  - Public rollout is not called complete until the Pages checks pass.
+```
+
 ### Current Smart v9 acceptance checkpoint (2026-09-06)
 
 ```text
