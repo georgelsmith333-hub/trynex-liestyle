@@ -44,6 +44,19 @@ to call the Git Data API; do not request or expose a token.
 
 **How to apply:** Verify the current remote ref first, build the new tree from that parent, create one commit, and update the branch with `force: false`. Record the returned commit SHA and verify the branch again. Guard each update against the SHA just read.
 
+If the checkout contains a very large unrelated local asset backlog, publish the
+focused reviewed source tree from the current remote parent instead of trying to
+replay hundreds of megabytes through the Git Data API. Keep the local backlog
+explicitly documented for a later, separately reviewed release.
+
+**Why:** GitHub's REST blob/tree flow is safe for a small release but impractical
+for a 600+ MB mixed asset delta, and silently bundling that delta makes the
+feature release harder to review and more likely to hit push protection.
+
+**How to apply:** Use the Git Data API with `base_tree` set to the current
+`main` tree, upload only the intended files, create one non-force commit, and
+verify both the returned commit and the branch ref.
+
 ## Push protection
 
 GitHub push protection rejects an outgoing history if it contains an old credential-bearing pasted attachment, even when that file is not part of the intended release. Do not whitelist the secret. Start a clean branch from the current published `main`, copy only the safe current source changes, exclude pasted attachments/evidence/cache output, and fast-forward `main` from that clean branch.
