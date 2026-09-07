@@ -1,25 +1,2 @@
-# Cloudflare Pages configuration for TryNex Lifestyle
 name = "trynex-lifestyle-shop"
-type = "javascript"
-account_id = ""  # Set via environment or Cloudflare dashboard
-workers_dev = true
-route = ""
-zone_id = ""
-
-[env.production]
-name = "trynex-lifestyle-shop"
-routes = [
-  { pattern = "trynex-lifestyle-shop.pages.dev", zone_name = "pages.dev" }
-]
-
-[build]
-command = "pnpm build"
-cwd = "./artifacts/trynex-storefront"
-watch_paths = ["artifacts/trynex-storefront/src/**/*.{ts,tsx,css}"]
-
-[build.upload]
-format = "service-worker"
-
-[env.production.build]
-command = "pnpm build"
-cwd = "./artifacts/trynex-storefront"
+pages_build_output_dir = "artifacts/trynex-storefront/dist"

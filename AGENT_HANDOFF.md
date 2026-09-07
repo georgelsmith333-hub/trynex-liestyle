@@ -64,6 +64,31 @@ mobile app, promotional experience, and brand-system artifact.
 
 ## Current open work
 
+### Latest Cloudflare credential and configuration checkpoint (2026-09-08)
+
+```text
+Status: partially complete — repository configuration fixed; provider API blocked
+Last completed: Verified the securely stored CLOUDFLARE_API_TOKEN against the
+  Cloudflare token-verification and account endpoints, then corrected wrangler.toml
+  from an obsolete Workers-style configuration to the active Cloudflare Pages
+  configuration used by trynex-lifestyle-shop.
+Stopped at: Cloudflare returned HTTP 401 "Invalid API Token" before permissions
+  could be evaluated, so no direct Cloudflare account, Pages, or Workers mutation
+  was attempted.
+Files/areas changed: wrangler.toml and this handoff only.
+Remaining work: Re-run Cloudflare API verification after the secure secret contains
+  a valid account token, then inspect or repair the separate legacy Workers Build
+  project if it is still required. GitHub-connected Pages remains the verified
+  deployment path.
+Blocker: The current stored Cloudflare token is rejected at authentication time.
+Next safe action: Update the CLOUDFLARE_API_TOKEN secret through secure secret
+  management, then verify `user/tokens/verify` and account access before any
+  provider mutation.
+Verification: storefront typecheck/build, API typecheck, 188-surface mockup
+  validation, 1,128-role validation, and git diff checks passed after the
+  configuration correction. No production data changed.
+```
+
 ### Latest GitHub and Cloudflare rollout checkpoint (2026-09-08)
 
 ```text
