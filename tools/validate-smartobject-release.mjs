@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 import { PNG } from "pngjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
-const root = path.resolve(process.argv[2] ?? path.join(repo, "dist-mockups", "staging", "smart-v10"));
+const root = path.resolve(process.argv[2] ?? path.join(repo, "dist-mockups", "staging", "smart-v10-v3"));
 const approveVisual = process.argv.includes("--approve-visual");
 const manifestPath = path.join(root, "manifest.json");
 const auditPath = path.join(root, "structural-audit.json");
