@@ -64,6 +64,41 @@ mobile app, promotional experience, and brand-system artifact.
 
 ## Current open work
 
+### Latest GitHub and Cloudflare rollout checkpoint (2026-09-08)
+
+```text
+Status: complete — verified source push and Cloudflare Pages rollout
+Last completed: Merged GitHub main normally without force-pushing, corrected the
+  Smart Object release validator to default to the active smart-v10-v3 staging tree,
+  pushed the verified continuation, and waited for the connected Pages build.
+Stopped at: The public Pages deployment is serving the pushed Smart v10.3 runtime
+  and the lazy Design Studio chunk with the new upload/image-tools implementation.
+Files/areas changed: tools/validate-smartobject-release.mjs and this handoff only
+  after the reviewed merge; no order, payment, or production data changed.
+Remaining work: None for the requested storefront, Design Studio, mockup matrix,
+  GitHub publication, or Cloudflare Pages rollout.
+Blocker: Direct Cloudflare API management remains unavailable because the configured
+  provider token returns 401. A separate legacy Cloudflare Workers Builds check
+  reported failure, while the requested Cloudflare Pages check completed successfully;
+  investigate that separate workflow before relying on it for future releases.
+Next safe action: If provider automation is needed, replace the Cloudflare API secret
+  with an Account → Cloudflare Pages → Edit token and separately inspect the failed
+  Workers check. Do not reuse the exposed historical R2 credentials.
+Verification: `node tools/validate-smartobject-release.mjs` passed structurally
+  verified 188/188; active matrix and runtime-role validation passed 188/188 and
+  1,128/1,128; storefront typecheck, 19 test files/67 tests, production build, and
+  API typecheck passed; the real Playwright flow passed product/cart/checkout/Studio
+  checks plus upload → visible artwork → image tools → crop/extend on desktop and
+  mobile; the mobile sticky purchase dock remained visible. Live `/api/mockups`
+  returned 188 Smart v10.3 rows, all 188 API-derived runtime PNG URLs returned
+  200, representative retired paths returned 410, the deployed Studio chunk
+  contained `smart-v10.3`, `Crop image`, `Extend canvas`, and `Quick image tools`,
+  `/api/sitemap.xml` contained 118 URLs, and robots exposed the sitemap directive.
+  GitHub build/typecheck and security checks passed; the separate Workers check did
+  not. The browser flow saw one external certificate warning from a remote resource,
+  but no application exception.
+```
+
 ### Current Design Studio correction pass (2026-09-07)
 
 ```text
