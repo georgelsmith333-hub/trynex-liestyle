@@ -635,7 +635,7 @@ function canonicalMasterPath(category: DesignProduct["category"], colorSlug: str
   // derivatives are browser-served.
   const extension = category === "mug" || category === "waterbottle" ? "psb" : "psd";
   const releaseFamily = category === "waterbottle" ? "waterbottle" : category;
-  return `dist-mockups/staging/smart-v10/masters/${releaseFamily}/${releaseFamily}-${colorSlug}-${face}.${extension}`;
+  return `dist-mockups/staging/smart-v10-v3/masters/${releaseFamily}/${releaseFamily}-${colorSlug}-${face}.${extension}`;
 }
 
 /**

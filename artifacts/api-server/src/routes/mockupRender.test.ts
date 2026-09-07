@@ -53,7 +53,7 @@ async function createFixture() {
     runtimeRoles: Object.fromEntries(REQUIRED_RUNTIME_ROLES.map((role) => [
       role,
       {
-        path: `/mockups/psd-master-v10/runtime-roles/tshirt/white/front-${role}.png`,
+        path: `/mockups/psd-master-v10/runtime-roles/tshirt/white/front-${role === "printMask" ? "print-mask" : role}.png`,
         sha256,
         sourceLayerPrefix: `${role} source layer`,
       },
@@ -87,7 +87,7 @@ describe("Smart v10.3 mockup renderer", () => {
       .send(fixture);
 
     expect(response.status).toBe(200);
-    expect(response.headers["content-type"]).toContain("image/webp");
+    expect(response.headers["content-type"]).toContain("image/png");
     expect(response.headers["x-mockup-surface-key"]).toBe("tshirt/white/front");
     expect(response.body.length).toBeGreaterThan(0);
   });

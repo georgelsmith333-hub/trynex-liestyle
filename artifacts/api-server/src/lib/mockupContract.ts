@@ -111,7 +111,8 @@ function parseSurfaceKey(value: unknown): { category: SurfaceCategory; color: st
 
 function expectedRolePath(sourceKitKey: string, role: RuntimeRole): string {
   const [category, color, face] = sourceKitKey.split("/");
-  return `/mockups/psd-master-v10/runtime-roles/${category}/${color}/${face}-${role}.png`;
+  const fileRole = role === "printMask" ? "print-mask" : role;
+  return `/mockups/psd-master-v10/runtime-roles/${category}/${color}/${face}-${fileRole}.png`;
 }
 
 function validateGeometry(

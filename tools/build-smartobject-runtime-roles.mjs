@@ -5,7 +5,7 @@
  * Editable PSD/PSB masters and runtime roles remain in staging. The optional
  * --public directory receives only the reviewed PNG roles plus the manifest.
  */
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { CANONICAL, pngBytes, protectedDetails, readPng, shadowMap, highlightMap, solid } from "./build-smartobject-mockups.mjs";
@@ -104,8 +104,13 @@ for (const row of stagingManifest.surfaces) {
     color: row.color,
     view: row.view,
     printZone: row.printZone,
+    normalizedFrame: row.normalizedFrame,
     masterPath: row.masterPath,
     masterChecksum: row.masterChecksum,
+    masterSize: statSync(path.resolve(REPO, row.masterPath)).size,
+    masterFormat: row.masterFormat,
+    smartObject: row.smartObject,
+    reviewStatus: row.reviewStatus,
     roles: manifestRoles,
     blendModes: { shadow: "multiply", highlight: "screen", protected: "source-over" },
   });

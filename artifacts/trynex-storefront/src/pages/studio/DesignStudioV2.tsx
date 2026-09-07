@@ -20,12 +20,13 @@ import {
 import {
   PRODUCTS, GarmentSVG, FlatZoneSVG, MUG_PZ, MUG_WRAP_BACK_PZ, MUG_SIDE_PZ, MUG_SIDE_BACK_PZ, resolveMockup,
   getActiveMockupReleaseVersion, getApparelZones, getZonePZ, type ApparelZone, isNearBlack, isLightTint,
-  type PrintZone, type DesignProduct, type Face,
+  type PrintZone, type DesignProduct, type Face, type MockupResolution,
 } from "../design-studio/mockups";
 import {
   composeMockupSurface, composeMockupSurfaceTexture, autoFixImage,
   type ComposerLayer, type UnifiedMockupSurface,
 } from "../design-studio/composer";
+import { renderApprovedMockupOnServer } from "../design-studio/server-mockup-render";
 
 import { useDesignStore } from "@/hooks/useDesignStore";
 import { LayerPanel } from "./panels/LayerPanel";
@@ -121,6 +122,46 @@ function detectColorFromProduct(prod: any): string {
     if (typeof first === "object" && first?.hex) return first.hex;
   }
   return "#F5F5F3";
+}
+
+function SmartObjectStatusCard({ surface }: { surface: MockupResolution }) {
+  const approved = surface.runtimeStatus === "approved" && surface.contractErrors.length === 0;
+  const format = surface.smartObject.masterFormat.toUpperCase();
+  const roleCount = surface.smartObject.assets.runtimeRoles
+    ? Object.keys(surface.smartObject.assets.runtimeRoles).length
+    : 0;
+  return (
+    <section
+      aria-label="Smart Object surface status"
+      className={`rounded-2xl border px-3.5 py-3 shadow-sm ${approved ? "border-emerald-200 bg-emerald-50/70" : "border-amber-300 bg-amber-50"}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ShieldCheck className={`h-4 w-4 shrink-0 ${approved ? "text-emerald-600" : "text-amber-700"}`} />
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">Smart Object surface</p>
+            <p className="truncate text-xs font-black text-gray-900">
+              {format} master · {approved ? "verified runtime" : "blocked"}
+            </p>
+          </div>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${approved ? "bg-emerald-100 text-emerald-700" : "bg-amber-200 text-amber-900"}`}>
+          {surface.manifestRevision}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-gray-600 sm:grid-cols-4">
+        <span><strong className="text-gray-900">Source:</strong> {surface.sourceKitKey}</span>
+        <span><strong className="text-gray-900">Master:</strong> {surface.smartObject.masterStatus}</span>
+        <span><strong className="text-gray-900">Roles:</strong> {roleCount}/6 ready</span>
+        <span><strong className="text-gray-900">Object:</strong> linked</span>
+      </div>
+      {!approved && (
+        <p role="alert" className="mt-2 text-[10px] font-semibold text-amber-900">
+          {surface.disabledReason ?? (surface.contractErrors.join(", ") || "This Smart Object surface is not ready.")}
+        </p>
+      )}
+    </section>
+  );
 }
 
 export default function DesignStudioV2() {
@@ -917,12 +958,14 @@ export default function DesignStudioV2() {
 
     let mockupUrl: string;
     try {
-      const mockupCanvas = document.createElement("canvas");
-      await composeMockupSurface({ canvas: mockupCanvas, surface: { ...frontMockup, baseSrc: garmentSrc, printZone: frontPZ }, garmentColor: selectedColor.hex, layers: frontLayers, outSize: 400, imageCache, fabricTexture });
-      mockupUrl = mockupCanvas.toDataURL("image/webp", 0.8);
+      mockupUrl = await renderApprovedMockupOnServer({
+        surface: frontMockup,
+        printZone: frontPZ,
+        layers: frontLayers,
+      });
     } catch (err) {
       console.error("Mockup compose failed", err);
-      toast({ title: "Preview failed", description: "Could not generate the design preview. Try a different image or refresh.", variant: "destructive" });
+      toast({ title: "Final mockup failed", description: err instanceof Error ? err.message : "The server could not validate this mockup. Your design was not added to cart.", variant: "destructive" });
       return;
     }
 
@@ -1038,13 +1081,16 @@ export default function DesignStudioV2() {
         throw new Error(exportMockup.disabledReason ?? "This product surface is not ready for export yet. Please try again later.");
       }
       const garmentSrc = exportMockup.cutoutSrc;
-      const canvas = document.createElement("canvas");
       const exportPrintZone = isMug
         ? (mugMode === "wrap" ? (activeFace === "back" ? MUG_WRAP_BACK_PZ : MUG_PZ) : (activeFace === "back" ? MUG_SIDE_BACK_PZ : MUG_SIDE_PZ))
         : getZonePZ(activeFace, selectedProduct, selectedColor.hex);
-      await composeMockupSurface({ canvas, surface: { ...exportMockup, baseSrc: garmentSrc, printZone: exportPrintZone }, garmentColor: selectedColor.hex, layers: activeLayers, outSize: 1200, imageCache: new Map(), fabricTexture });
-      const a = document.createElement("a"); a.href = canvas.toDataURL("image/png"); a.download = `trynex-${selectedProduct.id}-${activeFace}-design.png`; a.click();
-      toast({ title: "PNG exported!", description: "High-res PNG saved to your downloads." });
+       const serverImage = await renderApprovedMockupOnServer({
+         surface: exportMockup,
+         printZone: exportPrintZone,
+         layers: activeLayers,
+       });
+       const a = document.createElement("a"); a.href = serverImage; a.download = `trynex-${selectedProduct.id}-${activeFace}-design.png`; a.click();
+       toast({ title: "PNG exported!", description: "The validated server-rendered mockup was saved to your downloads." });
     } catch (error) {
       console.error("[studio] export failed", error);
       toast({ title: "Export failed", description: error instanceof Error ? error.message : "The preview could not be exported. Please retry.", variant: "destructive" });
@@ -1127,6 +1173,7 @@ export default function DesignStudioV2() {
             ]}
             onFocusCanvas={() => containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
           />
+          <SmartObjectStatusCard surface={activeMockup} />
           <StudioQualityBanner
             issues={qualityIssues}
             onShowPrintZone={() => {

@@ -30,7 +30,7 @@ function validManifest() {
     runtimeRoles: Object.fromEntries(REQUIRED_RUNTIME_ROLES.map((role) => [
       role,
       {
-        path: `/mockups/psd-master-v10/runtime-roles/tshirt/white/front-${role}.png`,
+        path: `/mockups/psd-master-v10/runtime-roles/tshirt/white/front-${role === "printMask" ? "print-mask" : role}.png`,
         sha256: checksum,
         sourceLayerPrefix: `${role} source layer`,
       },

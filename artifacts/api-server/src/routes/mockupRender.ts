@@ -111,6 +111,7 @@ router.post("/mockup/render", async (req: Request, res: Response) => {
     const renderedArtwork = await applyOpacity(renderedArtworkBase, opacity);
 
     const mask = await sharp(roles.printMask)
+      .extract({ left: zoneX, top: zoneY, width: zoneW, height: zoneH })
       .resize(resizedW, resizedH, { fit: "fill" })
       .greyscale()
       .png()
@@ -136,11 +137,11 @@ router.post("/mockup/render", async (req: Request, res: Response) => {
 
     const output = await sharp(background, { limitInputPixels: MAX_OUTPUT_PIXELS })
       .composite(composites)
-      .webp({ quality: 90 })
+      .png({ compressionLevel: 9 })
       .toBuffer();
     res.setHeader("Cache-Control", "private, max-age=60");
     res.setHeader("X-Mockup-Surface-Key", surface.sourceKitKey);
-    res.type("image/webp").send(output);
+    res.type("image/png").send(output);
   } catch (error) {
     const message = error instanceof Error ? error.message : "render_failed";
     const status = message.startsWith("surface_contract_invalid") ||
