@@ -110,6 +110,7 @@ export interface DraftPayload {
   color: { name: string; hex: string };
   size: string;
   savedAt: number;
+  activeFace?: Face;
   mugMode?: string;
   linkedStoreProductId?: number;
   linkedStoreProductName?: string;

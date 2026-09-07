@@ -3,14 +3,14 @@
 
    Every category uses the reviewed photographic mockup as the visual authority.
    PhotoMockupMesh keeps the exact product silhouette and face-specific photo in
-   the 3D preview; the transparent design texture is the only overlay.
+    the 3D preview; the PSD-derived full-canvas composite is the preview texture.
 ════════════════════════════════════════════════════════ */
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import {
-  composeMockupSurfaceTexture,
+  composeMockupSurfacePreviewTexture,
   type ComposerLayer,
   type ComposerPrintZone,
   type UnifiedMockupSurface,
@@ -99,19 +99,17 @@ function useFaceTexture(
 
   const faceRef = useRef(face);
   faceRef.current = face;
-  const clipFlag = opts.clipToPrintZone ?? true;
-
   useEffect(() => {
     const f = faceRef.current;
     if (!f) return;
     let cancelled = false;
-    composeMockupSurfaceTexture({
+    composeMockupSurfacePreviewTexture({
       canvas: canvasRef.current!,
       surface: { ...f.surface, printZone: f.printZone },
+      garmentColor: garmentColor ?? "#ffffff",
       layers: f.layers,
       outSize: opts.outW,
       imageCache: cacheRef.current,
-      clipToPrintZone: clipFlag,
       curvature: opts.curvature ?? 0,
     }).then(() => {
       if (cancelled) return;
@@ -122,7 +120,7 @@ function useFaceTexture(
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig, opts.outW, opts.outH, clipFlag, opts.curvature]);
+  }, [sig, opts.outW, opts.outH, opts.curvature]);
 
   return face ? textureRef.current : null;
 }
@@ -172,13 +170,13 @@ function useMugWrapTexture(
       const composeFace = async (face: FacePayload | undefined) => {
         const faceCanvas = document.createElement("canvas");
         if (!face) return faceCanvas;
-        await composeMockupSurfaceTexture({
+        await composeMockupSurfacePreviewTexture({
           canvas: faceCanvas,
           surface: { ...face.surface, printZone: face.printZone },
+          garmentColor: "#ffffff",
           layers: face.layers,
           outSize: 1024,
           imageCache: cacheRef.current,
-          clipToPrintZone: true,
           curvature: 0.16,
         });
         return faceCanvas;
@@ -301,13 +299,13 @@ export default function ProductViewer3D({
     if (supports3D || !front) return;
     const c = document.createElement("canvas");
       const fallbackImageCache = new Map<string, HTMLImageElement>();
-    composeMockupSurfaceTexture({
+    composeMockupSurfacePreviewTexture({
       canvas: c,
       surface: { ...front.surface, printZone: front.printZone },
+      garmentColor,
       layers: front.layers,
       outSize: 1024,
       imageCache: fallbackImageCache,
-      clipToPrintZone: true,
     }).then(() => {
       setFallbackUrl(c.toDataURL("image/png"));
     }).catch((error) => {
@@ -317,14 +315,10 @@ export default function ProductViewer3D({
 
   /* No WebGL2 → flat 2D photo mockup fallback. */
   if (!supports3D) {
-    const fallbackGarmentSrc = frontMockup.photoKind === "opaque-photo"
-      ? frontMockup.photoSrc
-      : frontMockup.cutoutSrc;
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <NoWebGLFallback
-          garmentSrc={fallbackGarmentSrc}
-          designSrc={fallbackUrl}
+          compositeSrc={fallbackUrl}
           garmentColor={garmentColor}
           requiresTint={frontMockup.photoKind === "transparent-cutout" && frontMockup.requiresTint}
         />
@@ -362,8 +356,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}
@@ -379,8 +373,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}
@@ -394,8 +388,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}
@@ -409,8 +403,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}
@@ -424,8 +418,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}
@@ -441,8 +435,8 @@ export default function ProductViewer3D({
             <PhotoMockupMesh
               frontPhotoSrc={resolvedFrontPhoto}
               backPhotoSrc={resolvedBackPhoto}
-              frontTex={frontTex}
-              backTex={backTex}
+               frontCompositeTex={frontTex}
+               backCompositeTex={backTex}
               frontTint={frontPhotoTint}
               backTint={backPhotoTint}
               frontFrame={frontMockup.normalizedFrame}

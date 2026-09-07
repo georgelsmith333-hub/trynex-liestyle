@@ -31,6 +31,10 @@ export function StudioFirstUseGuide({
     if (typeof window === "undefined") return true;
     return window.localStorage.getItem(storageKey) !== "1";
   });
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !window.matchMedia("(max-width: 639px)").matches;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -45,7 +49,7 @@ export function StudioFirstUseGuide({
   if (!visible) return null;
 
   return (
-    <section className="rounded-3xl border border-violet-200 bg-white/95 p-4 shadow-sm backdrop-blur-sm sm:p-5" aria-label="Design Studio guidance">
+    <section className="rounded-3xl border border-violet-200 bg-white/95 p-3 shadow-sm backdrop-blur-sm sm:p-5" aria-label="Design Studio guidance">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
@@ -53,7 +57,7 @@ export function StudioFirstUseGuide({
           </div>
           <div className="space-y-1">
              <p className="text-sm font-semibold text-slate-900">Quick start for the TryNex Studio</p>
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
               Follow the reviewed workflow, or dismiss this helper and work directly on the canvas.
             </p>
           </div>
@@ -62,16 +66,26 @@ export function StudioFirstUseGuide({
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {steps.map((step, index) => (
-          <li key={step.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700">Step {index + 1}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{step.title}</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">{step.description}</p>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="mt-3 inline-flex min-h-10 items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 sm:hidden"
+        aria-expanded={expanded}
+      >
+        {expanded ? "Hide steps" : `Show ${steps.length} quick steps`}
+      </button>
+      {expanded && (
+        <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {steps.map((step, index) => (
+            <li key={step.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700">Step {index + 1}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-900 sm:text-sm">{step.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">{step.description}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
         {onFocusCanvas && (
           <button type="button" onClick={onFocusCanvas} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2">
             <Eye className="h-4 w-4" aria-hidden="true" />

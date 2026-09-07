@@ -63,13 +63,13 @@ function isMasterFile(file: File): boolean {
 }
 
 function contentTypeFor(file: File): string {
-  if (file.type) return file.type;
   if (/\.psb$/i.test(file.name)) return "application/vnd.adobe.photoshop";
   if (/\.psd$/i.test(file.name)) return "image/vnd.adobe.photoshop";
+  if (file.type) return file.type;
   return "application/octet-stream";
 }
 
-async function uploadFile(file: File): Promise<string> {
+async function uploadFile(file: File, visibility: "public" | "private" = "public"): Promise<string> {
   const contentType = contentTypeFor(file);
   const { uploadURL, objectPath } = await apiFetch("/api/storage/uploads/request-url", {
     method: "POST",
@@ -81,7 +81,83 @@ async function uploadFile(file: File): Promise<string> {
   });
   const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
   if (!put.ok) throw new Error(`Storage upload failed (${put.status})`);
+  if (visibility === "private") return objectPath;
   return getApiUrl(`/api/storage/public-objects/${objectPath}`);
+}
+
+async function sha256File(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function buildIngestionManifest(masterFile: File | null, sourceKitKey: string | null | undefined, masterFileSha256: string | null) {
+  if (!masterFile || !sourceKitKey || !masterFileSha256) return null;
+  try {
+    const response = await fetch("/mockups/psd-master-v10/runtime-roles/manifest.json", { cache: "no-store" });
+    if (!response.ok) return null;
+    const release = await response.json() as {
+      surfaces?: Array<{
+        surfaceKey: string;
+        family: string;
+        color: string;
+        view: string;
+        masterPath: string;
+        masterChecksum: string;
+        printZone: { x: number; y: number; w: number; h: number };
+        normalizedFrame?: { canvasWidth: number; canvasHeight: number };
+        smartObject?: { layerName: string };
+        roles: Record<string, { path: string; sha256: string; sourceLayerPrefix: string }>;
+      }>;
+    };
+    const surface = release.surfaces?.find((candidate) => candidate.surfaceKey === sourceKitKey);
+    if (!surface || !surface.roles) return null;
+    const runtimeRoles = Object.fromEntries(
+      Object.entries(surface.roles).map(([role, asset]) => [
+        role,
+        {
+          ...asset,
+          path: `/mockups/psd-master-v10/runtime-roles/${surface.family}/${surface.color}/${asset.path.split("/").pop()}`,
+        },
+      ]),
+    );
+    return {
+      schema: "trynex-smart-mockup-ingestion/v1",
+      releaseVersion: "smart-v10.3",
+      sourceKitKey,
+      category: surface.family,
+      color: surface.color,
+      face: surface.view,
+      master: {
+        fileName: masterFile.name,
+        mime: contentTypeFor(masterFile),
+        size: masterFile.size,
+        // The server recomputes and binds this checksum to the uploaded bytes.
+        // Never use the catalog checksum here: an uploaded replacement master
+        // must be validated from its actual contents.
+        sha256: masterFileSha256,
+        provenance: "catalog-psd-smart-object",
+         smartObjectLayer: surface.smartObject?.layerName ?? "",
+         geometry: {
+           canvasWidth: surface.normalizedFrame?.canvasWidth ?? 1024,
+           canvasHeight: surface.normalizedFrame?.canvasHeight ?? 1024,
+           x: surface.printZone.x,
+           y: surface.printZone.y,
+           w: surface.printZone.w,
+           h: surface.printZone.h,
+         },
+      },
+      runtimeRoles,
+      printZone: {
+        x: surface.printZone.x / 1024,
+        y: surface.printZone.y / 1024,
+        w: surface.printZone.w / 1024,
+        h: surface.printZone.h / 1024,
+      },
+      blendModes: { shadow: "multiply", highlight: "screen", protected: "source-over" },
+    };
+  } catch {
+    return null;
+  }
 }
 
 function TagBadge({ tag, onRemove }: { tag: string; onRemove?: () => void }) {
@@ -117,7 +193,6 @@ export default function AdminMockups() {
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState("");
   const [editActive, setEditActive] = useState(true);
-  const [editIngestionStatus, setEditIngestionStatus] = useState<NonNullable<Mockup["ingestionStatus"]>>("preview-only");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -166,13 +241,15 @@ export default function AdminMockups() {
       for (let i = 0; i < Math.max(previewFiles.length, masters.length || 1); i++) {
         const previewFile = previewFiles[i] ?? previewFiles[0] ?? null;
         const masterFile = masters[i] ?? masters[0] ?? null;
-        const imageUrl = previewFile ? await uploadFile(previewFile) : target?.imageUrl;
+        const imageUrl = previewFile ? await uploadFile(previewFile, "public") : target?.imageUrl;
         if (!imageUrl) throw new Error("A preview image is required for every gallery record.");
-        const masterFileUrl = masterFile ? await uploadFile(masterFile) : null;
+        const masterFileUrl = masterFile ? await uploadFile(masterFile, "private") : null;
+        const masterFileSha256 = masterFile ? await sha256File(masterFile) : null;
+        const manifestJson = await buildIngestionManifest(masterFile, target?.sourceKitKey, masterFileSha256);
         const fileName = (masterFile ?? previewFile)?.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") ?? "Mockup";
         const name = target ? `${target.name} — override` : fileName;
         const tags = Array.from(new Set([...(target?.tags ?? []), ...(target ? ["override"] : ["uploaded"]), ...(masterFile ? ["psd-master"] : [])]));
-        await apiFetch("/api/admin/mockups", {
+        const created = await apiFetch("/api/admin/mockups", {
           method: "POST",
           body: JSON.stringify({
             name,
@@ -184,18 +261,24 @@ export default function AdminMockups() {
             masterFileName: masterFile?.name ?? null,
             masterFileMime: masterFile ? contentTypeFor(masterFile) : null,
             masterFileSize: masterFile?.size ?? null,
+            masterFileSha256,
             sourceKitKey: target?.sourceKitKey ?? null,
             face: target?.face ?? null,
             color: target?.color ?? null,
-            // A PSD/PSB plus a validated preview is immediately usable as a
-            // visual override. The master remains available for future editing.
-            ingestionStatus: masterFile ? ((previewFile || target?.imageUrl) ? "ready" : "pending") : "preview-only",
+            manifestJson,
+            // The API decides readiness only after the complete source-kit
+            // manifest and all six runtime roles have been validated.
+            ingestionStatus: masterFile ? "pending" : "preview-only",
             tags,
             isActive: true,
             sortOrder: target?.sortOrder ?? 0,
           }),
         });
-        toast({ title: masterFile ? "PSD/PSB master uploaded" : target ? "Live override uploaded" : "Mockup uploaded", description: name });
+        toast({
+          title: masterFile ? (created.ingestionStatus === "ready" ? "Validated PSD/PSB master uploaded" : "PSD/PSB queued for validation") : target ? "Live override uploaded" : "Mockup uploaded",
+          description: created.ingestionStatus === "failed" ? created.ingestionError : name,
+          variant: created.ingestionStatus === "failed" ? "destructive" : "default",
+        });
       }
       await fetchMockups();
     } catch (err: any) {
@@ -221,7 +304,6 @@ export default function AdminMockups() {
     setEditTags(Array.isArray(m.tags) ? m.tags : []);
     setEditTagInput("");
     setEditActive(m.isActive);
-    setEditIngestionStatus(m.ingestionStatus ?? (m.masterFileUrl ? "pending" : "preview-only"));
   };
 
   const saveEdit = async () => {
@@ -238,7 +320,6 @@ export default function AdminMockups() {
           productName: prod?.name ?? (editProductName || null),
           tags: editTags,
           isActive: editActive,
-          ...(editModal.mockup.masterFileUrl ? { ingestionStatus: editIngestionStatus } : {}),
         }),
       });
       toast({ title: "Mockup saved" });
@@ -509,11 +590,18 @@ export default function AdminMockups() {
                     {m.masterFileName && (
                       <p className="text-[9px] text-purple-600 mt-1 truncate" title={m.masterFileName}>Editable master: {m.masterFileName}</p>
                     )}
-                    {m.ingestionStatus && (
-                      <span className={`inline-flex mt-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${m.ingestionStatus === "ready" ? "bg-emerald-50 text-emerald-700" : m.ingestionStatus === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
-                        {m.ingestionStatus}
-                      </span>
-                    )}
+                     {m.ingestionStatus && (
+                       <div className="mt-1">
+                         <span className={`inline-flex text-[8px] font-bold px-1.5 py-0.5 rounded-full ${m.ingestionStatus === "ready" ? "bg-emerald-50 text-emerald-700" : m.ingestionStatus === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                           {m.ingestionStatus}
+                         </span>
+                         {m.ingestionError && (
+                           <p className="mt-1 line-clamp-3 text-[9px] leading-3 text-red-600" title={m.ingestionError}>
+                             {m.ingestionError}
+                           </p>
+                         )}
+                       </div>
+                     )}
                     {Array.isArray(m.tags) && m.tags.length > 0 && (
                       <div className="flex flex-wrap gap-0.5 mt-1">
                         {m.tags.slice(0, 3).map(t => (
@@ -630,21 +718,21 @@ export default function AdminMockups() {
                   </div>
                 </div>
 
-                {editModal.mockup.masterFileUrl && (
+                 {editModal.mockup.masterFileUrl && (
                   <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 space-y-2">
                     <div>
                       <p className="text-sm font-bold text-purple-900">Editable master binding</p>
-                      <p className="text-[11px] text-purple-700">A ready record can override this exact source-kit face. Use failed only when the master or preview is not usable.</p>
+                       <p className="text-[11px] text-purple-700">Only a complete PSD/PSB source package with matching six-role runtime assets can become ready. Readiness is controlled by server validation.</p>
                     </div>
-                    <select
-                      value={editIngestionStatus}
-                      onChange={e => setEditIngestionStatus(e.target.value as NonNullable<Mockup["ingestionStatus"]>)}
-                      className="w-full border border-purple-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400"
-                    >
-                      <option value="pending">Pending review</option>
-                      <option value="ready">Ready — use approved preview</option>
-                      <option value="failed">Failed — do not use</option>
-                    </select>
+                     <div className="flex items-center justify-between rounded-lg border border-purple-100 bg-white px-3 py-2">
+                       <span className="text-[11px] font-bold text-purple-700">Validation status</span>
+                       <span className={`text-[11px] font-black ${editModal.mockup.ingestionStatus === "ready" ? "text-emerald-700" : editModal.mockup.ingestionStatus === "failed" ? "text-red-700" : "text-amber-700"}`}>
+                         {editModal.mockup.ingestionStatus ?? "pending"}
+                       </span>
+                     </div>
+                     {editModal.mockup.ingestionError && (
+                       <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[10px] leading-4 text-red-700">{editModal.mockup.ingestionError}</p>
+                     )}
                     <p className="text-[10px] text-purple-700 truncate" title={editModal.mockup.masterFileName ?? undefined}>Master: {editModal.mockup.masterFileName ?? "attached"}</p>
                   </div>
                 )}

@@ -758,6 +758,16 @@ export interface UnifiedMockupRenderRequest {
   fabricTexture?: boolean;
 }
 
+/** The PSD-derived order used by every browser-safe runtime surface. */
+export const SMART_MOCKUP_RUNTIME_LAYER_ORDER = [
+  "studioBackground",
+  "base",
+  "artwork",
+  "shadow",
+  "highlight",
+  "protected",
+] as const;
+
 function assertRenderableSurface(surface: UnifiedMockupSurface): void {
   if (surface.runtimeStatus !== "approved") {
     throw new Error(surface.disabledReason ?? `Mockup surface ${surface.sourceKitKey} is not approved for runtime rendering.`);
@@ -787,6 +797,31 @@ export async function composeMockupSurface(request: UnifiedMockupRenderRequest):
     fabricTexture: request.fabricTexture,
     isColorPhoto: request.surface.alphaMode === "opaque-photo",
     requiresTint: false,
+  });
+}
+
+/** Full-canvas preview texture for the live viewer and WebGL fallback.
+ * Unlike composeMockupSurfaceTexture, this includes the product base and
+ * keeps protected details outside the print zone. */
+export async function composeMockupSurfacePreviewTexture(opts: {
+  canvas: HTMLCanvasElement;
+  surface: UnifiedMockupSurface;
+  garmentColor?: string;
+  layers: ComposerLayer[];
+  outSize: number;
+  imageCache?: Map<string, HTMLImageElement>;
+  curvature?: number;
+  fabricTexture?: boolean;
+}): Promise<HTMLCanvasElement> {
+  return composeMockupSurface({
+    canvas: opts.canvas,
+    surface: opts.surface,
+    garmentColor: opts.garmentColor ?? "#ffffff",
+    layers: opts.layers,
+    outSize: opts.outSize,
+    imageCache: opts.imageCache,
+    curvature: opts.curvature,
+    fabricTexture: opts.fabricTexture,
   });
 }
 

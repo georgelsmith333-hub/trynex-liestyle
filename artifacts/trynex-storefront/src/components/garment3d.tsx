@@ -703,10 +703,10 @@ export function MugBody({
  * Used for apparel, mugs, caps, and water bottles — products where the
  * procedurally generated GLB geometry looked flat and unrealistic.
  *
- * Approach: map the REAL product photo as a texture onto a plane in the
- * 3D scene. The R3F environment (city HDRI) adds specular highlights and
- * ambient light, making the photo look three-dimensionally lit. A second
- * plane slightly in front carries the design texture overlay.
+ * Approach: map the REAL product photo or PSD-derived full-canvas composite as
+ * a texture onto a plane in the 3D scene. The R3F environment adds specular
+ * highlights and ambient light, while the full composite preserves protected
+ * product details above the Smart Object artwork.
  *
  * Two planes (front + back) are stacked back-to-back so the camera can
  * orbit 360° and always see the correct face of the product.
@@ -716,6 +716,8 @@ export function PhotoMockupMesh({
   backPhotoSrc,
   frontTex,
   backTex,
+  frontCompositeTex,
+  backCompositeTex,
   activeFace = "front",
   planeW = 2.60,
   planeH = 2.60,
@@ -728,6 +730,10 @@ export function PhotoMockupMesh({
   backPhotoSrc?: string;
   frontTex?: THREE.Texture | null;
   backTex?: THREE.Texture | null;
+  /** Full-canvas PSD-derived preview. When present it replaces the split
+   * photo/artwork planes so protected details stay above the Smart Object. */
+  frontCompositeTex?: THREE.Texture | null;
+  backCompositeTex?: THREE.Texture | null;
   activeFace?: "front" | "back";
   planeW?: number;
   planeH?: number;
@@ -786,6 +792,14 @@ export function PhotoMockupMesh({
     mirrored.needsUpdate = true;
     return mirrored;
   }, [backDesignTex]);
+  const frontCompositeBillboardTex = useMemo(
+    () => cropTexture(frontCompositeTex ?? null, frontFrame),
+    [cropTexture, frontCompositeTex, frontFrame],
+  );
+  const backCompositeBillboardTex = useMemo(
+    () => cropTexture(backCompositeTex ?? null, backFrame ?? frontFrame),
+    [cropTexture, backCompositeTex, backFrame, frontFrame],
+  );
   const frontAspect = frontFrame ? frontFrame.w / Math.max(1, frontFrame.h) : 1;
   const backAspect = backFrame ? backFrame.w / Math.max(1, backFrame.h) : frontAspect;
   const resolvedPlaneW = planeW * Math.max(frontAspect, backAspect);
@@ -822,32 +836,48 @@ export function PhotoMockupMesh({
        */}
       {activeFace === "front" && (
         <>
-          <mesh geometry={planeGeo} position={[0, 0, 0.006]}>
-            <meshPhysicalMaterial {...baseMat(frontBillboardTex, frontTint)} />
-          </mesh>
-          {frontDesignTex && (
-            <mesh geometry={planeGeo} position={[0, 0, 0.012]}>
-              <meshStandardMaterial
-                map={frontDesignTex} transparent roughness={0.72} metalness={0}
-                depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
-              />
+          {frontCompositeBillboardTex ? (
+            <mesh geometry={planeGeo} position={[0, 0, 0.006]}>
+              <meshPhysicalMaterial {...baseMat(frontCompositeBillboardTex)} />
             </mesh>
+          ) : (
+            <>
+              <mesh geometry={planeGeo} position={[0, 0, 0.006]}>
+                <meshPhysicalMaterial {...baseMat(frontBillboardTex, frontTint)} />
+              </mesh>
+              {frontDesignTex && (
+                <mesh geometry={planeGeo} position={[0, 0, 0.012]}>
+                  <meshStandardMaterial
+                    map={frontDesignTex} transparent roughness={0.72} metalness={0}
+                    depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+                  />
+                </mesh>
+              )}
+            </>
           )}
         </>
       )}
 
       {activeFace === "back" && (
         <>
-          <mesh geometry={planeGeo} position={[0, 0, -0.006]} rotation={[0, Math.PI, 0]}>
-            <meshPhysicalMaterial {...baseMat(backBillboardTex, backTint ?? frontTint)} />
-          </mesh>
-          {backDesignTexMirrored && (
-            <mesh geometry={planeGeo} position={[0, 0, -0.012]} rotation={[0, Math.PI, 0]}>
-              <meshStandardMaterial
-                map={backDesignTexMirrored} transparent roughness={0.72} metalness={0}
-                depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
-              />
+          {backCompositeBillboardTex ? (
+            <mesh geometry={planeGeo} position={[0, 0, -0.006]} rotation={[0, Math.PI, 0]}>
+              <meshPhysicalMaterial {...baseMat(backCompositeBillboardTex)} />
             </mesh>
+          ) : (
+            <>
+              <mesh geometry={planeGeo} position={[0, 0, -0.006]} rotation={[0, Math.PI, 0]}>
+                <meshPhysicalMaterial {...baseMat(backBillboardTex, backTint ?? frontTint)} />
+              </mesh>
+              {backDesignTexMirrored && (
+                <mesh geometry={planeGeo} position={[0, 0, -0.012]} rotation={[0, Math.PI, 0]}>
+                  <meshStandardMaterial
+                    map={backDesignTexMirrored} transparent roughness={0.72} metalness={0}
+                    depthWrite={false} alphaTest={0.02} side={THREE.FrontSide}
+                  />
+                </mesh>
+              )}
+            </>
           )}
         </>
       )}
@@ -1209,12 +1239,15 @@ export function ViewerLoadingOverlay() {
 export function NoWebGLFallback({
   garmentSrc,
   designSrc,
+  compositeSrc,
   garmentColor = "#ffffff",
   requiresTint = false,
   message = "Your browser does not support 3D preview. Showing the 2D mockup instead.",
 }: {
   garmentSrc?: string;
   designSrc?: string;
+  /** Complete PSD-derived canvas, including base, shading, and protected details. */
+  compositeSrc?: string;
   garmentColor?: string;
   requiresTint?: boolean;
   message?: string;
@@ -1240,7 +1273,17 @@ export function NoWebGLFallback({
         maxHeight: "75%",
         aspectRatio: "1 / 1",
       }}>
-        {garmentSrc && requiresTint ? (
+        {compositeSrc ? (
+          <img
+            src={compositeSrc}
+            alt="Product mockup with your design"
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "contain",
+            }}
+          />
+        ) : garmentSrc && requiresTint ? (
           <svg
             viewBox="0 0 1024 1024"
             width="100%"

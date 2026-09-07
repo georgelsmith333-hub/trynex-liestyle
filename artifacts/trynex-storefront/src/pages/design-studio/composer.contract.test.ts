@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { composeMockupSurface, composeMockupSurfaceTexture, loadImage, type UnifiedMockupSurface } from "./composer";
+import {
+  composeMockupSurface,
+  composeMockupSurfaceTexture,
+  loadImage,
+  SMART_MOCKUP_RUNTIME_LAYER_ORDER,
+  type UnifiedMockupSurface,
+} from "./composer";
 
 const surface = (overrides: Partial<UnifiedMockupSurface> = {}): UnifiedMockupSurface => ({
   sourceKitKey: "tshirt:white:front",
@@ -13,6 +19,17 @@ const surface = (overrides: Partial<UnifiedMockupSurface> = {}): UnifiedMockupSu
 });
 
 describe("unified mockup compositor contract", () => {
+  it("keeps protected PSD details above the printable Smart Object", () => {
+    expect(SMART_MOCKUP_RUNTIME_LAYER_ORDER).toEqual([
+      "studioBackground",
+      "base",
+      "artwork",
+      "shadow",
+      "highlight",
+      "protected",
+    ]);
+  });
+
   it("rejects disabled surfaces before touching the canvas", async () => {
     await expect(composeMockupSurface({
       canvas: {} as HTMLCanvasElement,

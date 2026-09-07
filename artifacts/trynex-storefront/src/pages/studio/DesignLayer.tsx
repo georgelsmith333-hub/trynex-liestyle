@@ -10,6 +10,8 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   onOpenImageTools?: () => void;
+  /** Render only an invisible, transformable interaction target. */
+  interactionOnly?: boolean;
   stageScale?: number;
   printZoneCenter?: { x: number; y: number };
   printZoneSize?: { w: number; h: number };
@@ -20,6 +22,7 @@ export function DesignLayer({
   isSelected,
   onSelect,
   onOpenImageTools,
+  interactionOnly = false,
   stageScale = 1,
   printZoneCenter = { x: 300, y: 300 },
   printZoneSize,
@@ -98,6 +101,43 @@ export function DesignLayer({
     onTransformStart: startGesture,
     onTransformEnd: transformEnd,
   };
+
+  if (interactionOnly) {
+    const width = layer.type === "image"
+      ? Math.max(28, layer.naturalW)
+      : layer.type === "text"
+        ? Math.max(48, layer.text.length * layer.fontSize * 0.62)
+        : Math.max(28, layer.width);
+    const height = layer.type === "image"
+      ? Math.max(28, layer.naturalH)
+      : layer.type === "text"
+        ? Math.max(32, layer.fontSize * 1.35)
+        : Math.max(28, layer.height);
+
+    return (
+      <Rect
+        x={cx}
+        y={cy}
+        width={width}
+        height={height}
+        offsetX={width / 2}
+        offsetY={height / 2}
+        scaleX={scaleX * (layer.type === "image" && layer.flipH ? -1 : 1)}
+        scaleY={scaleY * (layer.type === "image" && layer.flipV ? -1 : 1)}
+        fill="rgba(255,255,255,0.001)"
+        strokeEnabled={false}
+        {...common}
+        onDblClick={layer.type === "image" ? () => {
+          onSelect();
+          onOpenImageTools?.();
+        } : layer.type === "text" ? editText : undefined}
+        onDblTap={layer.type === "image" ? () => {
+          onSelect();
+          onOpenImageTools?.();
+        } : layer.type === "text" ? editText : undefined}
+      />
+    );
+  }
 
   if (layer.type === "image" && image) {
     const imgLayer = layer as ImageLayer;

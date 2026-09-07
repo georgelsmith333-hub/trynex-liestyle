@@ -20,12 +20,13 @@ import {
 import {
   PRODUCTS, GarmentSVG, FlatZoneSVG, MUG_PZ, MUG_WRAP_BACK_PZ, MUG_SIDE_PZ, MUG_SIDE_BACK_PZ, resolveMockup,
   getActiveMockupReleaseVersion, getApparelZones, getZonePZ, type ApparelZone, isNearBlack, isLightTint,
-  type PrintZone, type DesignProduct, type Face,
+  type PrintZone, type DesignProduct, type Face, type MockupResolution,
 } from "../design-studio/mockups";
 import {
   composeMockupSurface, composeMockupSurfaceTexture, autoFixImage,
   type ComposerLayer, type UnifiedMockupSurface,
 } from "../design-studio/composer";
+import { renderApprovedMockupOnServer } from "../design-studio/server-mockup-render";
 
 import { useDesignStore } from "@/hooks/useDesignStore";
 import { LayerPanel } from "./panels/LayerPanel";
@@ -41,6 +42,7 @@ import { ClipArtBrowser } from "./ClipArtBrowser";
 import { QRCodePanel } from "./QRCodePanel";
 import { FONT_FAMILIES, type Layer, type ImageLayer, type TextLayer, type ShapeLayer, DRAFT_VERSION } from "./types";
 import { StudioFirstUseGuide, StudioQualityBanner } from "./v1-components/V1StudioSupport";
+import { StudioStickyPurchaseBar } from "./StudioStickyPurchaseBar";
 
 const LazyProductViewer3D = lazy(() => import("../design-studio/ProductViewer3D"));
 
@@ -123,6 +125,75 @@ function detectColorFromProduct(prod: any): string {
   return "#F5F5F3";
 }
 
+function SmartObjectStatusCard({ surface }: { surface: MockupResolution }) {
+  const approved = surface.runtimeStatus === "approved" && surface.contractErrors.length === 0;
+  const format = surface.smartObject.masterFormat.toUpperCase();
+  const runtimeRoles = surface.smartObject.assets.runtimeRoles;
+  const roleLabels: Array<[keyof NonNullable<typeof runtimeRoles>, string]> = [
+    ["studioBackground", "Background"],
+    ["base", "Base"],
+    ["shadow", "Shadow"],
+    ["protected", "Protected"],
+    ["highlight", "Highlight"],
+    ["printMask", "Print mask"],
+  ];
+  const roleCount = runtimeRoles ? roleLabels.filter(([role]) => Boolean(runtimeRoles[role])).length : 0;
+  const sourceState = surface.smartObject.masterStatus === "verified" ? "source linked" : "metadata only";
+  return (
+    <section
+      aria-label="Smart Object surface status"
+      aria-live="polite"
+      className={`rounded-2xl border px-3 py-2.5 shadow-sm sm:px-3.5 sm:py-3 ${approved ? "border-emerald-200 bg-emerald-50/70" : "border-amber-300 bg-amber-50"}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ShieldCheck className={`h-4 w-4 shrink-0 ${approved ? "text-emerald-600" : "text-amber-700"}`} />
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">Smart Object surface</p>
+             <p className="truncate text-xs font-black text-gray-900">
+               {format} master · {approved ? "verified runtime" : "blocked"}
+            </p>
+          </div>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${approved ? "bg-emerald-100 text-emerald-700" : "bg-amber-200 text-amber-900"}`}>
+          {surface.manifestRevision}
+        </span>
+      </div>
+      <div className="mt-1.5 hidden grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-gray-600 sm:mt-2 sm:grid sm:grid-cols-4">
+         <span><strong className="text-gray-900">Source:</strong> {surface.sourceKitKey}</span>
+         <span><strong className="text-gray-900">Master:</strong> {sourceState}</span>
+        <span><strong className="text-gray-900">Roles:</strong> {roleCount}/6 ready</span>
+         <span><strong className="text-gray-900">Print zone:</strong> protected</span>
+      </div>
+       <p className="mt-1.5 text-[10px] font-semibold text-emerald-800 sm:hidden">
+         {roleCount}/6 runtime roles ready · protected print zone
+       </p>
+       <div className="mt-2 hidden flex-wrap gap-1 sm:flex" aria-label="Runtime role health">
+         {roleLabels.map(([role, label]) => {
+           const ready = Boolean(runtimeRoles?.[role]);
+           return (
+             <span
+               key={role}
+               className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${ready ? "bg-white/80 text-emerald-700" : "bg-amber-100 text-amber-800"}`}
+             >
+               <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-500" : "bg-amber-500"}`} />
+               {label}
+             </span>
+           );
+         })}
+       </div>
+      {!approved && (
+         <div role="alert" className="mt-2 space-y-0.5 text-[10px] font-semibold text-amber-900">
+           <p>{surface.disabledReason ?? surface.contractErrors[0] ?? "This Smart Object surface is not ready."}</p>
+           {surface.contractErrors.length > 1 && (
+             <p className="font-medium text-amber-800">+{surface.contractErrors.length - 1} more contract checks need attention.</p>
+           )}
+         </div>
+      )}
+    </section>
+  );
+}
+
 export default function DesignStudioV2() {
   const [, navigate] = useLocation();
   const { addToCart } = useCartActions();
@@ -156,7 +227,7 @@ export default function DesignStudioV2() {
   const {
     selectedProduct, selectedColor, activeFace, mugMode, selectedSize, quantity,
     layers, selectedIds, linkedStoreProduct, showPrintZone, show3D, activeTab, activeTool,
-    saveStatus, hasDraft, isMobile, fabricTexture, mobileToolOpen,
+    saveStatus, hasDraft, isMobile, fabricTexture, mobileToolOpen, zoom, panX, panY,
      setProduct, setColor, setFace, setMugMode, setMugView, switchProduct, setSize, setQuantity,
     addLayer, updateLayer, deleteLayer, moveLayer, setLayerVisibility, selectLayer, clearSelection, setLayers, commit,
     undo, redo, setShowPrintZone, setActiveTab, setActiveTool, setShow3D, setLinkedStoreProduct, setSaveStatus, setHasDraft, setMobileToolOpen, setShowProductPicker, setIsMobile,
@@ -262,6 +333,35 @@ export default function DesignStudioV2() {
     [activeMockup, pz],
   );
 
+  const studioPrice = useMemo(() => {
+    if (linkedStoreProduct?.price) return linkedStoreProduct.price;
+    if (isMug) return Number(settings.studioMugPrice) + Number(settings.studioMugCustomizationFee);
+    if (selectedProduct.category === "tshirt") return Number(settings.studioTshirtPrice) + Number(settings.studioTshirtCustomizationFee);
+    if (isWaterBottle) return Number(settings.studioWaterbottlePrice) + Number(settings.studioWaterbottleCustomizationFee);
+    if (selectedProduct.category === "hoodie") return Number(settings.studioHoodiePrice) + Number(settings.studioHoodieCustomizationFee);
+    if (selectedProduct.category === "longsleeve") return Number(settings.studioLongsleevePrice) + Number(settings.studioLongsleeveCustomizationFee);
+    if (isCap) return Number(settings.studioCapPrice) + Number(settings.studioCapCustomizationFee);
+    return Number(settings.studioTshirtPrice) + Number(settings.studioTshirtCustomizationFee);
+  }, [
+    isCap,
+    isMug,
+    isWaterBottle,
+    linkedStoreProduct?.price,
+    selectedProduct.category,
+    settings.studioCapCustomizationFee,
+    settings.studioCapPrice,
+    settings.studioHoodieCustomizationFee,
+    settings.studioHoodiePrice,
+    settings.studioLongsleeveCustomizationFee,
+    settings.studioLongsleevePrice,
+    settings.studioMugCustomizationFee,
+    settings.studioMugPrice,
+    settings.studioTshirtCustomizationFee,
+    settings.studioTshirtPrice,
+    settings.studioWaterbottleCustomizationFee,
+    settings.studioWaterbottlePrice,
+  ]);
+
   const isBlackGarment = isNearBlack(selectedColor.hex);
   const isLightGarment = isLightTint(selectedColor.hex);
 
@@ -365,6 +465,7 @@ export default function DesignStudioV2() {
     }
     if (data.color?.hex && data.color?.name) setColor(data.color);
     if (typeof data.size === "string") setSize(data.size);
+    if (data.activeFace) setFace(data.activeFace);
     if (data.mugMode) setMugMode(data.mugMode);
     if (data.linkedStoreProductId) setLinkedStoreProduct({ id: data.linkedStoreProductId, name: data.linkedStoreProductName, price: data.linkedStoreProductPrice });
     if (Array.isArray(data.layers) && data.layers.length > 0) {
@@ -388,7 +489,7 @@ export default function DesignStudioV2() {
     const handle = window.setTimeout(async () => {
       const payload = {
         version: DRAFT_VERSION, layers, productId: selectedProduct.id, color: selectedColor, size: selectedSize,
-        mugMode, mockupRelease: getActiveMockupReleaseVersion(), savedAt: Date.now(),
+        activeFace, mugMode, mockupRelease: getActiveMockupReleaseVersion(), savedAt: Date.now(),
         ...(linkedStoreProduct ? { linkedStoreProductId: linkedStoreProduct.id, linkedStoreProductName: linkedStoreProduct.name, linkedStoreProductPrice: linkedStoreProduct.price } : {}),
       };
       let localSaved = false;
@@ -492,16 +593,28 @@ export default function DesignStudioV2() {
         img.src = src;
         await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error("This image could not be decoded.")); });
         try { await img.decode?.(); } catch {}
-        const fixed = await autoFixImage(src);
         const layer: ImageLayer = {
           id: uid(), name: file.name.replace(/\.[^.]+$/, "") || "Image",
-          type: "image", src: fixed.src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+          type: "image", src, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
           visible: true, locked: false,
           transform: fitImageTransform(img.naturalWidth, img.naturalHeight, { w: pz.w, h: pz.h }, { padding: 0.92, maxScale: 4 }),
-          face: activeFace, brightness: fixed.brightness, contrast: fixed.contrast,
+          face: activeFace, brightness: 100, contrast: 100,
         };
         addLayer(layer);
         selectLayer(layer.id);
+        // Do not block first paint on a local enhancement pass. If the user
+        // keeps editing while it runs, the derived result updates the same
+        // layer and the original source remains available in the layer history.
+        void autoFixImage(src).then((fixed) => {
+          if (fixed.src === src && fixed.brightness === 100 && fixed.contrast === 100) return;
+          updateLayer(layer.id, {
+            src: fixed.src,
+            brightness: fixed.brightness,
+            contrast: fixed.contrast,
+          }, { history: false });
+        }).catch(() => {
+          // Auto-fix is an enhancement, never a reason to reject a valid upload.
+        });
         // A successful upload should land on the image-edit tab rather than the
         // layer list, so mobile customers immediately see background removal,
         // HD preparation, and brightness/contrast controls for the selected art.
@@ -516,7 +629,10 @@ export default function DesignStudioV2() {
     reader.readAsDataURL(file);
   };
 
-  const replaceSelectedImage = async (dataUrl: string) => {
+  const replaceSelectedImage = async (
+    dataUrl: string,
+    geometry?: { centerOffsetX: number; centerOffsetY: number },
+  ) => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
     const img = new Image();
     await new Promise<void>((resolve, reject) => {
@@ -524,7 +640,23 @@ export default function DesignStudioV2() {
       img.onerror = () => reject(new Error("The processed image could not be decoded."));
       img.src = dataUrl;
     });
-    updateLayer(selectedLayer.id, { src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight });
+    const previousWidth = selectedLayer.naturalW * Math.abs(selectedLayer.transform.scaleX ?? selectedLayer.transform.scale);
+    const previousHeight = selectedLayer.naturalH * Math.abs(selectedLayer.transform.scaleY ?? selectedLayer.transform.scale);
+    const nextScaleX = previousWidth / Math.max(1, img.naturalWidth);
+    const nextScaleY = previousHeight / Math.max(1, img.naturalHeight);
+    updateLayer(selectedLayer.id, {
+      src: dataUrl,
+      naturalW: img.naturalWidth,
+      naturalH: img.naturalHeight,
+      transform: {
+        ...selectedLayer.transform,
+        scale: Math.min(nextScaleX, nextScaleY),
+        scaleX: nextScaleX,
+        scaleY: nextScaleY,
+        x: selectedLayer.transform.x - (geometry?.centerOffsetX ?? 0) * (selectedLayer.transform.scaleX ?? selectedLayer.transform.scale),
+        y: selectedLayer.transform.y - (geometry?.centerOffsetY ?? 0) * (selectedLayer.transform.scaleY ?? selectedLayer.transform.scale),
+      },
+    });
     commit();
   };
 
@@ -585,15 +717,34 @@ export default function DesignStudioV2() {
     try {
       let result: string | null = null;
       const controller = new AbortController();
-      const serverTimeout = window.setTimeout(() => controller.abort(), 18_000);
+      const serverTimeout = window.setTimeout(() => controller.abort(), 7_000);
       let response: Response;
       try {
-        response = await fetch(getApiUrl("/api/remove-bg"), {
+        const statusController = new AbortController();
+        const statusTimeout = window.setTimeout(() => statusController.abort(), 2_000);
+        let serverConfigured = false;
+        try {
+          const statusResponse = await fetch(getApiUrl("/api/remove-bg/status"), { signal: statusController.signal });
+          if (statusResponse.ok) {
+            const statusJson = await statusResponse.json().catch(() => ({})) as { configured?: boolean };
+            serverConfigured = statusJson.configured === true;
+          }
+        } catch {
+          // The browser fallback is safer than blocking on a status probe.
+        } finally {
+          window.clearTimeout(statusTimeout);
+        }
+
+        if (!serverConfigured) {
+          response = new Response(JSON.stringify({ error: "no_api_key" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        } else {
+          response = await fetch(getApiUrl("/api/remove-bg"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: selectedLayer.src }),
           signal: controller.signal,
-        });
+          });
+        }
       } catch (error) {
         if ((error as DOMException).name === "AbortError") {
           throw new Error("Background removal timed out. Your original image is unchanged; please retry.");
@@ -615,7 +766,7 @@ export default function DesignStudioV2() {
         const { removeBackground } = await withOperationTimeout(
           import("@imgly/background-removal"),
           20_000,
-          "Background removal could not start on this connection. Your original image is unchanged; please retry.",
+          "Background removal could not start quickly. Your original image is unchanged; please retry.",
         );
         const blob = await withOperationTimeout(
           removeBackground(selectedLayer.src, {
@@ -848,6 +999,20 @@ export default function DesignStudioV2() {
       });
   }, [isMobile, layers, selectLayer, setActiveTab, setFace, setMobileToolOpen]);
 
+  const addToCartBlockReason = useMemo(() => {
+    if (isPsdTshirtStaging) return "Local staging preview cannot be ordered.";
+    if (layers.length === 0) return "Upload artwork to continue.";
+    if (qualityIssues.some((issue) => issue.tone === "danger")) return "Improve image quality before checkout.";
+    if (requiredArtworkSurfaceUnavailable) return unavailableSurfaceReason;
+    return null;
+  }, [
+    isPsdTshirtStaging,
+    layers.length,
+    qualityIssues,
+    requiredArtworkSurfaceUnavailable,
+    unavailableSurfaceReason,
+  ]);
+
   const handleAddToCart = async () => {
     if (isAddingToCart) return;
     setIsAddingToCart(true);
@@ -917,12 +1082,14 @@ export default function DesignStudioV2() {
 
     let mockupUrl: string;
     try {
-      const mockupCanvas = document.createElement("canvas");
-      await composeMockupSurface({ canvas: mockupCanvas, surface: { ...frontMockup, baseSrc: garmentSrc, printZone: frontPZ }, garmentColor: selectedColor.hex, layers: frontLayers, outSize: 400, imageCache, fabricTexture });
-      mockupUrl = mockupCanvas.toDataURL("image/webp", 0.8);
+      mockupUrl = await renderApprovedMockupOnServer({
+        surface: frontMockup,
+        printZone: frontPZ,
+        layers: frontLayers,
+      });
     } catch (err) {
       console.error("Mockup compose failed", err);
-      toast({ title: "Preview failed", description: "Could not generate the design preview. Try a different image or refresh.", variant: "destructive" });
+      toast({ title: "Final mockup failed", description: err instanceof Error ? err.message : "The server could not validate this mockup. Your design was not added to cart.", variant: "destructive" });
       return;
     }
 
@@ -1038,13 +1205,16 @@ export default function DesignStudioV2() {
         throw new Error(exportMockup.disabledReason ?? "This product surface is not ready for export yet. Please try again later.");
       }
       const garmentSrc = exportMockup.cutoutSrc;
-      const canvas = document.createElement("canvas");
       const exportPrintZone = isMug
         ? (mugMode === "wrap" ? (activeFace === "back" ? MUG_WRAP_BACK_PZ : MUG_PZ) : (activeFace === "back" ? MUG_SIDE_BACK_PZ : MUG_SIDE_PZ))
         : getZonePZ(activeFace, selectedProduct, selectedColor.hex);
-      await composeMockupSurface({ canvas, surface: { ...exportMockup, baseSrc: garmentSrc, printZone: exportPrintZone }, garmentColor: selectedColor.hex, layers: activeLayers, outSize: 1200, imageCache: new Map(), fabricTexture });
-      const a = document.createElement("a"); a.href = canvas.toDataURL("image/png"); a.download = `trynex-${selectedProduct.id}-${activeFace}-design.png`; a.click();
-      toast({ title: "PNG exported!", description: "High-res PNG saved to your downloads." });
+       const serverImage = await renderApprovedMockupOnServer({
+         surface: exportMockup,
+         printZone: exportPrintZone,
+         layers: activeLayers,
+       });
+       const a = document.createElement("a"); a.href = serverImage; a.download = `trynex-${selectedProduct.id}-${activeFace}-design.png`; a.click();
+       toast({ title: "PNG exported!", description: "The validated server-rendered mockup was saved to your downloads." });
     } catch (error) {
       console.error("[studio] export failed", error);
       toast({ title: "Export failed", description: error instanceof Error ? error.message : "The preview could not be exported. Please retry.", variant: "destructive" });
@@ -1080,7 +1250,7 @@ export default function DesignStudioV2() {
   }, [pz]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#F5F3F0" }}>
+    <div className="min-h-screen flex flex-col pb-24 md:pb-0" style={{ background: "#F5F3F0" }}>
       <SEOHead title="Design Studio | Create Custom Apparel Online — Trynext Lifestyle" description="Design your own custom T-shirts, hoodies, mugs & more." canonical="/design-studio" />
       <Navbar />
       <div style={{ height: "calc(var(--announcement-height, 0px) + 4.25rem)" }} />
@@ -1110,7 +1280,7 @@ export default function DesignStudioV2() {
             <button type="button" onClick={redo} disabled={store.future.length === 0} aria-label="Redo last change" className="p-2 rounded-xl bg-gray-100 text-gray-600 disabled:opacity-30 active:scale-95 transition-transform"><Redo2 className="w-3.5 h-3.5" /></button>
             <button type="button" onClick={() => setShowPrintZone(!showPrintZone)} aria-pressed={showPrintZone} className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold ${showPrintZone ? "text-orange-500 bg-orange-50" : "text-gray-500 bg-gray-100 hover:bg-gray-200"}`}><Eye className="w-3 h-3" /> Print Zone</button>
             {!isFlatZone && <button type="button" onClick={() => setShow3D(!show3D)} aria-pressed={show3D} className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold ${show3D ? "text-blue-500 bg-blue-50" : "text-gray-500 bg-gray-100 hover:bg-gray-200"}`}><Package className="w-3 h-3" /> {show3D ? "2D Edit" : "3D Preview"}</button>}
-             <motion.button type="button" onClick={handleAddToCart} disabled={isAddingToCart || requiredArtworkSurfaceUnavailable} aria-label={isAddingToCart ? "Adding design to cart" : requiredArtworkSurfaceUnavailable ? "Add to cart unavailable for this surface" : "Add design to cart"} title={requiredArtworkSurfaceUnavailable ? unavailableSurfaceReason : undefined} whileTap={{ scale: 0.97 }} className="flex items-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50" style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}>
+              <motion.button type="button" onClick={handleAddToCart} disabled={isAddingToCart || Boolean(addToCartBlockReason)} aria-label={isAddingToCart ? "Adding design to cart" : addToCartBlockReason ? `Add to cart unavailable: ${addToCartBlockReason}` : "Add design to cart"} title={addToCartBlockReason ?? undefined} whileTap={{ scale: 0.97 }} className="hidden items-center gap-1 sm:flex sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50" style={{ background: "linear-gradient(135deg, #E85D04, #FB8500)" }}>
                {isAddingToCart ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5" />} <span className="hidden sm:inline">{isAddingToCart ? "Preparing…" : "Add to Cart"}</span><span className="sm:hidden">{isAddingToCart ? "Wait" : "Cart"}</span>
             </motion.button>
           </div>
@@ -1127,6 +1297,7 @@ export default function DesignStudioV2() {
             ]}
             onFocusCanvas={() => containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
           />
+          <SmartObjectStatusCard surface={activeMockup} />
           <StudioQualityBanner
             issues={qualityIssues}
             onShowPrintZone={() => {
@@ -1136,7 +1307,7 @@ export default function DesignStudioV2() {
           />
         </div>
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-          <div className="flex-1 min-w-0" ref={containerRef}>
+           <div className="flex flex-1 min-w-0 flex-col" ref={containerRef}>
             <ProductSwitcher />
             <div className="mt-3 mb-3">
              <MainToolbar onExport={handleExportPNG} isExporting={isExporting} exportDisabled={activeSurfaceUnavailable} />
@@ -1190,7 +1361,7 @@ export default function DesignStudioV2() {
               </div>
             )}
 
-            <div className="mb-4 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
+            <div className="order-2 mb-4 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm md:order-none">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-2"><Palette className="w-3.5 h-3.5 text-orange-500" /><span className="text-[11px] font-black uppercase tracking-widest text-gray-400">Garment Color</span></div>
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full" style={{ background: selectedColor.hex, color: isLightTint(selectedColor.hex) ? "#374151" : "white" }}>{selectedColor.name}</span>
@@ -1208,7 +1379,7 @@ export default function DesignStudioV2() {
               </div>
             </div>
 
-             <div className="relative rounded-3xl overflow-hidden select-none" style={{ background: "radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f8f8f8 55%, #f0f0f0 100%)", border: "1px solid #e5e5e7", boxShadow: "0 6px 40px rgba(0,0,0,0.08)" }} onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+             <div className="relative order-1 rounded-3xl overflow-hidden select-none md:order-none" style={{ background: "radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f8f8f8 55%, #f0f0f0 100%)", border: "1px solid #e5e5e7", boxShadow: "0 6px 40px rgba(0,0,0,0.08)" }} onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
                {activeSurfaceUnavailable && (
                  <div role="alert" className="absolute inset-x-4 top-4 z-30 rounded-2xl border border-amber-300 bg-amber-50/95 px-4 py-3 text-center shadow-lg backdrop-blur">
                    <div className="flex items-center justify-center gap-2 text-sm font-black text-amber-950"><ShieldCheck className="h-4 w-4" /> Surface unavailable</div>
@@ -1229,6 +1400,10 @@ export default function DesignStudioV2() {
                   width={canvasSize}
                   height={canvasSize}
                   printZone={pz}
+                  activeFace={activeFace}
+                  zoom={zoom}
+                  panX={panX}
+                  panY={panY}
                    liveSurface={liveSurface}
                    liveGarmentColor={selectedColor.hex}
                    liveLayers={currentFaceLayers as unknown as ComposerLayer[]}
@@ -1281,7 +1456,7 @@ export default function DesignStudioV2() {
             </div>
 
             {currentFaceLayers.length > 0 && (
-              <div className="px-4 py-2 mt-2 text-[10px] font-semibold text-gray-500 flex items-center gap-2 bg-white border border-gray-200 rounded-xl">
+              <div className="order-3 px-4 py-2 mt-2 text-[10px] font-semibold text-gray-500 flex items-center gap-2 bg-white border border-gray-200 rounded-xl md:order-none">
                 <Move className="w-3 h-3 text-orange-500" /> Drag · Pinch to scale & rotate · +/− to zoom
               </div>
             )}
@@ -1379,9 +1554,10 @@ export default function DesignStudioV2() {
 
       {/* ═══════ MOBILE FLOATING ACTION BUTTONS ═══════ */}
       {isMobile && (
-        <div className="fixed bottom-6 right-4 z-50 flex flex-col gap-3">
+           <div className="fixed right-4 z-50 flex flex-col gap-3" style={{ bottom: "calc(6.25rem + env(safe-area-inset-bottom, 0px))" }}>
           <button
             onClick={() => setMobileToolOpen(true)}
+               aria-label="Open design tools"
             className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl active:scale-90 transition-transform"
             style={{ background: "linear-gradient(135deg,#E85D04,#FB8500)", boxShadow: "0 8px 24px rgba(232,93,4,0.4)" }}
           >
@@ -1389,6 +1565,18 @@ export default function DesignStudioV2() {
           </button>
         </div>
       )}
+      <StudioStickyPurchaseBar
+        productName={linkedStoreProduct?.name ?? `Custom ${selectedProduct.name}`}
+        colorName={selectedColor.name}
+        price={studioPrice}
+        quantity={quantity}
+        stock={99}
+        isAdding={isAddingToCart}
+        disabled={Boolean(addToCartBlockReason)}
+        disabledReason={addToCartBlockReason}
+        onChangeQuantity={setQuantity}
+        onAddToCart={() => void handleAddToCart()}
+      />
       <Footer />
     </div>
   );

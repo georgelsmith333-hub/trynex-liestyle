@@ -2,6 +2,9 @@ import { Router, type Request, type Response } from "express";
 import { db, mockupsTable } from "@workspace/db";
 import { eq, desc, asc, ilike, and, or, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/adminAuth";
+import { validateSmartMockupIngestionManifest } from "../lib/mockupContract";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { parsePsdMaster, type ParsedPsdMaster } from "../lib/psdMasterParser";
 
 const router = Router();
 
@@ -65,12 +68,16 @@ export function canonicalMockups() {
     face,
     color: variant.color,
     manifestJson: {
-      schema: "trynex-photoreal-mockup-manifest/v1",
+       schema: "trynex-smartobject-runtime-surface/v1",
       assetPath: `/mockups/psd-master-v10/runtime-roles/${variant.category}/${variant.color}/${face}-base.png`,
       sourceKitKey: `${variant.category}:${variant.color}:${face}`,
       releaseVersion: "smart-v10.3",
-      masterStatus: "verified-source-package",
-      masterStorageStatus: "not-uploaded",
+       runtimeStatus: "approved",
+       masterFormat: variant.category === "mug" || variant.category === "waterbottle" ? "psb" : "psd",
+       masterStatus: "verified-source-package",
+       masterStorageStatus: "staging-only",
+       runtimeRoles: ["studioBackground", "base", "shadow", "protected", "highlight", "printMask"],
+       roleContract: "six checksum-bound browser-safe derivatives",
     },
     ingestionStatus: "ready",
     ingestionError: null,
@@ -97,9 +104,134 @@ const MASTER_MIMES = new Set([
   "image/x-photoshop",
 ]);
 const INGESTION_STATUSES = new Set(["preview-only", "pending", "ready", "failed"]);
+const objectStorageService = new ObjectStorageService();
+
+async function resolveIngestionState(args: {
+  masterFileUrl: unknown;
+  manifestJson: unknown;
+  requestedStatus: unknown;
+  metadata: {
+    masterFileName?: unknown;
+    masterFileMime?: unknown;
+    masterFileSize?: unknown;
+    masterFileSha256?: unknown;
+    sourceKitKey?: unknown;
+    face?: unknown;
+    color?: unknown;
+  };
+}): Promise<{
+  status: "preview-only" | "ready" | "failed";
+  error: string | null;
+  manifestJson?: unknown;
+  parsedMaster?: ParsedPsdMaster;
+}> {
+  if (!args.masterFileUrl) {
+    return {
+      status: args.requestedStatus === "failed" ? "failed" : "preview-only",
+      error: args.requestedStatus === "failed" ? "Marked failed by administrator." : null,
+    };
+  }
+
+  if (!isValidMasterUrl(args.masterFileUrl)) {
+    return {
+      status: "failed",
+      error: "Smart v10.3 ingestion rejected: editable masters must remain private object paths.",
+    };
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = await objectStorageService.getObjectBuffer(args.masterFileUrl);
+  } catch (error) {
+    return {
+      status: "failed",
+      error: error instanceof ObjectNotFoundError
+        ? "Smart v10.3 ingestion rejected: the private PSD/PSB object was not found."
+        : "Smart v10.3 ingestion rejected: the private PSD/PSB object could not be read.",
+    };
+  }
+
+  const parsed = parsePsdMaster(
+    buffer,
+    typeof args.metadata.masterFileName === "string" ? args.metadata.masterFileName : "",
+    typeof args.metadata.masterFileMime === "string" ? args.metadata.masterFileMime : null,
+  );
+  if (!parsed.ok) {
+    return {
+      status: "failed",
+      error: `Smart v10.3 PSD/PSB parser rejected the master: ${parsed.errors.join("; ")}`,
+    };
+  }
+
+  const manifestRecord = args.manifestJson && typeof args.manifestJson === "object" && !Array.isArray(args.manifestJson)
+    ? args.manifestJson as Record<string, any>
+    : null;
+  const manifestMaster = manifestRecord?.master && typeof manifestRecord.master === "object"
+    ? manifestRecord.master as Record<string, any>
+    : null;
+  const identityErrors: string[] = [];
+  if (manifestMaster?.smartObjectLayer && manifestMaster.smartObjectLayer !== parsed.value.smartObject.layerName) {
+    identityErrors.push("manifest Smart Object layer does not match the parsed PSD/PSB layer");
+  }
+  const manifestGeometry = manifestMaster?.geometry;
+  if (
+    manifestGeometry &&
+    (manifestGeometry.canvasWidth !== parsed.value.canvas.width ||
+      manifestGeometry.canvasHeight !== parsed.value.canvas.height)
+  ) {
+    identityErrors.push("manifest canvas dimensions do not match the parsed PSD/PSB document");
+  }
+  if (identityErrors.length > 0) {
+    return {
+      status: "failed",
+      error: `Smart v10.3 ingestion rejected: ${identityErrors.join("; ")}`,
+    };
+  }
+
+  const normalizedManifest = manifestRecord
+    ? {
+        ...manifestRecord,
+        master: {
+          ...manifestMaster,
+          fileName: parsed.value.fileName,
+          mime: parsed.value.mime,
+          size: parsed.value.size,
+          sha256: parsed.value.sha256,
+          provenance: "catalog-psd-smart-object",
+          smartObjectLayer: parsed.value.smartObject.layerName,
+          ...(parsed.value.smartObject.smartObjectId ? { smartObjectId: parsed.value.smartObject.smartObjectId } : {}),
+          ...(parsed.value.smartObject.smartObjectType ? { smartObjectType: parsed.value.smartObject.smartObjectType } : {}),
+          smartObjectBounds: parsed.value.smartObject.bounds,
+          ...(parsed.value.smartObject.transform ? { smartObjectTransform: parsed.value.smartObject.transform } : {}),
+          geometry: {
+            ...(manifestMaster?.geometry ?? {}),
+            canvasWidth: parsed.value.canvas.width,
+            canvasHeight: parsed.value.canvas.height,
+          },
+        },
+      }
+    : args.manifestJson;
+
+  const validation = validateSmartMockupIngestionManifest(normalizedManifest, {
+    ...args.metadata,
+    masterFileName: parsed.value.fileName,
+    masterFileMime: parsed.value.mime,
+    masterFileSize: parsed.value.size,
+    masterFileSha256: parsed.value.sha256,
+  });
+  if (validation.errors.length > 0) {
+    return {
+      status: "failed",
+      error: `Smart v10.3 ingestion rejected: ${validation.errors.join("; ")}`,
+    };
+  }
+
+  return { status: "ready", error: null, manifestJson: normalizedManifest, parsedMaster: parsed.value };
+}
 
 function isValidMasterUrl(value: unknown): value is string {
-  return value === undefined || value === null || isValidImageUrl(value);
+  return value === undefined || value === null ||
+    (typeof value === "string" && value.startsWith("/objects/") && value.length > "/objects/".length);
 }
 
 function isValidOptionalInt(value: unknown): boolean {
@@ -180,7 +312,7 @@ router.post("/admin/mockups", requireAdmin, async (req: Request, res: Response) 
       return;
     }
     if (!isValidMasterUrl(masterFileUrl)) {
-      res.status(400).json({ error: "validation_error", message: "masterFileUrl must be a valid URL or local path" });
+      res.status(400).json({ error: "validation_error", message: "masterFileUrl must be a private /objects path" });
       return;
     }
     if (masterFileMime !== undefined && masterFileMime !== null && !MASTER_MIMES.has(String(masterFileMime))) {
@@ -195,6 +327,21 @@ router.post("/admin/mockups", requireAdmin, async (req: Request, res: Response) 
       res.status(400).json({ error: "validation_error", message: "invalid ingestionStatus" });
       return;
     }
+    const ingestion = await resolveIngestionState({
+      masterFileUrl,
+      manifestJson,
+      requestedStatus: ingestionStatus,
+      metadata: {
+        masterFileName,
+        masterFileMime,
+        masterFileSize: parsedMasterFileSize,
+        masterFileSha256,
+        sourceKitKey,
+        face,
+        color,
+      },
+    });
+    const parsedMaster = ingestion.parsedMaster;
     const [row] = await db.insert(mockupsTable).values({
       name: name.trim(),
       description: description ?? null,
@@ -203,16 +350,16 @@ router.post("/admin/mockups", requireAdmin, async (req: Request, res: Response) 
       imageUrl,
       thumbUrl: thumbUrl ?? null,
       masterFileUrl: masterFileUrl ?? null,
-      masterFileName: masterFileName ?? null,
-      masterFileMime: masterFileMime ?? null,
-      masterFileSize: parsedMasterFileSize ?? null,
-      masterFileSha256: masterFileSha256 ?? null,
+       masterFileName: parsedMaster?.fileName ?? masterFileName ?? null,
+       masterFileMime: parsedMaster?.mime ?? masterFileMime ?? null,
+       masterFileSize: parsedMaster?.size ?? parsedMasterFileSize ?? null,
+       masterFileSha256: parsedMaster?.sha256 ?? masterFileSha256 ?? null,
       sourceKitKey: sourceKitKey ?? null,
       face: face ?? null,
       color: color ?? null,
-      manifestJson: manifestJson ?? null,
-      ingestionStatus: ingestionStatus ?? (masterFileUrl ? "pending" : "preview-only"),
-      ingestionError: ingestionError ?? null,
+       manifestJson: ingestion.manifestJson ?? manifestJson ?? null,
+      ingestionStatus: ingestion.status,
+      ingestionError: ingestion.error ?? (ingestionStatus === "failed" ? ingestionError ?? "Marked failed by administrator." : null),
       tags: Array.isArray(tags) ? tags : [],
       isActive: isActive !== false,
       sortOrder: parsedSortOrder ?? 0,
@@ -236,6 +383,11 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
       masterFileUrl, masterFileName, masterFileMime, masterFileSize, masterFileSha256,
       sourceKitKey, face, color, manifestJson, ingestionStatus, ingestionError,
     } = req.body;
+    const [existing] = await db.select().from(mockupsTable).where(eq(mockupsTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "not_found", message: "Mockup not found" });
+      return;
+    }
     const update: Partial<typeof mockupsTable.$inferInsert> = { updatedAt: new Date() };
     if (name !== undefined) {
       if (typeof name !== "string" || !name.trim()) {
@@ -271,7 +423,7 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
     if (tags !== undefined) update.tags = Array.isArray(tags) ? tags : [];
     if (masterFileUrl !== undefined) {
       if (!isValidMasterUrl(masterFileUrl)) {
-        res.status(400).json({ error: "validation_error", message: "masterFileUrl must be a valid URL or local path" });
+        res.status(400).json({ error: "validation_error", message: "masterFileUrl must be a private /objects path" });
         return;
       }
       update.masterFileUrl = masterFileUrl;
@@ -302,9 +454,33 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
         res.status(400).json({ error: "validation_error", message: "invalid ingestionStatus" });
         return;
       }
-      update.ingestionStatus = ingestionStatus;
     }
-    if (ingestionError !== undefined) update.ingestionError = ingestionError;
+    const mergedMasterFileUrl = masterFileUrl !== undefined ? masterFileUrl : existing.masterFileUrl;
+    const mergedManifestJson = manifestJson !== undefined ? manifestJson : existing.manifestJson;
+    const mergedMetadata = {
+      masterFileName: masterFileName !== undefined ? masterFileName : existing.masterFileName,
+      masterFileMime: masterFileMime !== undefined ? masterFileMime : existing.masterFileMime,
+      masterFileSize: masterFileSize !== undefined ? update.masterFileSize : existing.masterFileSize,
+      masterFileSha256: masterFileSha256 !== undefined ? masterFileSha256 : existing.masterFileSha256,
+      sourceKitKey: sourceKitKey !== undefined ? sourceKitKey : existing.sourceKitKey,
+      face: face !== undefined ? face : existing.face,
+      color: color !== undefined ? color : existing.color,
+    };
+    const ingestion = await resolveIngestionState({
+      masterFileUrl: mergedMasterFileUrl,
+      manifestJson: mergedManifestJson,
+      requestedStatus: ingestionStatus !== undefined ? ingestionStatus : existing.ingestionStatus,
+      metadata: mergedMetadata,
+    });
+    if (ingestion.parsedMaster) {
+      update.masterFileName = ingestion.parsedMaster.fileName;
+      update.masterFileMime = ingestion.parsedMaster.mime;
+      update.masterFileSize = ingestion.parsedMaster.size;
+      update.masterFileSha256 = ingestion.parsedMaster.sha256;
+    }
+    update.manifestJson = ingestion.manifestJson ?? mergedManifestJson;
+    update.ingestionStatus = ingestion.status;
+    update.ingestionError = ingestion.error ?? (ingestionStatus === "failed" ? ingestionError ?? "Marked failed by administrator." : null);
     if (isActive !== undefined) update.isActive = isActive;
     if (sortOrder !== undefined) {
       const parsed = parseOptionalPositiveInt(sortOrder);
@@ -316,10 +492,6 @@ router.patch("/admin/mockups/:id", requireAdmin, async (req: Request, res: Respo
     }
 
     const [row] = await db.update(mockupsTable).set(update).where(eq(mockupsTable.id, id)).returning();
-    if (!row) {
-      res.status(404).json({ error: "not_found", message: "Mockup not found" });
-      return;
-    }
     res.json(row);
   } catch (err) {
     req.log.error({ err }, "Failed to update mockup");
