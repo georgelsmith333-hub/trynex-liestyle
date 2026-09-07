@@ -9,7 +9,10 @@ type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 interface Props {
   layer: ImageLayer;
   initialMode: Mode;
-  onApply: (dataUrl: string) => Promise<void> | void;
+  onApply: (
+    dataUrl: string,
+    geometry?: { centerOffsetX: number; centerOffsetY: number },
+  ) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -18,6 +21,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 function readImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
+    if (!src.startsWith("data:")) image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("This image could not be prepared for editing."));
     image.src = src;
@@ -27,7 +31,7 @@ function readImage(src: string) {
 export function ImageCropExtendDialog({ layer, initialMode, onApply, onClose }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, w: 1, h: 1 });
-  const [extensionPercent, setExtensionPercent] = useState(10);
+  const [extension, setExtension] = useState({ top: 10, right: 10, bottom: 10, left: 10 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -118,7 +122,10 @@ export function ImageCropExtendDialog({ layer, initialMode, onApply, onClose }: 
       const context = canvas.getContext("2d");
       if (!context) throw new Error("This browser cannot crop the image.");
       context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
-      await onApply(canvas.toDataURL("image/png"));
+       await onApply(canvas.toDataURL("image/png"), {
+         centerOffsetX: (crop.x + crop.w / 2 - 0.5) * image.naturalWidth,
+         centerOffsetY: (crop.y + crop.h / 2 - 0.5) * image.naturalHeight,
+       });
       onClose();
     } catch (reason) {
       setBusy(false);
@@ -131,15 +138,22 @@ export function ImageCropExtendDialog({ layer, initialMode, onApply, onClose }: 
     setError(null);
     try {
       const image = await readImage(layer.src);
-      const padding = Math.max(1, Math.round(Math.min(image.naturalWidth, image.naturalHeight) * extensionPercent / 100));
+       const unit = Math.max(1, Math.min(image.naturalWidth, image.naturalHeight) / 100);
+       const top = Math.max(0, Math.round(unit * extension.top));
+       const right = Math.max(0, Math.round(unit * extension.right));
+       const bottom = Math.max(0, Math.round(unit * extension.bottom));
+       const left = Math.max(0, Math.round(unit * extension.left));
       const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth + padding * 2;
-      canvas.height = image.naturalHeight + padding * 2;
+       canvas.width = image.naturalWidth + left + right;
+       canvas.height = image.naturalHeight + top + bottom;
       const context = canvas.getContext("2d");
       if (!context) throw new Error("This browser cannot extend the image.");
       context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, padding, padding);
-      await onApply(canvas.toDataURL("image/png"));
+       context.drawImage(image, left, top);
+       await onApply(canvas.toDataURL("image/png"), {
+         centerOffsetX: (left - right) / 2,
+         centerOffsetY: (top - bottom) / 2,
+       });
       onClose();
     } catch (reason) {
       setBusy(false);
@@ -218,16 +232,31 @@ export function ImageCropExtendDialog({ layer, initialMode, onApply, onClose }: 
             <p className="mt-3 text-center text-[11px] leading-4 text-gray-500">Drag inside the frame to move it. Use the orange handles to crop away unwanted edges.</p>
           ) : (
             <div className="mt-4">
-              <p className="mb-2 text-[11px] font-bold text-gray-600">Transparent padding on every side</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[5, 10, 20, 30].map((value) => (
-                  <button key={value} type="button" onClick={() => setExtensionPercent(value)} aria-pressed={extensionPercent === value} className={`min-h-11 rounded-xl border text-xs font-black transition ${extensionPercent === value ? "border-orange-400 bg-orange-50 text-orange-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>{value}%</button>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center justify-center gap-3 text-gray-500" aria-hidden="true">
-                <ArrowLeft className="h-4 w-4" /><ArrowUp className="h-4 w-4" /><ArrowDown className="h-4 w-4" /><ArrowRight className="h-4 w-4" />
-              </div>
-              <p className="mt-2 text-center text-[11px] leading-4 text-gray-500">Extend keeps your artwork unchanged and adds transparent room around it for easier placement.</p>
+               <p className="mb-2 text-[11px] font-bold text-gray-600">Transparent padding by side</p>
+               <div className="grid grid-cols-2 gap-2">
+                 {([
+                   ["top", "Top", ArrowUp],
+                   ["right", "Right", ArrowRight],
+                   ["bottom", "Bottom", ArrowDown],
+                   ["left", "Left", ArrowLeft],
+                 ] as const).map(([side, label, Icon]) => (
+                   <label key={side} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-600">
+                     <Icon className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                     <span className="w-12">{label}</span>
+                     <input
+                       type="number"
+                       min={0}
+                       max={100}
+                       value={extension[side]}
+                       onChange={(event) => setExtension((current) => ({ ...current, [side]: clamp(Number(event.target.value) || 0, 0, 100) }))}
+                       className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-right text-xs font-black text-gray-800 outline-none focus:border-orange-400"
+                       aria-label={`${label} transparent padding percentage`}
+                     />
+                     <span>%</span>
+                   </label>
+                 ))}
+               </div>
+               <p className="mt-2 text-center text-[11px] leading-4 text-gray-500">Each side is independent. Existing artwork stays in the same product position.</p>
             </div>
           )}
           {error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-semibold leading-4 text-red-700">{error}</p>}
@@ -237,7 +266,7 @@ export function ImageCropExtendDialog({ layer, initialMode, onApply, onClose }: 
           <button type="button" onClick={onClose} disabled={busy} className="min-h-11 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-60">Cancel</button>
           <button type="button" onClick={() => void (mode === "crop" ? applyCrop() : applyExtend())} disabled={busy} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-3 text-xs font-black text-white shadow-md transition hover:shadow-lg disabled:cursor-wait disabled:opacity-60">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {busy ? "Applying…" : mode === "crop" ? "Apply crop" : `Add ${extensionPercent}% padding`}
+             {busy ? "Applying…" : mode === "crop" ? "Apply crop" : "Apply transparent extension"}
           </button>
         </div>
       </div>

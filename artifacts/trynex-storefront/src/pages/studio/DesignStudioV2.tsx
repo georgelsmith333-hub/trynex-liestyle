@@ -197,7 +197,7 @@ export default function DesignStudioV2() {
   const {
     selectedProduct, selectedColor, activeFace, mugMode, selectedSize, quantity,
     layers, selectedIds, linkedStoreProduct, showPrintZone, show3D, activeTab, activeTool,
-    saveStatus, hasDraft, isMobile, fabricTexture, mobileToolOpen,
+    saveStatus, hasDraft, isMobile, fabricTexture, mobileToolOpen, zoom, panX, panY,
      setProduct, setColor, setFace, setMugMode, setMugView, switchProduct, setSize, setQuantity,
     addLayer, updateLayer, deleteLayer, moveLayer, setLayerVisibility, selectLayer, clearSelection, setLayers, commit,
     undo, redo, setShowPrintZone, setActiveTab, setActiveTool, setShow3D, setLinkedStoreProduct, setSaveStatus, setHasDraft, setMobileToolOpen, setShowProductPicker, setIsMobile,
@@ -406,6 +406,7 @@ export default function DesignStudioV2() {
     }
     if (data.color?.hex && data.color?.name) setColor(data.color);
     if (typeof data.size === "string") setSize(data.size);
+    if (data.activeFace) setFace(data.activeFace);
     if (data.mugMode) setMugMode(data.mugMode);
     if (data.linkedStoreProductId) setLinkedStoreProduct({ id: data.linkedStoreProductId, name: data.linkedStoreProductName, price: data.linkedStoreProductPrice });
     if (Array.isArray(data.layers) && data.layers.length > 0) {
@@ -429,7 +430,7 @@ export default function DesignStudioV2() {
     const handle = window.setTimeout(async () => {
       const payload = {
         version: DRAFT_VERSION, layers, productId: selectedProduct.id, color: selectedColor, size: selectedSize,
-        mugMode, mockupRelease: getActiveMockupReleaseVersion(), savedAt: Date.now(),
+        activeFace, mugMode, mockupRelease: getActiveMockupReleaseVersion(), savedAt: Date.now(),
         ...(linkedStoreProduct ? { linkedStoreProductId: linkedStoreProduct.id, linkedStoreProductName: linkedStoreProduct.name, linkedStoreProductPrice: linkedStoreProduct.price } : {}),
       };
       let localSaved = false;
@@ -557,7 +558,10 @@ export default function DesignStudioV2() {
     reader.readAsDataURL(file);
   };
 
-  const replaceSelectedImage = async (dataUrl: string) => {
+  const replaceSelectedImage = async (
+    dataUrl: string,
+    geometry?: { centerOffsetX: number; centerOffsetY: number },
+  ) => {
     if (!selectedLayer || selectedLayer.type !== "image") return;
     const img = new Image();
     await new Promise<void>((resolve, reject) => {
@@ -565,7 +569,23 @@ export default function DesignStudioV2() {
       img.onerror = () => reject(new Error("The processed image could not be decoded."));
       img.src = dataUrl;
     });
-    updateLayer(selectedLayer.id, { src: dataUrl, naturalW: img.naturalWidth, naturalH: img.naturalHeight });
+    const previousWidth = selectedLayer.naturalW * Math.abs(selectedLayer.transform.scaleX ?? selectedLayer.transform.scale);
+    const previousHeight = selectedLayer.naturalH * Math.abs(selectedLayer.transform.scaleY ?? selectedLayer.transform.scale);
+    const nextScaleX = previousWidth / Math.max(1, img.naturalWidth);
+    const nextScaleY = previousHeight / Math.max(1, img.naturalHeight);
+    updateLayer(selectedLayer.id, {
+      src: dataUrl,
+      naturalW: img.naturalWidth,
+      naturalH: img.naturalHeight,
+      transform: {
+        ...selectedLayer.transform,
+        scale: Math.min(nextScaleX, nextScaleY),
+        scaleX: nextScaleX,
+        scaleY: nextScaleY,
+        x: selectedLayer.transform.x - (geometry?.centerOffsetX ?? 0) * (selectedLayer.transform.scaleX ?? selectedLayer.transform.scale),
+        y: selectedLayer.transform.y - (geometry?.centerOffsetY ?? 0) * (selectedLayer.transform.scaleY ?? selectedLayer.transform.scale),
+      },
+    });
     commit();
   };
 
@@ -1276,6 +1296,10 @@ export default function DesignStudioV2() {
                   width={canvasSize}
                   height={canvasSize}
                   printZone={pz}
+                  activeFace={activeFace}
+                  zoom={zoom}
+                  panX={panX}
+                  panY={panY}
                    liveSurface={liveSurface}
                    liveGarmentColor={selectedColor.hex}
                    liveLayers={currentFaceLayers as unknown as ComposerLayer[]}

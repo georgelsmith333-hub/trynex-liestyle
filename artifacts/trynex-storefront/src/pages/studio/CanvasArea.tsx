@@ -33,6 +33,12 @@ interface Props {
   interactionOnly?: boolean;
   /** Print zone in the 1000×1000 coordinate space. CanvasArea maps it to the stage size. */
   printZone: PrintZone;
+  /** Active product face; only this face may be selected or transformed. */
+  activeFace?: string;
+  /** View transform applied to the complete board, including the mockup preview. */
+  zoom?: number;
+  panX?: number;
+  panY?: number;
   /** Scale the design layer rendering so it aligns with the mockup print zone. */
   stageScale?: number;
   /** Called with a point in the 1000×1000 product coordinate system when a creation tool is used. */
@@ -45,6 +51,28 @@ interface Props {
   onPickColor?: (hex: string) => void;
   /** Opens the full image tools workflow for an image-layer double activation. */
   onOpenImageTools?: () => void;
+}
+
+function getClientPoint(event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+  const source = event.evt as MouseEvent & {
+    touches?: TouchList;
+    changedTouches?: TouchList;
+  };
+  const touch = source.touches?.[0] ?? source.changedTouches?.[0];
+  return {
+    clientX: touch?.clientX ?? source.clientX,
+    clientY: touch?.clientY ?? source.clientY,
+  };
+}
+
+function getTouchPair(event: Konva.KonvaEventObject<TouchEvent>) {
+  const touches = Array.from(event.evt.touches);
+  if (touches.length < 2) return null;
+  const [first, second] = touches;
+  return {
+    distance: Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY),
+    angle: Math.atan2(second.clientY - first.clientY, second.clientX - first.clientX),
+  };
 }
 
 function rgbaToHex(r: number, g: number, b: number, a: number) {
@@ -86,6 +114,10 @@ export function CanvasArea({
   liveEnabled = true,
   interactionOnly = false,
   printZone,
+  activeFace = "front",
+  zoom = 1,
+  panX = 0,
+  panY = 0,
   onCanvasAction,
   onDrawStart,
   onDrawMove,
@@ -95,9 +127,23 @@ export function CanvasArea({
 }: Props) {
   const trRef = useRef<Konva.Transformer>(null);
   const drawingRef = useRef(false);
-  const { layers, selectedIds, activeTool, selectLayer, clearSelection, setActiveTool, deleteLayer } = useDesignStore();
+  const pinchRef = useRef<{ distance: number; angle: number; scale: number; rotation: number } | null>(null);
+  const {
+    layers,
+    selectedIds,
+    activeTool,
+    selectLayer,
+    clearSelection,
+    setActiveTool,
+    deleteLayer,
+    beginHistoryGroup,
+    commit,
+    updateLayer,
+  } = useDesignStore();
   const selectedLayer = useSelectedLayer();
   const [img, setImg] = useState<HTMLImageElement | null>(mockupImg ?? null);
+  const visibleLayers = layers.filter((layer) => (layer.face ?? "front") === activeFace);
+  const viewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (mockupImg) setImg(mockupImg);
@@ -113,7 +159,7 @@ export function CanvasArea({
   };
   const center = { x: pz.x + pz.w / 2, y: pz.y + pz.h / 2 };
   const deleteButtonPosition = (() => {
-    if (!selectedLayer || selectedIds.length !== 1 || !selectedLayer.visible) return null;
+    if (!selectedLayer || selectedIds.length !== 1 || (selectedLayer.face ?? "front") !== activeFace) return null;
     const dimensions = getArtworkDimensions(selectedLayer, scale);
     const angle = (selectedLayer.transform.rotation * Math.PI) / 180;
     const localX = dimensions.width / 2 + 22;
@@ -125,6 +171,38 @@ export function CanvasArea({
       top: Math.max(4, Math.min(height - 48, y)),
     };
   })();
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.isContentEditable
+        || target?.tagName === "INPUT"
+        || target?.tagName === "TEXTAREA"
+        || target?.tagName === "SELECT"
+      ) return;
+      if (event.key === "Escape") {
+        clearSelection();
+        return;
+      }
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedLayer && (selectedLayer.face ?? "front") === activeFace) {
+        event.preventDefault();
+        deleteLayer(selectedLayer.id);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeFace, clearSelection, deleteLayer, selectedLayer]);
+
+  const getCanvasPoint = (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const bounds = viewRef.current?.getBoundingClientRect();
+    if (!bounds) return null;
+    const { clientX, clientY } = getClientPoint(event);
+    return {
+      x: (clientX - bounds.left) / Math.max(0.01, zoom),
+      y: (clientY - bounds.top) / Math.max(0.01, zoom),
+    };
+  };
 
   // Sync transformer with the selected layer(s).
   useEffect(() => {
@@ -154,38 +232,50 @@ export function CanvasArea({
         border: "1px solid #e5e5e7",
         boxShadow: "0 6px 40px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1)",
         isolation: "isolate",
+        touchAction: "none",
       }}
     >
-      {mockup}
-      {liveSurface && liveGarmentColor && liveLayers && (
-        <LiveCompositorPreview
-          width={width}
-          height={height}
-          surface={liveSurface}
-          garmentColor={liveGarmentColor}
-          layers={liveLayers}
-          curvature={liveCurvature}
-          fabricTexture={liveFabricTexture}
-          enabled={liveEnabled}
-        />
-      )}
-      {layers.length === 0 && (
-        <div
-          className="absolute inset-x-0 bottom-3 z-10 flex justify-center pointer-events-none px-4"
-          aria-live="polite"
-        >
-          <div className="max-w-[280px] rounded-full border border-orange-200/80 bg-white/88 px-4 py-2 text-center shadow-sm backdrop-blur-sm">
-            <p className="text-xs font-bold text-gray-700">Upload artwork to preview your design</p>
+      <div
+        ref={viewRef}
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+          transformOrigin: "center center",
+          width,
+          height,
+        }}
+      >
+        {mockup}
+        {liveSurface && liveGarmentColor && liveLayers && (
+          <LiveCompositorPreview
+            width={width}
+            height={height}
+            surface={liveSurface}
+            garmentColor={liveGarmentColor}
+            layers={liveLayers}
+            curvature={liveCurvature}
+            fabricTexture={liveFabricTexture}
+            enabled={liveEnabled}
+          />
+        )}
+        {layers.length === 0 && (
+          <div
+            className="absolute inset-x-0 bottom-3 z-10 flex justify-center pointer-events-none px-4"
+            aria-live="polite"
+          >
+            <div className="max-w-[280px] rounded-full border border-orange-200/80 bg-white/88 px-4 py-2 text-center shadow-sm backdrop-blur-sm">
+              <p className="text-xs font-bold text-gray-700">Upload artwork to preview your design</p>
+            </div>
           </div>
-        </div>
-      )}
-      <Stage
+        )}
+        <Stage
         width={width}
         height={height}
         className="absolute inset-0"
+        style={{ touchAction: "none" }}
         onMouseDown={(e: Konva.KonvaEventObject<MouseEvent>) => {
           const stage = e.target.getStage();
-          const point = stage?.getPointerPosition();
+          const point = getCanvasPoint(e);
           if (!stage || !point) return;
           const mapped = { x: Math.round((point.x - center.x) / scale), y: Math.round((point.y - center.y) / scale) };
 
@@ -218,7 +308,7 @@ export function CanvasArea({
         }}
         onMouseMove={(e: Konva.KonvaEventObject<MouseEvent>) => {
           if (activeTool !== "draw" || !drawingRef.current) return;
-          const point = e.target.getStage()?.getPointerPosition();
+          const point = getCanvasPoint(e);
           if (!point) return;
           onDrawMove?.({ x: Math.round((point.x - center.x) / scale), y: Math.round((point.y - center.y) / scale) });
         }}
@@ -230,7 +320,18 @@ export function CanvasArea({
         }}
         onTouchStart={(e: Konva.KonvaEventObject<TouchEvent>) => {
           const stage = e.target.getStage();
-          const point = stage?.getPointerPosition();
+          const pinch = getTouchPair(e);
+          if (pinch && selectedLayer && selectedIds.length === 1 && !selectedLayer.locked && (selectedLayer.face ?? "front") === activeFace) {
+            e.evt.preventDefault();
+            beginHistoryGroup();
+            pinchRef.current = {
+              ...pinch,
+              scale: selectedLayer.transform.scale,
+              rotation: selectedLayer.transform.rotation,
+            };
+            return;
+          }
+          const point = getCanvasPoint(e);
           if (!stage || !point) return;
           const mapped = { x: Math.round((point.x - center.x) / scale), y: Math.round((point.y - center.y) / scale) };
           if (activeTool === "draw") {
@@ -246,23 +347,45 @@ export function CanvasArea({
           if (e.target === stage) clearSelection();
         }}
         onTouchMove={(e: Konva.KonvaEventObject<TouchEvent>) => {
+          const pinch = getTouchPair(e);
+          const start = pinchRef.current;
+          if (pinch && start && selectedLayer) {
+            e.evt.preventDefault();
+            const nextScale = Math.max(0.05, Math.min(8, start.scale * (pinch.distance / Math.max(1, start.distance))));
+            const nextRotation = start.rotation + ((pinch.angle - start.angle) * 180) / Math.PI;
+            updateLayer(selectedLayer.id, {
+              transform: {
+                ...selectedLayer.transform,
+                scale: nextScale,
+                scaleX: nextScale,
+                scaleY: nextScale,
+                rotation: nextRotation,
+              },
+            }, { history: false });
+            return;
+          }
           if (activeTool !== "draw" || !drawingRef.current) return;
-          const point = e.target.getStage()?.getPointerPosition();
+          const point = getCanvasPoint(e);
           if (!point) return;
           onDrawMove?.({ x: Math.round((point.x - center.x) / scale), y: Math.round((point.y - center.y) / scale) });
         }}
         onTouchEnd={() => {
+          if (pinchRef.current) {
+            pinchRef.current = null;
+            commit();
+            return;
+          }
           if (!drawingRef.current) return;
           drawingRef.current = false;
           onDrawEnd?.();
           setActiveTool("select");
         }}
-      >
-        <Layer>
-          {img && <KonvaImage image={img} width={width} height={height} listening={false} />}
-        </Layer>
-        <Layer style={{ mixBlendMode: "source-over" }}>
-          {layers.map((layer: LayerType) => (
+        >
+          <Layer>
+            {img && <KonvaImage image={img} width={width} height={height} listening={false} />}
+          </Layer>
+          <Layer style={{ mixBlendMode: "source-over" }}>
+            {visibleLayers.map((layer: LayerType) => (
             <DesignLayer
               key={layer.id}
               layer={layer}
@@ -274,50 +397,66 @@ export function CanvasArea({
               printZoneCenter={center}
               printZoneSize={{ w: pz.w, h: pz.h }}
             />
-          ))}
-          <Transformer
-            ref={trRef}
-            rotateEnabled
-            flipEnabled
-            anchorSize={8}
-            borderStroke="#E85D04"
-            anchorStroke="#E85D04"
-            anchorFill="#ffffff"
+            ))}
+            <Transformer
+              ref={trRef}
+              rotateEnabled
+              flipEnabled
+              anchorSize={8}
+              borderStroke="#E85D04"
+              anchorStroke="#E85D04"
+              anchorFill="#ffffff"
+            />
+          </Layer>
+        </Stage>
+        {overlay}
+        {selectedLayer && selectedIds.length === 1 && (selectedLayer.face ?? "front") === activeFace && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute z-20 border-2 border-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.8)]"
+            style={{
+              left: center.x + selectedLayer.transform.x * scale,
+              top: center.y + selectedLayer.transform.y * scale,
+              width: getArtworkDimensions(selectedLayer, scale).width,
+              height: getArtworkDimensions(selectedLayer, scale).height,
+              transform: `translate(-50%, -50%) rotate(${selectedLayer.transform.rotation}deg)`,
+              transformOrigin: "center center",
+              borderStyle: selectedLayer.visible ? "solid" : "dashed",
+            }}
           />
-        </Layer>
-      </Stage>
-      {overlay}
-      {deleteButtonPosition && (
-        <button
-          type="button"
-          aria-label={`Delete ${selectedLayer?.name || "selected artwork"}`}
-          title="Delete selected artwork"
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (selectedLayer) deleteLayer(selectedLayer.id);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
+        )}
+        {deleteButtonPosition && (
+          <button
+            type="button"
+            aria-label={`Delete ${selectedLayer?.name || "selected artwork"}`}
+            title="Delete selected artwork"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
               if (selectedLayer) deleteLayer(selectedLayer.id);
-            }
-          }}
-          className="absolute z-30 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-red-600 text-white shadow-[0_4px_14px_rgba(185,28,28,0.4)] transition hover:bg-red-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200 active:scale-95"
-          style={{
-            left: deleteButtonPosition.left,
-            top: deleteButtonPosition.top,
-            touchAction: "manipulation",
-          }}
-        >
-          <X className="h-5 w-5" strokeWidth={3} aria-hidden="true" />
-        </button>
-      )}
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (selectedLayer) deleteLayer(selectedLayer.id);
+              }
+            }}
+            className="absolute z-30 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-red-600 text-white shadow-[0_4px_14px_rgba(185,28,28,0.4)] transition hover:bg-red-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-200 active:scale-95"
+            style={{
+              left: deleteButtonPosition.left,
+              top: deleteButtonPosition.top,
+              touchAction: "manipulation",
+            }}
+          >
+            <X className="h-5 w-5" strokeWidth={3} aria-hidden="true" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

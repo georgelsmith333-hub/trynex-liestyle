@@ -187,6 +187,7 @@ function historyFrameMatchesState(frame: HistoryFrame, state: DS) {
     && frame.color.hex.toLowerCase() === state.selectedColor.hex.toLowerCase()
     && frame.activeFace === state.activeFace
     && frame.mugMode === state.mugMode
+    && JSON.stringify(frame.selectedIds) === JSON.stringify(state.selectedIds)
     && JSON.stringify(frame.layers) === JSON.stringify(state.layers)
   );
 }
@@ -365,8 +366,11 @@ export const useDesignStore = create<DesignStore>()(
           return;
         }
         state.layers = draft.layers ?? [];
+        const product = PRODUCTS.find((item: DesignProduct) => item.id === draft.productId);
+        if (product) state.selectedProduct = product;
         if (draft.color) state.selectedColor = draft.color;
         if (draft.size) state.selectedSize = draft.size;
+        if (draft.activeFace) state.activeFace = draft.activeFace;
         if (draft.mugMode) state.mugMode = draft.mugMode as MugMode;
         if (draft.linkedStoreProductId && draft.linkedStoreProductName && draft.linkedStoreProductPrice) {
           state.linkedStoreProduct = {
