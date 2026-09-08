@@ -11,6 +11,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
 import { tgSend, getEffectiveChatId } from "../lib/telegram";
 import { checkRevenueMilestone } from "../lib/scheduler";
+import { syncOrderEntitlement } from "../lib/spinLedger";
 import { sendOrderConfirmationEmail, sendStatusUpdateEmail } from "../lib/email";
 
 // ---------------------------------------------------------------------------
@@ -1377,8 +1378,15 @@ const updateOrderStatusHandler = async (req: Request, res: Response) => {
       res.status(400).json({ error: "validation_error", message: "status is required" });
       return;
     }
-    const [beforeSnap] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-    const [order] = await db.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+    const transition = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(ordersTable).where(eq(ordersTable.id, id));
+      const [after] = await tx.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+      if (!after) return { before: before ?? null, order: null, entitlement: "none" as const };
+      const entitlement = await syncOrderEntitlement(tx, before as any, after as any);
+      return { before: before ?? null, order: after, entitlement };
+    });
+    const beforeSnap = transition.before;
+    const order = transition.order;
     if (!order) {
       res.status(404).json({ error: "not_found", message: "Order not found" });
       return;
@@ -1422,8 +1430,15 @@ const updatePaymentStatusHandler = async (req: Request, res: Response) => {
       res.status(400).json({ error: "validation_error", message: "paymentStatus must be pending, not_paid, submitted, verified, paid, wrong, or refunded" });
       return;
     }
-    const [beforeSnap] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-    const [order] = await db.update(ordersTable).set({ paymentStatus, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+    const transition = await db.transaction(async (tx) => {
+      const [before] = await tx.select().from(ordersTable).where(eq(ordersTable.id, id));
+      const [after] = await tx.update(ordersTable).set({ paymentStatus, updatedAt: new Date() }).where(eq(ordersTable.id, id)).returning();
+      if (!after) return { before: before ?? null, order: null, entitlement: "none" as const };
+      const entitlement = await syncOrderEntitlement(tx, before as any, after as any);
+      return { before: before ?? null, order: after, entitlement };
+    });
+    const beforeSnap = transition.before;
+    const order = transition.order;
     if (!order) {
       res.status(404).json({ error: "not_found", message: "Order not found" });
       return;

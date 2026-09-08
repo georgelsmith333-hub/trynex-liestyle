@@ -44,6 +44,8 @@ jobs:
         run: pnpm --filter @workspace/api-server typecheck
 
       - name: Run API tests
+        env:
+          JWT_SECRET: ci-only-spin-test-secret
         run: pnpm --filter @workspace/api-server test
 
       - name: Build storefront

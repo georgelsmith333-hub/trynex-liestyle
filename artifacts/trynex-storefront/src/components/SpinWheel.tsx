@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift, Sparkles, X, Copy, Check } from "lucide-react";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
 import { lockBodyScroll } from "@/lib/scrollLock";
+import { getApiUrl } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type Prize = {
@@ -31,24 +32,11 @@ const PRIZES: Prize[] = [
 const SLICES = PRIZES.length;
 const SLICE_DEG = 360 / SLICES;
 
-function pickWeighted(): number {
-  const total = PRIZES.reduce((s, p) => s + p.weight, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < PRIZES.length; i++) {
-    r -= PRIZES[i].weight;
-    if (r <= 0) return i;
-  }
-  return 0;
-}
+const STORAGE_SHOWN = "spin_modal_shown_v2";
+const SPIN_WATCHDOG_MS = 8000;
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
-const STORAGE_LAST_SPIN = "spin_last_date";
-const STORAGE_SHOWN     = "spin_modal_shown_v2";
-const STORAGE_REWARD    = "spin_reward";
+type SpinState = { dailyAvailable: boolean; ticketCount: number };
+type PendingSpin = { playId: number; entitlementType: "daily" | "ticket"; prize: Prize };
 
 interface Particle {
   id: number;
@@ -166,46 +154,16 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [spinState, setSpinState] = useState<SpinState | null>(null);
+  const [spinStateLoading, setSpinStateLoading] = useState(false);
+  const [spinStateError, setSpinStateError] = useState<string | null>(null);
   const [spinError, setSpinError] = useState<string | null>(null);
-  const spunTodayRef = useRef(false);
-  const pendingPrizeRef = useRef<Prize | null>(null);
-  const spinSettledRef = useRef(false);
-  const spinWatchdogRef = useRef<number | null>(null);
+  const pendingSpinRef = useRef<PendingSpin | null>(null);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const resetAt = settings.spinWheelResetAt ?? 0;
   const cooldownHours = Math.max(1, settings.spinWheelCooldownHours ?? 24);
-
-  const clearSpinWatchdog = () => {
-    if (spinWatchdogRef.current !== null) {
-      window.clearTimeout(spinWatchdogRef.current);
-      spinWatchdogRef.current = null;
-    }
-  };
-
-  const settleSpin = () => {
-    const prize = pendingPrizeRef.current;
-    if (!spinning || spinSettledRef.current || !prize) return;
-    spinSettledRef.current = true;
-    pendingPrizeRef.current = null;
-    clearSpinWatchdog();
-    setSpinning(false);
-    setResult(prize);
-    if (prize.code) setShowConfetti(true);
-    try {
-      localStorage.setItem(STORAGE_LAST_SPIN, todayKey());
-      if (prize.code) {
-        localStorage.setItem(STORAGE_REWARD, JSON.stringify({
-          code: prize.code,
-          label: prize.label,
-          wonAt: Date.now(),
-        }));
-      }
-    } catch {}
-    spunTodayRef.current = true;
-  };
-
-  useEffect(() => () => clearSpinWatchdog(), []);
   useEffect(() => {
     if (!enabled || dismissed) return;
     if (forceOpen) { setOpen(true); return; }
@@ -233,9 +191,28 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
     return () => clearTimeout(t);
   }, [allowAutoOpen, forceOpen, enabled, delaySeconds, resetAt, cooldownHours, dismissed]);
 
+  const loadSpinState = useCallback(async () => {
+    setSpinStateLoading(true);
+    setSpinStateError(null);
+    try {
+      const response = await fetch(getApiUrl("/api/spin/state"), { credentials: "include" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || "Spin & Win is temporarily unavailable.");
+      setSpinState({ dailyAvailable: Boolean(payload.dailyAvailable), ticketCount: Math.max(0, Number(payload.ticketCount) || 0) });
+    } catch (error) {
+      setSpinState(null);
+      setSpinStateError(error instanceof Error ? error.message : "Spin & Win is temporarily unavailable.");
+    } finally {
+      setSpinStateLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    try { spunTodayRef.current = localStorage.getItem(STORAGE_LAST_SPIN) === todayKey(); } catch {}
-  }, [open]);
+    if (!open) return;
+    setSpinState(null);
+    setSpinError(null);
+    void loadSpinState();
+  }, [open, loadSpinState]);
 
   useEffect(() => {
     if (!open) return;
@@ -244,53 +221,81 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
   }, [open]);
 
   const close = () => {
-    if (spinning) return;
-    clearSpinWatchdog();
-    pendingPrizeRef.current = null;
     setOpen(false);
     setResult(null);
     setCopied(false);
     setShowConfetti(false);
-    setSpinError(null);
     onClose?.();
   };
 
   const dismissPromo = () => {
-    if (spinning) return;
     setDismissed(true);
     close();
     try { localStorage.setItem(STORAGE_SHOWN, String(Date.now())); } catch {}
   };
 
-  const spin = () => {
-    if (spinning) return;
-    if (spunTodayRef.current) return;
-
-    const idx = pickWeighted();
-    const prize = PRIZES[idx];
-    const sliceCenter = idx * SLICE_DEG + SLICE_DEG / 2;
-    const targetAngle = 360 - sliceCenter;
-    const fullSpins = 6 + Math.floor(Math.random() * 3);
-    const finalRotation = rotation + fullSpins * 360 + (targetAngle - (rotation % 360));
-
-    setSpinError(null);
-    spinSettledRef.current = false;
-    pendingPrizeRef.current = prize;
-    setSpinning(true);
-    setRotation(finalRotation);
-
-    if (reducedMotion) {
-      window.requestAnimationFrame(settleSpin);
-      return;
-    }
-
-    clearSpinWatchdog();
-    spinWatchdogRef.current = window.setTimeout(() => {
-      if (spinSettledRef.current) return;
-      pendingPrizeRef.current = null;
+  const settleSpin = async () => {
+    const pending = pendingSpinRef.current;
+    if (!pending) return;
+    if (watchdogRef.current) clearTimeout(watchdogRef.current);
+    try {
+      const response = await fetch(getApiUrl(`/api/spin/plays/${pending.playId}/settle`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || "Spin settlement could not be confirmed.");
       setSpinning(false);
-      setSpinError("The wheel animation did not finish. No reward was issued; please try again.");
-    }, 7_000);
+      setResult(pending.prize);
+      if (pending.prize.code) setShowConfetti(true);
+      setSpinState((current) => current ? {
+        dailyAvailable: pending.entitlementType === "daily" ? false : current.dailyAvailable,
+        ticketCount: pending.entitlementType === "ticket" ? Math.max(0, current.ticketCount - 1) : current.ticketCount,
+      } : current);
+    } catch (error) {
+      setSpinning(false);
+      setSpinError(error instanceof Error ? error.message : "Spin settlement could not be confirmed.");
+    } finally {
+      pendingSpinRef.current = null;
+    }
+  };
+
+  const spin = async () => {
+    if (spinning || !spinState || (!spinState.dailyAvailable && spinState.ticketCount < 1)) return;
+    setSpinError(null);
+    setSpinning(true);
+    const idempotencyKey = `spin:${Date.now()}:${Math.random().toString(36).slice(2, 12)}`;
+    try {
+      const response = await fetch(getApiUrl("/api/spin/reserve"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idempotencyKey }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || "Spin & Win is temporarily unavailable.");
+      const serverPlay = payload.play;
+      const prize = PRIZES.find((candidate) => candidate.id === serverPlay?.reward?.id);
+      if (!prize || !Number.isSafeInteger(Number(serverPlay?.id))) throw new Error("Spin result was invalid and was not shown.");
+      const idx = PRIZES.findIndex((candidate) => candidate.id === prize.id);
+      const sliceCenter = idx * SLICE_DEG + SLICE_DEG / 2;
+      const targetAngle = 360 - sliceCenter;
+      const fullSpins = 6 + Math.floor(Math.random() * 3);
+      const finalRotation = rotation + fullSpins * 360 + (targetAngle - (rotation % 360));
+      pendingSpinRef.current = { playId: Number(serverPlay.id), entitlementType: serverPlay.entitlementType, prize };
+      setRotation(finalRotation);
+      watchdogRef.current = setTimeout(() => {
+        if (!pendingSpinRef.current) return;
+        pendingSpinRef.current = null;
+        setSpinning(false);
+        setSpinError("The wheel animation timed out before settlement. No reward was shown; please retry.");
+      }, SPIN_WATCHDOG_MS);
+      if (reducedMotion) void settleSpin();
+    } catch (error) {
+      setSpinning(false);
+      setSpinError(error instanceof Error ? error.message : "Spin & Win is temporarily unavailable.");
+    }
   };
 
   const copyCode = async () => {
@@ -356,10 +361,10 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
             </button>
             <button
               onClick={dismissPromo}
-              type="button"
               disabled={spinning}
+              type="button"
               aria-label="Dismiss promotion"
-              className="absolute top-3 left-3 rounded-full bg-white/90 hover:bg-white px-3 h-9 text-xs font-bold text-gray-600 hover:text-gray-900 transition-colors z-30 shadow-md disabled:opacity-40"
+              className="absolute top-3 left-3 rounded-full bg-white/90 hover:bg-white px-3 h-9 text-xs font-bold text-gray-600 hover:text-gray-900 transition-colors z-30 shadow-md"
             >
               Dismiss
             </button>
@@ -386,8 +391,8 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
               {/* Wheel */}
               <motion.div
                 animate={{ rotate: rotation }}
+                onAnimationComplete={() => { if (!reducedMotion) void settleSpin(); }}
                 transition={reducedMotion ? { duration: 0 } : { duration: 5, ease: [0.17, 0.67, 0.21, 0.99] }}
-                onAnimationComplete={settleSpin}
                 className="absolute inset-0 rounded-full shadow-xl"
                 style={{
                   ...conicStyle,
@@ -461,19 +466,18 @@ export default function SpinWheel({ autoOpen = true, forceOpen = false, onClose 
               {!result ? (
                 <>
                   <button
-                    onClick={spin}
-                    disabled={spinning || spunTodayRef.current}
+                    onClick={spinStateError ? loadSpinState : spin}
+                    disabled={spinning || spinStateLoading || (spinState === null && !spinStateError) || (!spinStateError && Boolean(spinState) && !spinState!.dailyAvailable && spinState!.ticketCount < 1) || Boolean(spinError)}
                     data-testid="button-spin-wheel"
                     className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                     style={{ background: spinning ? "#9ca3af" : "linear-gradient(135deg, #E85D04, #FB8500)", boxShadow: "0 6px 16px rgba(232,93,4,0.35)" }}
                     type="button"
                   >
-                    {spinning ? "Spinning…" : spunTodayRef.current ? "Come back tomorrow!" : "SPIN NOW 🎰"}
+                    {spinning ? "Spinning…" : spinStateLoading ? "Checking eligibility…" : spinStateError ? "Retry eligibility check" : spinState === null ? "Checking eligibility…" : !spinState.dailyAvailable && spinState.ticketCount < 1 ? "No spins available" : "SPIN NOW 🎰"}
                   </button>
-                  <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">
-                    One spin per day &middot; T&amp;Cs apply
-                  </p>
-                  {spinError && <p role="status" className="mt-2 text-xs font-semibold text-red-600">{spinError}</p>}
+                  {spinStateError && <p role="alert" className="text-xs font-semibold text-red-600 mt-3">{spinStateError}</p>}
+                  {spinError && <p role="alert" className="text-xs font-semibold text-red-600 mt-3">{spinError}</p>}
+                  {spinState && <p className="text-[10px] text-gray-400 mt-3 uppercase tracking-widest font-bold">{spinState.ticketCount} extra ticket{spinState.ticketCount === 1 ? "" : "s"} available &middot; T&amp;Cs apply</p>}
                 </>
               ) : (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">

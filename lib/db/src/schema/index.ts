@@ -371,6 +371,57 @@ export const mockupsTable = pgTable("mockups", {
   sortOrderCheck: check("mockups_sort_order_check", sql`${table.sortOrder} >= 0`),
 }));
 
+export const spinWalletsTable = pgTable("spin_wallets", {
+  id: serial("id").primaryKey(),
+  subjectKey: text("subject_key").notNull().unique(),
+  customerId: integer("customer_id").references(() => customersTable.id, { onDelete: "set null" }),
+  guestTokenHash: text("guest_token_hash").unique(),
+  freeTickets: integer("free_tickets").notNull().default(0),
+  dailySpinClaimedAt: timestamp("daily_spin_claimed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  customerIdIdx: index("spin_wallets_customer_id_idx").on(table.customerId),
+  guestTokenHashIdx: index("spin_wallets_guest_token_hash_idx").on(table.guestTokenHash),
+  freeTicketsCheck: check("spin_wallets_free_tickets_check", sql`${table.freeTickets} >= 0`),
+}));
+
+export const spinEntitlementEventsTable = pgTable("spin_entitlement_events", {
+  id: serial("id").primaryKey(),
+  subjectKey: text("subject_key").notNull(),
+  customerId: integer("customer_id").references(() => customersTable.id, { onDelete: "set null" }),
+  orderId: integer("order_id").references(() => ordersTable.id, { onDelete: "set null" }),
+  sourceKey: text("source_key").notNull().unique(),
+  sourceType: text("source_type").notNull(),
+  quantity: integer("quantity").notNull(),
+  direction: text("direction").notNull().default("grant"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  subjectKeyIdx: index("spin_entitlement_events_subject_key_idx").on(table.subjectKey),
+  orderIdIdx: index("spin_entitlement_events_order_id_idx").on(table.orderId),
+  quantityCheck: check("spin_entitlement_events_quantity_check", sql`${table.quantity} > 0`),
+  sourceTypeCheck: check("spin_entitlement_events_source_type_check", sql`${table.sourceType} IN ('daily', 'purchase', 'manual')`),
+  directionCheck: check("spin_entitlement_events_direction_check", sql`${table.direction} IN ('grant', 'reversal')`),
+}));
+
+export const spinPlaysTable = pgTable("spin_plays", {
+  id: serial("id").primaryKey(),
+  subjectKey: text("subject_key").notNull(),
+  customerId: integer("customer_id").references(() => customersTable.id, { onDelete: "set null" }),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  entitlementType: text("entitlement_type").notNull(),
+  status: text("status").notNull().default("reserved"),
+  rewardCode: text("reward_code"),
+  rewardPayload: jsonb("reward_payload"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  settledAt: timestamp("settled_at"),
+}, (table) => ({
+  subjectKeyIdx: index("spin_plays_subject_key_idx").on(table.subjectKey),
+  statusCheck: check("spin_plays_status_check", sql`${table.status} IN ('reserved', 'settled', 'failed', 'cancelled')`),
+  entitlementTypeCheck: check("spin_plays_entitlement_type_check", sql`${table.entitlementType} IN ('daily', 'ticket')`),
+}));
+
 export type Admin = typeof adminTable.$inferSelect;
 export type InsertAdmin = typeof adminTable.$inferInsert;
 export type AdminSession = typeof adminSessionsTable.$inferSelect;
@@ -401,4 +452,10 @@ export type InsertOrderMessage = typeof orderMessagesTable.$inferInsert;
 export type Notification = typeof notificationsTable.$inferSelect;
 export type InsertNotification = typeof notificationsTable.$inferInsert;
 export type Mockup = typeof mockupsTable.$inferSelect;
+export type SpinWallet = typeof spinWalletsTable.$inferSelect;
+export type InsertSpinWallet = typeof spinWalletsTable.$inferInsert;
+export type SpinEntitlementEvent = typeof spinEntitlementEventsTable.$inferSelect;
+export type InsertSpinEntitlementEvent = typeof spinEntitlementEventsTable.$inferInsert;
+export type SpinPlay = typeof spinPlaysTable.$inferSelect;
+export type InsertSpinPlay = typeof spinPlaysTable.$inferInsert;
 export type InsertMockup = typeof mockupsTable.$inferInsert;

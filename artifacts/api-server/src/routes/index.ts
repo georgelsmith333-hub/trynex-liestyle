@@ -35,6 +35,7 @@ import mockupsRouter from "./mockups";
 import mockupRenderRouter from "./mockupRender";
 import systemHealthRouter from "./systemHealth";
 import secretsRouter from "./secrets";
+import spinRouter from "./spin";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(mockupsRouter);
 router.use(mockupRenderRouter);
 router.use(systemHealthRouter);
 router.use(secretsRouter);
+router.use(spinRouter);
 
 export default router;
